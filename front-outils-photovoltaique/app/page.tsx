@@ -1,19 +1,34 @@
-import SolarForm from '../components/SolarForm';
+import Navbar from "../components/Navbar";
+import SolarForm from "../components/SolarForm"; // Vérifie que ce chemin est correct
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-green-600 text-white py-6">
-        <div className="container">
-          <h1 className="text-3xl font-bold">Outil de Dimensionnement Photovoltaïque</h1>
-          <p className="mt-2 text-lg">Calculez et planifiez votre installation solaire autonome</p>
+      {/* Navbar */}
+      <Navbar />
+
+      {/* Header */}
+      <header className="bg-green-600 text-white py-4">
+        <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8">
+          <h1 className="text-xl font-bold">
+            Outil de Dimensionnement Photovoltaïque
+          </h1>
+          <p className="mt-2 text-sm">
+            Calculez et planifiez votre installation solaire autonome
+          </p>
         </div>
       </header>
-      <main className="py-8">
-        <div className="container">
-          <div className="card">
-            <h2 className="text-2xl font-semibold mb-4">Saisissez vos données</h2>
-            <SolarForm />
+
+      {/* Main */}
+      <main className="py-5">
+        <div className="mx-auto max-w-10xl px-2 sm:px-6 lg:px-8">
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="text-xl font-semibold mb-4">
+                Saisissez vos données
+              </h2>
+              <SolarForm />
+            </div>
           </div>
         </div>
       </main>
