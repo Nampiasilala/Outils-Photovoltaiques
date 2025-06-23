@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FaPlus, FaTrash } from "react-icons/fa";
+import { Button } from "@/components/ui/button"
 
 interface Appliance {
   name: string;
@@ -253,6 +254,9 @@ export default function SolarForm() {
         >
           <FaPlus className="mr-2" /> Appareil
         </button>
+            <div>
+      <Button>Click me</Button>
+    </div>
       </div>
 
       {/* Section : Localisation et paramètres */}

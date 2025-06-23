@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/components/AuthContext";
 
 export const metadata: Metadata = {
   title: "Outil de Dimensionnement Photovoltaïque",
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="font-inter">{children}</body>
+      <body className="font-inter">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
