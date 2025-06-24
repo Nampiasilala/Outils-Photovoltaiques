@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+python3 --version
+Python 3.11.2
 
-## Getting Started
+python --version
+Python 3.11.2
 
-First, run the development server:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+python3 -m django --version
+5.2.3
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Pour le package : 
+pip freeze
+asgiref==3.8.1
+Django==5.2.3
+sqlparse==0.5.3
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+psql --version
+psql (PostgreSQL) 15.13 (Debian 15.13-0+deb12u1)
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+node --version
+v22.16.0
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+npm --version
+10.9.2
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+npm list --depth=0
+outils-photovoltaique@0.1.0 /home/nampiasilala/Outils-Photovoltaiques/front-outils-photovoltaique
+├── @radix-ui/react-slot@1.2.3
+├── @types/axios@0.9.36
+├── @types/node@22.15.32
+├── @types/react-dom@18.3.7
+├── @types/react@18.3.23
+├── autoprefixer@10.4.21
+├── axios@1.10.0
+├── class-variance-authority@0.7.1
+├── clsx@2.1.1
+├── daisyui@5.0.43
+├── eslint-config-next@15.3.4
+├── eslint@8.57.1
+├── lucide-react@0.522.0
+├── next@15.3.4
+├── postcss@8.5.6
+├── react-dom@18.3.1
+├── react-icons@5.5.0
+├── react@18.3.1
+├── tailwind-merge@3.3.1
+├── tailwindcss-animate@1.0.7
+├── tailwindcss@3.4.17
+└── typescript@5.8.3
