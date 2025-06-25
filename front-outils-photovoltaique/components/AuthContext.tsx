@@ -35,10 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post<LoginResponse>("http://localhost:8000/api/login/", {
-        username: email, // Django attend 'username'
-        password,
-      });
+    const response = await axios.post<LoginResponse>(
+      "http://localhost:8000/login/",
+      { username: email, password },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
 
       const token = response.data.access;
 
@@ -48,27 +49,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser({ email, avatar: "https://via.placeholder.com/32" });
       router.push("/calculate");
-    } catch (error) {
-      console.error("Erreur de connexion :", error);
-      alert("Échec de la connexion.");
-    }
+    } catch (error: any) {
+    alert(`Échec de la connexion : ${error.response?.data?.detail || error.message}`);
+  }
   };
 
   const register = async (name: string, email: string, password: string) => {
-    try {
-      await axios.post("http://localhost:8000/api/register/", {
-        username: name,
-        email,
-        password,
-      });
-
-      alert("Inscription réussie !");
-      router.push("/login");
-    } catch (error) {
-      console.error("Erreur d'inscription :", error);
-      alert("Échec de l'inscription.");
-    }
-  };
+  try {
+    await axios.post(
+      "http://localhost:8000/register/",
+      { username: name, email, password },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    alert("Inscription réussie !");
+    router.push("/login");
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.detail || error.message;
+    console.error("Erreur d'inscription :", error.response?.data || error);
+    alert(`Échec de l'inscription : ${errorMessage}`);
+  }
+};
 
   const logout = () => {
     localStorage.removeItem("token");
