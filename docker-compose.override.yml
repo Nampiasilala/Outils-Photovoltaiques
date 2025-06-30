@@ -1,0 +1,12 @@
+services:
+  frontend:
+    build:
+      context: ./front-outils-photovoltaique
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./front-outils-photovoltaique:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
