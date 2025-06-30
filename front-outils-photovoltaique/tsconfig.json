@@ -35,7 +35,7 @@
     "**/*.tsx",
     "next-env.d.ts",
     ".next/types/**/*.ts"
-  ],
+, "app/user_management"  ],
   "exclude": [
     "node_modules"
   ]

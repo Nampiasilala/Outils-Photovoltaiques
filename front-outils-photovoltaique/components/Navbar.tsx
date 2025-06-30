@@ -25,13 +25,19 @@ export default function Navbar() {
                   href="/calculate"
                   className="px-3 py-2 text-sm font-medium hover:bg-green-700 rounded-md transition-colors"
                 >
-                  Calculate
+                  Dimensionnement
                 </Link>
                 <Link
                   href="/parametre_systeme"
                   className="px-3 py-2 text-sm font-medium hover:bg-green-700 rounded-md transition-colors"
                 >
                   Configuration
+                </Link>
+                <Link
+                  href="/user_management"
+                  className="px-3 py-2 text-sm font-medium hover:bg-green-700 rounded-md transition-colors"
+                >
+                  Utilisateurs
                 </Link>
                 <Link
                   href="/profile"
@@ -51,11 +57,7 @@ export default function Navbar() {
                 >
                   Fiche technique
                 </Link>
-                <img
-                  src={user.avatar}
-                  alt="Avatar"
-                  className="w-8 h-8 rounded-full"
-                />
+
                 <button
                   onClick={logout}
                   className="px-3 py-2 text-sm font-medium hover:bg-green-700 rounded-md transition-colors"
