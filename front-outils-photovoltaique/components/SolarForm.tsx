@@ -1,128 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { FaPlus, FaTrash } from "react-icons/fa";
-import { Button } from "@/components/ui/button"
+import { Sun, Battery, Zap, Calendar, Globe, AlertCircle, Calculator, Settings } from "lucide-react";
 
-interface Appliance {
-  name: string;
-  power: number;
-  quantity: number;
-  hoursPerDay: number;
-  isAC: boolean;
-}
-
-interface FormData {
-  appliances: Appliance[];
-  location: string;
-  hsp: number;
-  autonomyDays: number;
-  systemVoltage: number;
-  budget: number;
-}
-
-export default function SolarForm() {
-  const [formData, setFormData] = useState<FormData>({
-    appliances: [
-      { name: "", power: 0, quantity: 1, hoursPerDay: 0, isAC: true },
-    ],
-    location: "",
-    hsp: 4, // Valeur par défaut (heures d'ensoleillement équivalent)
-    autonomyDays: 2, // Par défaut 2 jours d'autonomie
-    systemVoltage: 24, // Par défaut 24V
-    budget: 0, // Budget facultatif
+export default function SolarFormExpert() {
+  const [formData, setFormData] = useState({
+    E_jour: 0, // Consommation journalière (Wh)
+    P_max: 0, // Puissance maximale simultanée (W)
+    N_autonomie: 1, // Jours d'autonomie souhaités
+    H_solaire: 4.5, // Irradiation solaire moyenne (kWh/m²/jour)
+    V_batterie: 24, // Tension du parc batterie (V)
   });
 
   const [errors, setErrors] = useState<string[]>([]);
 
-  // Ajouter un nouvel appareil
-  const addAppliance = () => {
-    setFormData((prev) => ({
-      ...prev,
-      appliances: [
-        ...prev.appliances,
-        { name: "", power: 0, quantity: 1, hoursPerDay: 0, isAC: true },
-      ],
-    }));
-  };
-
-  // Supprimer un appareil
-  const removeAppliance = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      appliances: prev.appliances.filter((_, i) => i !== index),
-    }));
-  };
-
-  // Mettre à jour un champ d'appareil
-  const updateAppliance = (
-    index: number,
-    field: keyof Appliance,
-    value: string | number | boolean
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      appliances: prev.appliances.map((app, i) =>
-        i === index ? { ...app, [field]: value } : app
-      ),
-    }));
-  };
-
-  // Mettre à jour les autres champs
-  const updateField = (field: keyof FormData, value: string | number) => {
+  const updateField = (field: keyof typeof formData, value: number) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  // Valider le formulaire
   const validateForm = (): boolean => {
     const newErrors: string[] = [];
 
-    // Vérifier les appareils
-    formData.appliances.forEach((app, index) => {
-      if (!app.name)
-        newErrors.push(`Le nom de l'appareil ${index + 1} est requis.`);
-      if (app.power <= 0)
-        newErrors.push(
-          `La puissance de l'appareil ${index + 1} doit être supérieure à 0.`
-        );
-      if (app.quantity <= 0)
-        newErrors.push(
-          `La quantité de l'appareil ${index + 1} doit être supérieure à 0.`
-        );
-      if (app.hoursPerDay < 0)
-        newErrors.push(
-          `Les heures d'utilisation de l'appareil ${
-            index + 1
-          } doivent être positives.`
-        );
-    });
-
-    // Vérifier les autres champs
-    if (!formData.location) newErrors.push("La localisation est requise.");
-    if (formData.hsp <= 0)
-      newErrors.push(
-        "Les heures d'ensoleillement doivent être supérieures à 0."
-      );
-    if (formData.autonomyDays <= 0)
+    if (formData.E_jour <= 0)
+      newErrors.push("La consommation journalière doit être supérieure à 0.");
+    if (formData.P_max <= 0)
+      newErrors.push("La puissance maximale doit être supérieure à 0.");
+    if (formData.N_autonomie <= 0)
       newErrors.push("Les jours d'autonomie doivent être supérieurs à 0.");
-    if (![12, 24, 48].includes(formData.systemVoltage)) {
-      newErrors.push("La tension du système doit être 12V, 24V ou 48V.");
-    }
+    if (formData.H_solaire <= 0)
+      newErrors.push("L'irradiation solaire doit être supérieure à 0.");
+    if (![12, 24, 48].includes(formData.V_batterie))
+      newErrors.push("La tension du parc batterie doit être 12V, 24V ou 48V.");
 
     setErrors(newErrors);
     return newErrors.length === 0;
   };
 
-  // Soumettre le formulaire
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
     try {
-      // Exemple : Envoyer les données au backend Django via une API
       const response = await fetch("/api/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,8 +52,7 @@ export default function SolarForm() {
       if (!response.ok) throw new Error("Erreur lors du calcul.");
       const result = await response.json();
       console.log("Résultat du calcul :", result);
-
-      // TODO : Afficher les résultats (puissance PV, équipements, bilan énergétique)
+      // TODO : Afficher les résultats ici
     } catch (error) {
       setErrors([
         error instanceof Error ? error.message : "Une erreur est survenue.",
@@ -142,221 +61,190 @@ export default function SolarForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="card-body">
-      {/* Section : Appareils */}
-      <h3 className="text-sm font-semibold mb-2">
-        Informations sur les appareils
-      </h3>
-      <div className="overflow-x-auto text-sm">
-        <table className="table w-full text-sm">
-          <thead>
-            <tr>
-              <th>Nom</th>
-              <th>Puissance (W)</th>
-              <th>Quantité</th>
-              <th>Heures/Jour</th>
-              <th>Type (AC/DC)</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {formData.appliances.map((app, index) => (
-              <tr key={index}>
-                <td>
-                  <input
-                    type="text"
-                    value={app.name}
-                    onChange={(e) =>
-                      updateAppliance(index, "name", e.target.value)
-                    }
-                    className="input input-bordered w-full"
-                    placeholder="Ex. : Réfrigérateur"
-                    required
-                  />
-                </td>
-                <td>
+    <div className="min-h-screen bg-gray-50 p-4">
+      {/* Header Dashboard */}
+      <div className="mb-6">
+        <div className="flex items-center space-x-3 mb-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <Sun className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Calculateur Solaire</h1>
+        </div>
+        <p className="text-gray-600 text-sm">Dimensionnement de votre installation photovoltaïque</p>
+      </div>
+
+      <div className="max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Section Consommation */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Zap className="w-5 h-5 text-green-600" />
+              <h3 className="font-semibold text-gray-900">Consommation</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Consommation journalière
+                </label>
+                <div className="relative">
                   <input
                     type="number"
-                    value={app.power || ""}
-                    onChange={(e) =>
-                      updateAppliance(index, "power", Number(e.target.value))
-                    }
-                    className="input input-bordered w-full"
-                    placeholder="Ex. : 150"
-                    min="0"
-                    required
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={app.quantity || ""}
-                    onChange={(e) =>
-                      updateAppliance(index, "quantity", Number(e.target.value))
-                    }
-                    className="input input-bordered w-full"
-                    placeholder="Ex. : 1"
+                    value={formData.E_jour || ''}
+                    onChange={(e) => updateField("E_jour", Number(e.target.value))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="3000"
                     min="1"
-                    required
                   />
-                </td>
-                <td>
+                  <span className="absolute right-3 top-2 text-xs text-gray-500">Wh</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Puissance maximale
+                </label>
+                <div className="relative">
                   <input
                     type="number"
-                    value={app.hoursPerDay || ""}
-                    onChange={(e) =>
-                      updateAppliance(
-                        index,
-                        "hoursPerDay",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="input input-bordered w-full"
-                    placeholder="Ex. : 5"
-                    min="0"
-                    step="0.1"
-                    required
+                    value={formData.P_max || ''}
+                    onChange={(e) => updateField("P_max", Number(e.target.value))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="1000"
+                    min="1"
                   />
-                </td>
-                <td>
-                  <select
-                    value={app.isAC ? "AC" : "DC"}
-                    onChange={(e) =>
-                      updateAppliance(index, "isAC", e.target.value === "AC")
-                    }
-                    className="select select-bordered w-full"
-                  >
-                    <option>AC</option>
-                    <option>DC</option>
-                  </select>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    onClick={() => removeAppliance(index)}
-                    className="btn btn-error btn-sm"
-                    disabled={formData.appliances.length === 1}
-                  >
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <span className="absolute right-3 top-2 text-xs text-gray-500">W</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section Système */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Settings className="w-5 h-5 text-purple-600" />
+              <h3 className="font-semibold text-gray-900">Configuration</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Jours d'autonomie
+                </label>
+                <input
+                  type="number"
+                  value={formData.N_autonomie || ''}
+                  onChange={(e) => updateField("N_autonomie", Number(e.target.value))}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="2"
+                  min="1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Tension batterie
+                </label>
+                <div className="grid grid-cols-3 gap-1">
+                  {[12, 24, 48].map((voltage) => (
+                    <button
+                      key={voltage}
+                      type="button"
+                      onClick={() => updateField("V_batterie", voltage)}
+                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                        formData.V_batterie === voltage
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {voltage}V
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section Environnement */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Globe className="w-5 h-5 text-orange-600" />
+              <h3 className="font-semibold text-gray-900">Environnement</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Irradiation solaire
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={formData.H_solaire || ''}
+                    onChange={(e) => updateField("H_solaire", Number(e.target.value))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="4.5"
+                    min="0.1"
+                    step="0.1"
+                  />
+                  <span className="absolute right-3 top-2 text-xs text-gray-500">kWh/m²</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Moyenne par jour</p>
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="button" 
+                  onClick={handleSubmit}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Calculator className="w-4 h-4" />
+                  <span>Calculer</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Gestion des erreurs */}
+        {errors.length > 0 && (
+          <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center mb-2">
+              <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+              <h4 className="text-red-800 font-medium text-sm">Erreurs de validation</h4>
+            </div>
+            <ul className="space-y-1">
+              {errors.map((error, index) => (
+                <li key={index} className="text-red-700 text-xs flex items-start">
+                  <span className="w-1 h-1 bg-red-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
+                  {error}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Stats rapides */}
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
+            <div className="text-2xl font-bold text-blue-600">{formData.E_jour}</div>
+            <div className="text-xs text-gray-500">Wh/jour</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
+            <div className="text-2xl font-bold text-green-600">{formData.P_max}</div>
+            <div className="text-xs text-gray-500">W max</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
+            <div className="text-2xl font-bold text-purple-600">{formData.N_autonomie}</div>
+            <div className="text-xs text-gray-500">jour(s)</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
+            <div className="text-2xl font-bold text-orange-600">{formData.H_solaire}</div>
+            <div className="text-xs text-gray-500">kWh/m²</div>
+          </div>
+        </div>
       </div>
-      {/* Boutons sur la même ligne */}
-      <div className="flex flex-row gap-4 mt-6">
-        <button
-          type="button"
-          onClick={addAppliance}
-          className="inline-flex items-center px-4 py-2 border border-green-600 text-green-600 bg-transparent rounded-md text-sm hover:bg-green-600 hover:text-white transition-colors flex-1 sm:flex-none"
-        >
-          <FaPlus className="mr-2" /> Appareil
-        </button>
-            <div>
-      <Button>Click me</Button>
     </div>
-      </div>
-
-      {/* Section : Localisation et paramètres */}
-      <h3 className="text-sm font-semibold mt-8 mb-4">Autres informations</h3>
-      <div className="grid grid-cols-1 text-sm md:grid-cols-2 gap-4">
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text">Localisation</span>
-          </label>
-          <input
-            type="text"
-            value={formData.location}
-            onChange={(e) => updateField("location", e.target.value)}
-            className="input input-bordered"
-            placeholder="Ex. : Antananarivo"
-            required
-          />
-        </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text">Heures d’ensoleillement (HSP)</span>
-          </label>
-          <input
-            type="number"
-            value={formData.hsp || ""}
-            onChange={(e) => updateField("hsp", Number(e.target.value))}
-            className="input input-bordered"
-            placeholder="Ex. : 4.5"
-            min="0"
-            step="0.1"
-            required
-          />
-        </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text">Jours d’autonomie</span>
-          </label>
-          <input
-            type="number"
-            value={formData.autonomyDays || ""}
-            onChange={(e) =>
-              updateField("autonomyDays", Number(e.target.value))
-            }
-            className="input input-bordered"
-            placeholder="Ex. : 2"
-            min="1"
-            required
-          />
-        </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text">Tension du système (V)</span>
-          </label>
-          <select
-            value={formData.systemVoltage}
-            onChange={(e) =>
-              updateField("systemVoltage", Number(e.target.value))
-            }
-            className="select select-bordered"
-            required
-          >
-            <option value={12}>12V</option>
-            <option value={24}>24V</option>
-            <option value={48}>48V</option>
-          </select>
-        </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text">
-              Budget approximatif (€, facultatif)
-            </span>
-          </label>
-          <input
-            type="number"
-            value={formData.budget || ""}
-            onChange={(e) => updateField("budget", Number(e.target.value))}
-            className="input input-bordered"
-            placeholder="Ex. : 5000"
-            min="0"
-          />
-        </div>
-      </div>
-
-      {/* Erreurs */}
-      {errors.length > 0 && (
-        <div className="alert alert-error mt-4">
-          <ul className="list-disc pl-5">
-            {errors.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Soumission */}
-      <div className="form-control mt-6">
-        <button type="submit" className="btn btn-primary text-sm">
-          Calculer
-        </button>
-      </div>
-    </form>
   );
 }

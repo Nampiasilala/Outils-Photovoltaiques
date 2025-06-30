@@ -27,7 +27,12 @@ export default function Navbar() {
                 >
                   Calculate
                 </Link>
-
+                <Link
+                  href="/parametre_systeme"
+                  className="px-3 py-2 text-sm font-medium hover:bg-green-700 rounded-md transition-colors"
+                >
+                  Configuration
+                </Link>
                 <Link
                   href="/profile"
                   className="px-3 py-2 text-sm font-medium hover:bg-green-700 rounded-md transition-colors"
