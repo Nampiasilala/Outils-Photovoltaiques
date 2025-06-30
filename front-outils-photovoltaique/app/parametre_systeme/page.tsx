@@ -32,8 +32,12 @@ export default function parametre_systeme() {
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">
               Paramètres pour administrateur
             </h2>
+            <div>
             <DefaultValue />
+            </div>
+            <div  className="pt-20">
             <EquipmentManager/>
+            </div>
           </div>
         </div>
       </main>
