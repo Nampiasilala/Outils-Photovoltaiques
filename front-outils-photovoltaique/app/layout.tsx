@@ -25,7 +25,7 @@ export default function RootLayout({
       </head>
       <body className="font-inter">
         <AuthProvider>{children}</AuthProvider>
-        <ToastContainer />
+        <ToastContainer className={'text-sm'}/>
       </body>
     </html>
   );

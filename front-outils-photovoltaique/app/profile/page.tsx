@@ -25,11 +25,11 @@ export default function profile() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar />
-      <main className="pt-20 pb-8"> {/* Changé de py-8 à pt-20 pb-8 */}
+      <main className="pt-10 pb-10"> {/* Changé de py-8 à pt-20 pb-8 */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="bg-white shadow-md rounded-lg p-6">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-              Espace administrateur pour les utilisateurs
+              Informations personnelles
             </h2>
             <InfoProfile />
           </div>

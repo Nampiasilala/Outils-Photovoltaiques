@@ -1,28 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  User, 
-  Mail, 
-  Lock, 
-  Calendar, 
-  Shield, 
-  Edit3, 
-  Save, 
-  X, 
-  Camera, 
-  Phone, 
-  MapPin, 
+import {
+  User,
+  Mail,
+  Lock,
+  Calendar,
+  Shield,
+  Edit3,
+  Save,
+  X,
+  Camera,
+  Phone,
+  MapPin,
   Briefcase,
-  CheckCircle,
-  AlertCircle,
   Eye,
   EyeOff,
   Settings,
   Bell,
   Globe,
-  Smartphone
+  Smartphone,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 interface UserProfile {
   id: number;
@@ -57,27 +56,22 @@ export default function InfoProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState(profile);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [notification, setNotification] = useState<{type: 'success' | 'error'; message: string} | null>(null);
+  
   const [passwords, setPasswords] = useState({
     current: "",
     new: "",
-    confirm: ""
+    confirm: "",
   });
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
-    confirm: false
+    confirm: false,
   });
-
-  const showNotification = (type: 'success' | 'error', message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 3000);
-  };
 
   const handleSaveProfile = () => {
     setProfile(editedProfile);
     setIsEditing(false);
-    showNotification('success', 'Profil mis à jour avec succès');
+    toast.success("Profil mis à jour avec succès");
   };
 
   const handleCancelEdit = () => {
@@ -87,48 +81,43 @@ export default function InfoProfile() {
 
   const handlePasswordChange = () => {
     if (passwords.new !== passwords.confirm) {
-      showNotification('error', 'Les mots de passe ne correspondent pas');
+      toast.error("Les mots de passe ne correspondent pas");
       return;
     }
     if (passwords.new.length < 8) {
-      showNotification('error', 'Le mot de passe doit contenir au moins 8 caractères');
+      toast.error("Le mot de passe doit contenir au moins 8 caractères");
       return;
     }
     // Ici vous feriez l'appel API pour changer le mot de passe
     setShowPasswordModal(false);
     setPasswords({ current: "", new: "", confirm: "" });
-    showNotification('success', 'Mot de passe modifié avec succès');
+    toast.error("Mot de passe modifié avec succès");
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'actif': return 'bg-green-100 text-green-700 border-green-200';
-      case 'inactif': return 'bg-gray-100 text-gray-700 border-gray-200';
-      case 'suspendu': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case "actif":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "inactif":
+        return "bg-gray-100 text-gray-700 border-gray-200";
+      case "suspendu":
+        return "bg-red-100 text-red-700 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
-      {/* Notification Toast */}
-      {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2 animate-pulse ${
-          notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-        }`}>
-          {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-          <span>{notification.message}</span>
-          <button onClick={() => setNotification(null)}>
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -138,7 +127,9 @@ export default function InfoProfile() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Mon Profil</h1>
-                <p className="text-gray-600">Gérez vos informations personnelles</p>
+                <p className="text-gray-600">
+                  Gérez vos informations personnelles
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -167,9 +158,15 @@ export default function InfoProfile() {
                   </button>
                 </div>
 
-                <h2 className="text-xl font-bold text-gray-900 mb-1">{profile.name}</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  {profile.name}
+                </h2>
                 <p className="text-gray-600 mb-2">{profile.position}</p>
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(profile.status)}`}>
+                <span
+                  className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                    profile.status
+                  )}`}
+                >
                   {profile.status}
                 </span>
 
@@ -177,7 +174,10 @@ export default function InfoProfile() {
                   <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
-                      <span>Inscrit le {new Date(profile.joinDate).toLocaleDateString()}</span>
+                      <span>
+                        Inscrit le{" "}
+                        {new Date(profile.joinDate).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                   <div className="mt-2 text-xs text-gray-500">
@@ -189,7 +189,9 @@ export default function InfoProfile() {
 
             {/* Quick Actions */}
             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions rapides</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Actions rapides
+              </h3>
               <div className="space-y-3">
                 <button
                   onClick={() => setShowPasswordModal(true)}
@@ -214,7 +216,9 @@ export default function InfoProfile() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Informations personnelles</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Informations personnelles
+                </h3>
                 {!isEditing ? (
                   <button
                     onClick={() => setIsEditing(true)}
@@ -254,7 +258,12 @@ export default function InfoProfile() {
                     <input
                       type="text"
                       value={editedProfile.name}
-                      onChange={(e) => setEditedProfile({...editedProfile, name: e.target.value})}
+                      onChange={(e) =>
+                        setEditedProfile({
+                          ...editedProfile,
+                          name: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
@@ -274,7 +283,12 @@ export default function InfoProfile() {
                     <input
                       type="email"
                       value={editedProfile.email}
-                      onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
+                      onChange={(e) =>
+                        setEditedProfile({
+                          ...editedProfile,
+                          email: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
@@ -294,7 +308,12 @@ export default function InfoProfile() {
                     <input
                       type="tel"
                       value={editedProfile.phone}
-                      onChange={(e) => setEditedProfile({...editedProfile, phone: e.target.value})}
+                      onChange={(e) =>
+                        setEditedProfile({
+                          ...editedProfile,
+                          phone: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
@@ -314,7 +333,12 @@ export default function InfoProfile() {
                     <input
                       type="text"
                       value={editedProfile.location}
-                      onChange={(e) => setEditedProfile({...editedProfile, location: e.target.value})}
+                      onChange={(e) =>
+                        setEditedProfile({
+                          ...editedProfile,
+                          location: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
@@ -333,7 +357,12 @@ export default function InfoProfile() {
                   {isEditing ? (
                     <select
                       value={editedProfile.department}
-                      onChange={(e) => setEditedProfile({...editedProfile, department: e.target.value})}
+                      onChange={(e) =>
+                        setEditedProfile({
+                          ...editedProfile,
+                          department: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="Développement">Développement</option>
@@ -360,7 +389,12 @@ export default function InfoProfile() {
                     <input
                       type="text"
                       value={editedProfile.position}
-                      onChange={(e) => setEditedProfile({...editedProfile, position: e.target.value})}
+                      onChange={(e) =>
+                        setEditedProfile({
+                          ...editedProfile,
+                          position: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
@@ -379,7 +413,12 @@ export default function InfoProfile() {
                 {isEditing ? (
                   <textarea
                     value={editedProfile.bio}
-                    onChange={(e) => setEditedProfile({...editedProfile, bio: e.target.value})}
+                    onChange={(e) =>
+                      setEditedProfile({
+                        ...editedProfile,
+                        bio: e.target.value,
+                      })
+                    }
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Parlez-nous de vous..."
@@ -400,7 +439,9 @@ export default function InfoProfile() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Changer le mot de passe</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Changer le mot de passe
+              </h3>
               <button
                 onClick={() => setShowPasswordModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -419,15 +460,26 @@ export default function InfoProfile() {
                   <input
                     type={showPasswords.current ? "text" : "password"}
                     value={passwords.current}
-                    onChange={(e) => setPasswords({...passwords, current: e.target.value})}
+                    onChange={(e) =>
+                      setPasswords({ ...passwords, current: e.target.value })
+                    }
                     className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPasswords({...showPasswords, current: !showPasswords.current})}
+                    onClick={() =>
+                      setShowPasswords({
+                        ...showPasswords,
+                        current: !showPasswords.current,
+                      })
+                    }
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPasswords.current ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -441,15 +493,26 @@ export default function InfoProfile() {
                   <input
                     type={showPasswords.new ? "text" : "password"}
                     value={passwords.new}
-                    onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                    onChange={(e) =>
+                      setPasswords({ ...passwords, new: e.target.value })
+                    }
                     className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})}
+                    onClick={() =>
+                      setShowPasswords({
+                        ...showPasswords,
+                        new: !showPasswords.new,
+                      })
+                    }
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPasswords.new ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -463,15 +526,26 @@ export default function InfoProfile() {
                   <input
                     type={showPasswords.confirm ? "text" : "password"}
                     value={passwords.confirm}
-                    onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                    onChange={(e) =>
+                      setPasswords({ ...passwords, confirm: e.target.value })
+                    }
                     className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPasswords({...showPasswords, confirm: !showPasswords.confirm})}
+                    onClick={() =>
+                      setShowPasswords({
+                        ...showPasswords,
+                        confirm: !showPasswords.confirm,
+                      })
+                    }
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPasswords.confirm ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>

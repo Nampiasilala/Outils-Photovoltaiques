@@ -12,12 +12,12 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
-interface Equipment {
+interface Appareil {
   id: number;
   name: string;
   power: number; // Puissance en W
   voltage: number; // Tension en V
-  price: number; // Prix en Ar
+  fournisseur: string;
   category: string;
   hours: number; // Heures d'utilisation par jour
 }
@@ -31,50 +31,50 @@ const categories = [
   "Autres",
 ];
 
-export default function EquipmentManager() {
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
+export default function AppareilManager() {
+  const [appareils, setAppareils] = useState<Appareil[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("Tous");
 
-  const addEquipment = () => {
-    const newEquipment: Equipment = {
+  const addAppareil = () => {
+    const newAppareil: Appareil = {
       id: Date.now(),
       name: "",
       power: 0,
       voltage: 12,
-      price: 0,
+      fournisseur: "",
       category: "Autres",
       hours: 0,
     };
-    setEquipments((prev) => [...prev, newEquipment]);
-    setEditingId(newEquipment.id);
+    setAppareils((prev) => [...prev, newAppareil]);
+    setEditingId(newAppareil.id);
   };
 
-  const updateEquipment = (
+  const updateAppareil = (
     id: number,
-    field: keyof Equipment,
+    field: keyof Appareil,
     value: string | number
   ) => {
-    setEquipments((prev) =>
+    setAppareils((prev) =>
       prev.map((equip) =>
         equip.id === id ? { ...equip, [field]: value } : equip
       )
     );
   };
 
-  const deleteEquipment = (id: number) => {
-    setEquipments((prev) => prev.filter((equip) => equip.id !== id));
-    toast.info("Équipement supprimé avec succès");
+  const deleteAppareil = (id: number) => {
+    setAppareils((prev) => prev.filter((equip) => equip.id !== id));
+    toast.info("Appareil supprimé avec succès");
   };
 
   const handleSave = () => {
     setEditingId(null);
-    toast.success("Équipement enregistré avec succès !");
+    toast.success("Appareil enregistré avec succès !");
   };
 
-  // Filtrage des équipements
-  const filteredEquipments = equipments.filter((equip) => {
+  // Filtrage des appareils
+  const filteredAppareils = appareils.filter((equip) => {
     const matchesSearch = equip.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
@@ -95,10 +95,10 @@ export default function EquipmentManager() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  Gestion des Équipements
+                  Gestion des Appareils
                 </h1>
                 <p className="text-gray-600">
-                  Equipements prédéfinis qui seront suggéré à l'utilisateur. Ils seront utiles pour le dimentionnement et le coût. 
+                  Peut être utile cas où les entrées seront directement les appareils utilisés
                 </p>
               </div>
             </div>
@@ -115,7 +115,7 @@ export default function EquipmentManager() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Rechercher un équipement..."
+                  placeholder="Rechercher un appareil..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
@@ -141,11 +141,11 @@ export default function EquipmentManager() {
             </div>
 
             <button
-              onClick={addEquipment}
+              onClick={addAppareil}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center space-x-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Ajouter un équipement</span>
+              <span>Ajouter un appareil</span>
             </button>
           </div>
 
@@ -159,13 +159,13 @@ export default function EquipmentManager() {
                   <th className="py-3 px-4 font-semibold">Puissance</th>
                   <th className="py-3 px-4 font-semibold">Tension</th>
                   <th className="py-3 px-4 font-semibold">Heures/jour</th>
-                  <th className="py-3 px-4 font-semibold">Prix</th>
+                  <th className="py-3 px-4 font-semibold">Fournisseur</th>
                   <th className="py-3 px-4 font-semibold">Consommation</th>
                   <th className="py-3 px-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredEquipments.map((equip, index) => (
+                {filteredAppareils.map((equip, index) => (
                   <tr
                     key={equip.id}
                     className={`border-b hover:bg-blue-50 transition-colors ${
@@ -178,10 +178,10 @@ export default function EquipmentManager() {
                           type="text"
                           value={equip.name}
                           onChange={(e) =>
-                            updateEquipment(equip.id, "name", e.target.value)
+                            updateAppareil(equip.id, "name", e.target.value)
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Nom de l'équipement"
+                          placeholder="Nom de l'appareil"
                         />
                       ) : (
                         <span className="font-medium">
@@ -194,7 +194,7 @@ export default function EquipmentManager() {
                         <select
                           value={equip.category}
                           onChange={(e) =>
-                            updateEquipment(
+                            updateAppareil(
                               equip.id,
                               "category",
                               e.target.value
@@ -220,7 +220,7 @@ export default function EquipmentManager() {
                           type="number"
                           value={equip.power}
                           onChange={(e) =>
-                            updateEquipment(
+                            updateAppareil(
                               equip.id,
                               "power",
                               Number(e.target.value)
@@ -239,7 +239,7 @@ export default function EquipmentManager() {
                           type="number"
                           value={equip.voltage}
                           onChange={(e) =>
-                            updateEquipment(
+                            updateAppareil(
                               equip.id,
                               "voltage",
                               Number(e.target.value)
@@ -258,7 +258,7 @@ export default function EquipmentManager() {
                           type="number"
                           value={equip.hours}
                           onChange={(e) =>
-                            updateEquipment(
+                            updateAppareil(
                               equip.id,
                               "hours",
                               Number(e.target.value)
@@ -276,12 +276,12 @@ export default function EquipmentManager() {
                       {editingId === equip.id ? (
                         <input
                           type="number"
-                          value={equip.price}
+                          value={equip.fournisseur}
                           onChange={(e) =>
-                            updateEquipment(
+                            updateAppareil(
                               equip.id,
-                              "price",
-                              Number(e.target.value)
+                              "fournisseur",
+                              String(e.target.value)
                             )
                           }
                           className="w-28 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -289,7 +289,7 @@ export default function EquipmentManager() {
                         />
                       ) : (
                         <span className="font-medium text-green-600">
-                          {equip.price.toLocaleString()} Ar
+                          {equip.fournisseur.toLocaleString()} Ar
                         </span>
                       )}
                     </td>
@@ -316,7 +316,7 @@ export default function EquipmentManager() {
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => deleteEquipment(equip.id)}
+                            onClick={() => deleteAppareil(equip.id)}
                             className="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 transition-colors flex items-center space-x-1"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -331,28 +331,28 @@ export default function EquipmentManager() {
           </div>
 
           {/* Empty State */}
-          {filteredEquipments.length === 0 && (
+          {filteredAppareils.length === 0 && (
             <div className="text-center py-12">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Zap className="w-12 h-12 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 {searchTerm || filterCategory !== "Tous"
-                  ? "Aucun équipement trouvé"
-                  : "Aucun équipement"}
+                  ? "Aucun appareil trouvé"
+                  : "Aucun appareil"}
               </h3>
               <p className="text-gray-500 mb-4">
                 {searchTerm || filterCategory !== "Tous"
                   ? "Essayez de modifier vos critères de recherche"
-                  : "Commencez par ajouter votre premier équipement"}
+                  : "Commencez par ajouter votre premier appareil"}
               </p>
               {!searchTerm && filterCategory === "Tous" && (
                 <button
-                  onClick={addEquipment}
+                  onClick={addAppareil}
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:scale-105 transition-colors flex items-center space-x-2 mx-auto"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Ajouter un équipement</span>
+                  <span>Ajouter un appareil</span>
                 </button>
               )}
             </div>

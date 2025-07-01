@@ -59,19 +59,19 @@ export default function Navbar() {
         
         {/* Indicateur actif */}
         {active && (
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/30 to-blue-400/30 
+          <div className="absolute inset-0 
                           rounded-xl animate-pulse" />
         )}
         
         {/* Effet hover */}
-        <div className={`absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-blue-400/20 
-                        opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl ${
+        <div className={`absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600
+                        opacity-0 group-hover: transition-opacity duration-300 rounded-xl ${
           active ? 'opacity-50' : ''
         }`} />
         
         {/* Barre indicatrice en bas */}
         <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-0.5 bg-gradient-to-r 
-                        from-cyan-300 to-blue-300 transition-all duration-300 ${
+                        from-blue-300 to-blue-400 transition-all duration-300 ${
           active ? 'w-3/4 opacity-100' : 'w-0 opacity-0 group-hover:w-1/2 group-hover:opacity-70'
         }`} />
       </Link>
@@ -216,9 +216,9 @@ export default function Navbar() {
                   
                   <button
                     onClick={logout}
-                    className="px-4 py-2 text-sm font-medium bg-rose-500/20 hover:bg-rose-500/30 
+                    className="px-4 py-2 text-sm text-white font-medium hover:bg-red-500 
                                rounded-xl transition-all duration-300 ease-out hover:scale-105 
-                               active:scale-95 border border-rose-400/30 hover:border-rose-400/50
+                               active:scale-95 border border-rose-400/30 hover:border-red-400
                                flex items-center space-x-2 group shadow-lg hover:shadow-rose-500/25"
                   >
                     <svg className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" 

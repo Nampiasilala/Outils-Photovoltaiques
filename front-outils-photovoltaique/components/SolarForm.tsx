@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sun, Battery, Zap, Calendar, Globe, AlertCircle, Calculator, Settings } from "lucide-react";
+import { Sun, Zap, Globe, AlertCircle, Calculator, Settings } from "lucide-react";
 
 export default function SolarFormExpert() {
   const [formData, setFormData] = useState({
@@ -65,15 +65,15 @@ export default function SolarFormExpert() {
       {/* Header Dashboard */}
       <div className="mb-6">
         <div className="flex items-center space-x-3 mb-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
             <Sun className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Calculateur Solaire</h1>
         </div>
-        <p className="text-gray-600 text-sm">Dimensionnement de votre installation photovoltaïque</p>
+        <p className="text-gray-600 text-sm">Veillez nous renseignez vos besoins :</p>
       </div>
 
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Section Consommation */}
@@ -85,7 +85,7 @@ export default function SolarFormExpert() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Consommation journalière
                 </label>
                 <div className="relative">
@@ -97,12 +97,12 @@ export default function SolarFormExpert() {
                     placeholder="3000"
                     min="1"
                   />
-                  <span className="absolute right-3 top-2 text-xs text-gray-500">Wh</span>
+                  <span className="absolute right-10 top-2 text-sm text-gray-500">Wh</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Puissance maximale
                 </label>
                 <div className="relative">
@@ -114,7 +114,7 @@ export default function SolarFormExpert() {
                     placeholder="1000"
                     min="1"
                   />
-                  <span className="absolute right-3 top-2 text-xs text-gray-500">W</span>
+                  <span className="absolute right-10 top-2 text-sm text-gray-500">W</span>
                 </div>
               </div>
             </div>
@@ -129,7 +129,7 @@ export default function SolarFormExpert() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Jours d'autonomie
                 </label>
                 <input
@@ -143,7 +143,7 @@ export default function SolarFormExpert() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tension batterie
                 </label>
                 <div className="grid grid-cols-3 gap-1">
@@ -152,9 +152,9 @@ export default function SolarFormExpert() {
                       key={voltage}
                       type="button"
                       onClick={() => updateField("V_batterie", voltage)}
-                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                      className={`px-2 py-1 text-sm rounded-md transition-colors ${
                         formData.V_batterie === voltage
-                          ? "bg-blue-600 text-white"
+                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
@@ -175,7 +175,7 @@ export default function SolarFormExpert() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Irradiation solaire
                 </label>
                 <div className="relative">
@@ -188,16 +188,16 @@ export default function SolarFormExpert() {
                     min="0.1"
                     step="0.1"
                   />
-                  <span className="absolute right-3 top-2 text-xs text-gray-500">kWh/m²</span>
+                  <span className="absolute right-10 top-2 text-sm text-gray-500">kWh/m²</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Moyenne par jour</p>
+                <p className="text-sm text-gray-500 mt-1">Moyenne par jour</p>
               </div>
 
               <div className="pt-2">
                 <button 
                   type="button" 
                   onClick={handleSubmit}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
                 >
                   <Calculator className="w-4 h-4" />
                   <span>Calculer</span>
@@ -216,7 +216,7 @@ export default function SolarFormExpert() {
             </div>
             <ul className="space-y-1">
               {errors.map((error, index) => (
-                <li key={index} className="text-red-700 text-xs flex items-start">
+                <li key={index} className="text-red-700 text-sm flex items-start">
                   <span className="w-1 h-1 bg-red-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
                   {error}
                 </li>
@@ -229,19 +229,19 @@ export default function SolarFormExpert() {
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
             <div className="text-2xl font-bold text-blue-600">{formData.E_jour}</div>
-            <div className="text-xs text-gray-500">Wh/jour</div>
+            <div className="text-sm text-gray-500">Wh/jour</div>
           </div>
           <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
             <div className="text-2xl font-bold text-green-600">{formData.P_max}</div>
-            <div className="text-xs text-gray-500">W max</div>
+            <div className="text-sm text-gray-500">W max</div>
           </div>
           <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
             <div className="text-2xl font-bold text-purple-600">{formData.N_autonomie}</div>
-            <div className="text-xs text-gray-500">jour(s)</div>
+            <div className="text-sm text-gray-500">jour(s)</div>
           </div>
           <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
             <div className="text-2xl font-bold text-orange-600">{formData.H_solaire}</div>
-            <div className="text-xs text-gray-500">kWh/m²</div>
+            <div className="text-sm text-gray-500">kWh/m²</div>
           </div>
         </div>
       </div>

@@ -80,7 +80,7 @@ export default function SystemParameters() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-3 mb-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
                 <Settings className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">Paramètres Système</h1>
@@ -98,7 +98,7 @@ export default function SystemParameters() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {Object.entries(parameters).map(([key, value]) => {
             const info = parameterInfo[key as keyof typeof parameterInfo];
@@ -142,7 +142,7 @@ export default function SystemParameters() {
                         {info.unit && <span className="text-sm text-gray-500">{info.unit}</span>}
                       </div>
                     ) : (
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-2xl font-bold text-teal-600">
                         {formatValue(key, value)}
                       </div>
                     )}
@@ -169,7 +169,7 @@ export default function SystemParameters() {
                     ) : (
                       <button
                         onClick={() => handleEdit(key)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center space-x-1 transition-colors"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center space-x-1 transition-colors"
                       >
                         <Edit className="w-4 h-4" />
                         <span>Modifier</span>
@@ -183,14 +183,14 @@ export default function SystemParameters() {
         </div>
 
         {/* Résumé des paramètres */}
-        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6 ">
           <h3 className="font-semibold text-gray-900 mb-4">Résumé des Paramètres</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ">
             {Object.entries(parameters).map(([key, value]) => {
               const info = parameterInfo[key as keyof typeof parameterInfo];
               return (
                 <div key={key} className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-gray-900">
+                  <div className="text-3xl font-bold text-teal-600">
                     {formatValue(key, value)}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
@@ -205,7 +205,7 @@ export default function SystemParameters() {
         {/* Notes importantes */}
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
           <div className="flex items-start space-x-3">
-            <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <Info className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
             <div>
               <h4 className="font-medium text-blue-900 mb-1">Notes importantes</h4>
               <ul className="text-sm text-blue-800 space-y-1">
