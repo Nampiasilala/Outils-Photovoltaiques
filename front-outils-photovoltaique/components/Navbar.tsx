@@ -165,8 +165,8 @@ export default function Navbar() {
     <>
       <nav className={`fixed w-full top-0 z-50 transition-all duration-500 ease-out ${
         scrolled 
-          ? 'bg-gradient-to-b from-emerald-400/95 to-teal-600/95 backdrop-blur-md shadow-xl shadow-blue-900/25' 
-          : 'bg-gradient-to-b from-emerald-500 to-teal-600'
+          ? 'bg-gradient-to-r from-cyan-600 to-indigo-500 backdrop-blur-md shadow-xl shadow-blue-900/25' 
+          : 'bg-gradient-to-r from-cyan-500 to-blue-500'
       }`}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">

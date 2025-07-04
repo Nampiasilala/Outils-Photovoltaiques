@@ -53,10 +53,10 @@ if (email && password) {
           <div className="bg-white/80 backdrop-blur-xl shadow-2xl rounded-2xl p-8 border border-white/20 transform hover:scale-[1.02] transition-all duration-300">
             {/* En-tête avec icône */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl mb-4 shadow-lg">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
                 <LogIn className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Connexion
               </h2>
             </div>
@@ -119,7 +119,7 @@ if (email && password) {
               <div className="text-right">
                 <Link
                   href="/forgot-password"
-                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                  className="text-sm font-medium text-indigo-600 from-blue-600 to-indigo-600 hover:text-cyan-600 transition-colors"
                 >
                   Mot de passe oublié ?
                 </Link>
@@ -129,7 +129,7 @@ if (email && password) {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full text-sm flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-emerald-600 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="w-full text-sm flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {isLoading ? (
                   <>
@@ -153,7 +153,7 @@ if (email && password) {
                 </Link>{" "}
                 <Link
                   href="/register"
-                  className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors hover:underline"
+                  className="font-semibold text-indigo-600 hover:text-blue-700 transition-colors hover:underline"
                 >
                   Créer un compte
                 </Link>
