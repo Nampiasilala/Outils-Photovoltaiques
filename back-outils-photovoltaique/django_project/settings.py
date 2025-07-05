@@ -26,7 +26,11 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
-    'users',                        # Ton app utilisateurs
+    'users',
+    'dimensionnements',
+    'equipements',
+    'parametres',
+    'donnees_entree',                        # Ton app utilisateurs
 ]
 
 MIDDLEWARE = [
@@ -108,3 +112,4 @@ STATIC_URL = '/static/'
 
 # Optionnel : dossier où collecter les fichiers statiques en prod
 # STATIC_ROOT = BASE_DIR / 'staticfiles'
+DEBUG_PROPAGATE_EXCEPTIONS = True
