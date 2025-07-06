@@ -1,6 +1,6 @@
 "use client";
 
-import { useState} from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -9,18 +9,63 @@ import {
   Search,
   Filter,
   Zap,
+  AlertCircle,
+  Loader,
 } from "lucide-react";
-import { toast } from "react-toastify";
+// Note: toast notifications would need to be implemented with a supported library
 
 interface Equipment {
   id: number;
-  name: string;
-  power: number; // Puissance en W
-  voltage: number; // Tension en V
-  price: number; // Prix en Ar
-  category: string;
-  hours: number; // Heures d'utilisation par jour
+  type_equipement: string;
+  categorie: string;
+  puissance: number;
+  tension: number;
+  capacite: number;
+  prix_unitaire: number;
 }
+
+// Configuration de l'API
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+// Service API
+const equipmentService = {
+  async getAll(): Promise<Equipment[]> {
+    const response = await fetch(`${API_BASE_URL}/equipements/`);
+    if (!response.ok) throw new Error('Erreur lors de la récupération des équipements');
+    return response.json();
+  },
+
+  async create(equipment: Omit<Equipment, 'id'>): Promise<Equipment> {
+    const response = await fetch(`${API_BASE_URL}/equipements/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(equipment),
+    });
+    if (!response.ok) throw new Error('Erreur lors de la création de l\'équipement');
+    return response.json();
+  },
+
+  async update(id: number, equipment: Partial<Equipment>): Promise<Equipment> {
+    const response = await fetch(`${API_BASE_URL}/equipements/${id}/`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(equipment),
+    });
+    if (!response.ok) throw new Error('Erreur lors de la mise à jour de l\'équipement');
+    return response.json();
+  },
+
+  async delete(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/equipements/${id}/`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Erreur lors de la suppression de l\'équipement');
+  },
+};
 
 const categories = [
   "Éclairage",
@@ -36,19 +81,53 @@ export default function EquipmentManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("Tous");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const addEquipment = () => {
-    const newEquipment: Equipment = {
-      id: Date.now(),
-      name: "",
-      power: 0,
-      voltage: 12,
-      price: 0,
-      category: "Autres",
-      hours: 0,
-    };
-    setEquipments((prev) => [...prev, newEquipment]);
-    setEditingId(newEquipment.id);
+  // Charger les équipements au démarrage
+  useEffect(() => {
+    loadEquipments();
+  }, []);
+
+  const loadEquipments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await equipmentService.getAll();
+      setEquipments(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      // toast.error('Erreur lors du chargement des équipements');
+      console.error('Erreur lors du chargement des équipements:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addEquipment = async () => {
+    try {
+      setSaving(true);
+      const newEquipment = {
+        type_equipement: "Nouvel équipement",
+        categorie: "Autres",
+        puissance: 0,
+        tension: 12,
+        capacite: 0,
+        prix_unitaire: 0,
+      };
+      
+      const createdEquipment = await equipmentService.create(newEquipment);
+      setEquipments((prev) => [...prev, createdEquipment]);
+      setEditingId(createdEquipment.id);
+      // toast.success('Équipement créé avec succès !');
+      console.log('Équipement créé avec succès !');
+    } catch (err) {
+      // toast.error('Erreur lors de la création de l\'équipement');
+      console.error('Erreur lors de la création de l\'équipement:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateEquipment = (
@@ -63,25 +142,87 @@ export default function EquipmentManager() {
     );
   };
 
-  const deleteEquipment = (id: number) => {
-    setEquipments((prev) => prev.filter((equip) => equip.id !== id));
-    toast.info("Équipement supprimé avec succès");
+  const saveEquipment = async (equipment: Equipment) => {
+    try {
+      setSaving(true);
+      const updatedEquipment = await equipmentService.update(equipment.id, equipment);
+      setEquipments((prev) =>
+        prev.map((equip) =>
+          equip.id === equipment.id ? updatedEquipment : equip
+        )
+      );
+      setEditingId(null);
+      // toast.success('Équipement sauvegardé avec succès !');
+      console.log('Équipement sauvegardé avec succès !');
+    } catch (err) {
+      // toast.error('Erreur lors de la sauvegarde');
+      console.error('Erreur lors de la sauvegarde:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteEquipment = async (id: number) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet équipement ?')) {
+      return;
+    }
+
+    try {
+      await equipmentService.delete(id);
+      setEquipments((prev) => prev.filter((equip) => equip.id !== id));
+      // toast.success('Équipement supprimé avec succès');
+      console.log('Équipement supprimé avec succès');
+    } catch (err) {
+      // toast.error('Erreur lors de la suppression');
+      console.error('Erreur lors de la suppression:', err);
+    }
   };
 
   const handleSave = () => {
-    setEditingId(null);
-    toast.success("Équipement enregistré avec succès !");
+    const equipment = equipments.find((equip) => equip.id === editingId);
+    if (equipment) {
+      saveEquipment(equipment);
+    }
   };
 
   // Filtrage des équipements
   const filteredEquipments = equipments.filter((equip) => {
-    const matchesSearch = equip.name
+    const matchesSearch = equip.type_equipement
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesCategory =
-      filterCategory === "Tous" || equip.category === filterCategory;
+      filterCategory === "Tous" || equip.categorie === filterCategory;
     return matchesSearch && matchesCategory;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Chargement des équipements...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Erreur de connexion</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={loadEquipments}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 text-sm">
@@ -98,7 +239,7 @@ export default function EquipmentManager() {
                   Gestion des Équipements
                 </h1>
                 <p className="text-gray-600">
-                  Equipements prédéfinis qui seront suggéré à l'utilisateur. Ils seront utiles pour le dimentionnement et le coût. 
+                  Equipements prédéfinis qui seront suggérés à l'utilisateur. Ils seront utiles pour le dimensionnement et le coût. 
                 </p>
               </div>
             </div>
@@ -142,9 +283,14 @@ export default function EquipmentManager() {
 
             <button
               onClick={addEquipment}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center space-x-2"
+              disabled={saving}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center space-x-2 disabled:opacity-50"
             >
-              <Plus className="w-4 h-4" />
+              {saving ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
               <span>Ajouter un équipement</span>
             </button>
           </div>
@@ -154,13 +300,12 @@ export default function EquipmentManager() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-700 bg-gray-50 border-b-2 border-gray-200">
-                  <th className="py-3 px-4 font-semibold">Nom</th>
+                  <th className="py-3 px-4 font-semibold">Type d'équipement</th>
                   <th className="py-3 px-4 font-semibold">Catégorie</th>
-                  <th className="py-3 px-4 font-semibold">Puissance</th>
-                  <th className="py-3 px-4 font-semibold">Tension</th>
-                  <th className="py-3 px-4 font-semibold">Heures/jour</th>
-                  <th className="py-3 px-4 font-semibold">Prix</th>
-                  <th className="py-3 px-4 font-semibold">Consommation</th>
+                  <th className="py-3 px-4 font-semibold">Puissance (W)</th>
+                  <th className="py-3 px-4 font-semibold">Tension (V)</th>
+                  <th className="py-3 px-4 font-semibold">Capacité</th>
+                  <th className="py-3 px-4 font-semibold">Prix unitaire (Ar)</th>
                   <th className="py-3 px-4 font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -176,29 +321,25 @@ export default function EquipmentManager() {
                       {editingId === equip.id ? (
                         <input
                           type="text"
-                          value={equip.name}
+                          value={equip.type_equipement}
                           onChange={(e) =>
-                            updateEquipment(equip.id, "name", e.target.value)
+                            updateEquipment(equip.id, "type_equipement", e.target.value)
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Nom de l'équipement"
+                          placeholder="Type d'équipement"
                         />
                       ) : (
                         <span className="font-medium">
-                          {equip.name || "Non défini"}
+                          {equip.type_equipement || "Non défini"}
                         </span>
                       )}
                     </td>
                     <td className="py-4 px-4">
                       {editingId === equip.id ? (
                         <select
-                          value={equip.category}
+                          value={equip.categorie}
                           onChange={(e) =>
-                            updateEquipment(
-                              equip.id,
-                              "category",
-                              e.target.value
-                            )
+                            updateEquipment(equip.id, "categorie", e.target.value)
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
@@ -210,7 +351,7 @@ export default function EquipmentManager() {
                         </select>
                       ) : (
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                          {equip.category}
+                          {equip.categorie}
                         </span>
                       )}
                     </td>
@@ -218,93 +359,76 @@ export default function EquipmentManager() {
                       {editingId === equip.id ? (
                         <input
                           type="number"
-                          value={equip.power}
+                          value={equip.puissance}
                           onChange={(e) =>
-                            updateEquipment(
-                              equip.id,
-                              "power",
-                              Number(e.target.value)
-                            )
+                            updateEquipment(equip.id, "puissance", Number(e.target.value))
                           }
                           className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="100"
                         />
                       ) : (
-                        <span className="font-medium">{equip.power} W</span>
+                        <span className="font-medium">{equip.puissance}</span>
                       )}
                     </td>
                     <td className="py-4 px-4">
                       {editingId === equip.id ? (
                         <input
                           type="number"
-                          value={equip.voltage}
+                          value={equip.tension}
                           onChange={(e) =>
-                            updateEquipment(
-                              equip.id,
-                              "voltage",
-                              Number(e.target.value)
-                            )
+                            updateEquipment(equip.id, "tension", Number(e.target.value))
                           }
                           className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="12"
                         />
                       ) : (
-                        <span>{equip.voltage} V</span>
+                        <span>{equip.tension}</span>
                       )}
                     </td>
                     <td className="py-4 px-4">
                       {editingId === equip.id ? (
                         <input
                           type="number"
-                          value={equip.hours}
+                          value={equip.capacite}
                           onChange={(e) =>
-                            updateEquipment(
-                              equip.id,
-                              "hours",
-                              Number(e.target.value)
-                            )
+                            updateEquipment(equip.id, "capacite", Number(e.target.value))
                           }
                           className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="8"
-                          max="24"
+                          placeholder="1000"
                         />
                       ) : (
-                        <span>{equip.hours} h</span>
+                        <span>{equip.capacite}</span>
                       )}
                     </td>
                     <td className="py-4 px-4">
                       {editingId === equip.id ? (
                         <input
                           type="number"
-                          value={equip.price}
+                          value={equip.prix_unitaire}
                           onChange={(e) =>
-                            updateEquipment(
-                              equip.id,
-                              "price",
-                              Number(e.target.value)
-                            )
+                            updateEquipment(equip.id, "prix_unitaire", Number(e.target.value))
                           }
                           className="w-28 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="200000"
                         />
                       ) : (
                         <span className="font-medium text-green-600">
-                          {equip.price.toLocaleString()} Ar
+                          {equip.prix_unitaire.toLocaleString()}
                         </span>
                       )}
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className="font-medium text-purple-600">
-                        {((equip.power * equip.hours) / 1000).toFixed(2)} kWh
-                      </span>
                     </td>
                     <td className="py-4 px-4">
                       {editingId === equip.id ? (
                         <button
                           onClick={handleSave}
-                          className="bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 transition-colors flex items-center space-x-1"
+                          disabled={saving}
+                          className="bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 transition-colors flex items-center space-x-1 disabled:opacity-50"
                         >
-                          <Save className="w-4 h-4" />
+                          {saving ? (
+                            <Loader className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4" />
+                          )}
                           <span>Sauver</span>
                         </button>
                       ) : (
@@ -349,9 +473,14 @@ export default function EquipmentManager() {
               {!searchTerm && filterCategory === "Tous" && (
                 <button
                   onClick={addEquipment}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:scale-105 transition-colors flex items-center space-x-2 mx-auto"
+                  disabled={saving}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:scale-105 transition-colors flex items-center space-x-2 mx-auto disabled:opacity-50"
                 >
-                  <Plus className="w-4 h-4" />
+                  {saving ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
                   <span>Ajouter un équipement</span>
                 </button>
               )}
