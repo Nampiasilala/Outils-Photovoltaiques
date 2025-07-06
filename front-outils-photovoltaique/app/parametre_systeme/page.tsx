@@ -40,9 +40,6 @@ export default function parametre_systeme() {
             <div className="pt-20">
               <EquipmentManager />
             </div>
-            <div className="pt-20">
-              <AppareilManager />
-            </div>
           </div>
         </div>
       </main>
