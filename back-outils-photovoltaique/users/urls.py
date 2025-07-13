@@ -1,14 +1,13 @@
-from django.http import JsonResponse
 from django.urls import path
-from django.contrib import admin
-from .views import RegisterView, LoginView
-
-def test_view(request):
-    return JsonResponse({"message": "Le serveur fonctionne !"})
+from .views import (
+    RegisterView,
+    LoginView,
+    UserListCreateView,
+    UserRetrieveUpdateDestroyView,
+)
 
 urlpatterns = [
-    path('test/', test_view),  # ➜ Route simple
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
-
+path('', UserListCreateView.as_view()),    path('<int:pk>/', UserRetrieveUpdateDestroyView.as_view(), name='user-detail'),
 ]

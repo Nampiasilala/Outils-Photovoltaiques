@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import {
-  User,
+  User as UserIcon,
   Mail,
   Shield,
   Activity,
@@ -11,7 +11,6 @@ import {
   Plus,
   Search,
   Filter,
-  MoreHorizontal,
   UserCheck,
   UserX,
   Eye,
@@ -21,24 +20,22 @@ import {
   AlertCircle,
   Save,
   Building,
-  RefreshCw,
-  Loader2,
 } from "lucide-react";
 
 interface User {
   id: number;
-  name: string;
+  username: string;
   email: string;
   role: string;
   status: string;
-  avatar?: string;
-  lastLogin: string;
+  department: string | null;
+  lastLogin: string | null;
   joinDate: string;
-  department: string;
+  avatar?: string;
 }
 
 interface UserFormData {
-  name: string;
+  username: string;
   email: string;
   role: string;
   department: string;
@@ -49,7 +46,6 @@ const roles = ["Admin", "Utilisateur", "Modérateur", "Invité"];
 const departments = ["IT", "Marketing", "Ventes", "Support", "RH", "Finance"];
 const statuses = ["Actif", "Inactif", "Suspendu"];
 
-// Configuration de l'API
 const API_BASE_URL = "http://localhost:8000/api";
 
 export default function UserManagement() {
@@ -65,35 +61,26 @@ export default function UserManagement() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<UserFormData>({
-    name: "",
+    username: "",
     email: "",
     role: "Utilisateur",
     department: "IT",
     status: "Actif",
   });
 
-  const [toast, setToast] = useState<{
-    show: boolean;
-    message: string;
-    type: 'success' | 'error' | 'info';
-  }>({
+  const [toast, setToast] = useState({
     show: false,
     message: "",
-    type: "success",
+    type: "success" as 'success' | 'error' | 'info',
   });
 
-  // Fonction pour afficher les toasts
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
   };
 
-  // Fonction pour récupérer le token d'authentification
-  const getAuthToken = () => {
-    return localStorage.getItem('authToken');
-  };
+  const getAuthToken = () => localStorage.getItem('authToken');
 
-  // Headers pour les requêtes API
   const getHeaders = () => {
     const token = getAuthToken();
     return {
@@ -102,102 +89,66 @@ export default function UserManagement() {
     };
   };
 
-  // Charger les utilisateurs depuis l'API
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/users/`, {
-        headers: getHeaders(),
-      });
-      
+      const response = await fetch(`${API_BASE_URL}/users/`, { headers: getHeaders() });
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        setUsers(data.map((user: any) => ({
+          ...user,
+          joinDate: user.date_joined,
+          lastLogin: user.last_login,
+        })));
       } else {
         throw new Error('Erreur lors du chargement des utilisateurs');
       }
     } catch (error) {
       console.error('Erreur:', error);
       showToast("Erreur lors du chargement des utilisateurs", "error");
-      // Données de démo en cas d'erreur
-      setUsers([
-        {
-          id: 1,
-          name: "John Doe",
-          email: "john.doe@email.com",
-          role: "Admin",
-          status: "Actif",
-          lastLogin: "2024-01-15",
-          joinDate: "2023-05-10",
-          department: "IT",
-        },
-        {
-          id: 2,
-          name: "Jane Smith",
-          email: "jane.smith@email.com",
-          role: "Utilisateur",
-          status: "Inactif",
-          lastLogin: "2024-01-10",
-          joinDate: "2023-08-22",
-          department: "Marketing",
-        },
-      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Charger les utilisateurs au montage du composant
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Filtrage des utilisateurs
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === "Tous" || user.role === filterRole;
     const matchesStatus = filterStatus === "Tous" || user.status === filterStatus;
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  // Statistiques
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => u.status === "Actif").length;
   const inactiveUsers = users.filter((u) => u.status === "Inactif").length;
   const adminUsers = users.filter((u) => u.role === "Admin").length;
 
-  // Réinitialiser le formulaire
   const resetForm = () => {
-    setFormData({
-      name: "",
-      email: "",
-      role: "Utilisateur",
-      department: "IT",
-      status: "Actif",
-    });
+    setFormData({ username: "", email: "", role: "Utilisateur", department: "IT", status: "Actif" });
   };
 
-  // Ouvrir modal d'ajout
   const openAddModal = () => {
     resetForm();
     setShowAddModal(true);
   };
 
-  // Ouvrir modal d'édition
   const openEditModal = (user: User) => {
     setFormData({
-      name: user.name,
+      username: user.username,
       email: user.email,
       role: user.role,
-      department: user.department,
+      department: user.department ?? "",
       status: user.status,
     });
     setEditingUser(user);
   };
 
-  // Fermer les modales
   const closeModals = () => {
     setShowAddModal(false);
     setEditingUser(null);
@@ -205,15 +156,10 @@ export default function UserManagement() {
     resetForm();
   };
 
-  // Valider l'email
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // Ajouter un utilisateur via API
   const addUser = async () => {
-    if (!formData.name.trim()) {
+    if (!formData.username.trim()) {
       showToast("Le nom est requis", "error");
       return;
     }
@@ -227,11 +173,7 @@ export default function UserManagement() {
       const response = await fetch(`${API_BASE_URL}/users/`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({
-          ...formData,
-          lastLogin: new Date().toISOString().split('T')[0],
-          joinDate: new Date().toISOString().split('T')[0],
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (response.ok) {
@@ -252,11 +194,10 @@ export default function UserManagement() {
     }
   };
 
-  // Modifier un utilisateur via API
   const updateUser = async () => {
     if (!editingUser) return;
 
-    if (!formData.name.trim()) {
+    if (!formData.username.trim()) {
       showToast("Le nom est requis", "error");
       return;
     }
@@ -295,7 +236,6 @@ export default function UserManagement() {
     }
   };
 
-  // Supprimer un utilisateur via API
   const deleteUser = async (id: number) => {
     try {
       const response = await fetch(`${API_BASE_URL}/users/${id}/`, {
@@ -316,13 +256,12 @@ export default function UserManagement() {
     }
   };
 
-  // Changer le statut d'un utilisateur via API
   const toggleUserStatus = async (id: number) => {
     const user = users.find(u => u.id === id);
     if (!user) return;
 
     const newStatus = user.status === "Actif" ? "Inactif" : "Actif";
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/users/${id}/`, {
         method: 'PATCH',
@@ -346,7 +285,6 @@ export default function UserManagement() {
     }
   };
 
-  // Actualiser les données
   const refreshData = () => {
     fetchUsers();
     showToast("Données actualisées", "info");
@@ -354,39 +292,24 @@ export default function UserManagement() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Actif":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "Inactif":
-        return "bg-gray-100 text-gray-700 border-gray-200";
-      case "Suspendu":
-        return "bg-red-100 text-red-700 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
+      case "Actif": return "bg-green-100 text-green-700 border-green-200";
+      case "Inactif": return "bg-gray-100 text-gray-700 border-gray-200";
+      case "Suspendu": return "bg-red-100 text-red-700 border-red-200";
+      default: return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case "Admin":
-        return "bg-purple-100 text-purple-700 border-purple-200";
-      case "Modérateur":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "Utilisateur":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "Invité":
-        return "bg-yellow-100 text-yellow-700 border-yellow-200";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
+      case "Admin": return "bg-purple-100 text-purple-700 border-purple-200";
+      case "Modérateur": return "bg-blue-100 text-blue-700 border-blue-200";
+      case "Utilisateur": return "bg-green-100 text-green-700 border-green-200";
+      case "Invité": return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      default: return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
+  const getInitials = (username: string) => username.split(" ").map((n) => n[0]).join("").toUpperCase();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
@@ -412,7 +335,7 @@ export default function UserManagement() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <User className="w-6 h-6 text-white" />
+                <div className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
@@ -441,7 +364,7 @@ export default function UserManagement() {
                   <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <User className="w-6 h-6 text-blue-600" />
+                  <div className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </div>
@@ -563,10 +486,10 @@ export default function UserManagement() {
                     <td className="py-4 px-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                          {getInitials(user.name)}
+                          {getInitials(user.username)}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{user.name}</div>
+                          <div className="font-medium text-gray-900">{user.username}</div>
                           <div className="text-gray-500 text-xs flex items-center">
                             <Mail className="w-3 h-3 mr-1" />
                             {user.email}
@@ -588,10 +511,10 @@ export default function UserManagement() {
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <div className="flex items-center text-gray-600">
+                      {/* <div className="flex items-center text-gray-600">
                         <Calendar className="w-4 h-4 mr-1" />
                         {new Date(user.lastLogin).toLocaleDateString()}
-                      </div>
+                      </div> */}
                     </td>
                     <td className="py-4 px-4">
                       <div className="text-gray-600">
@@ -644,7 +567,7 @@ export default function UserManagement() {
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <User className="w-12 h-12 text-gray-400" />
+                <div className="w-12 h-12 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 {searchTerm || filterRole !== "Tous" || filterStatus !== "Tous"
@@ -692,8 +615,8 @@ export default function UserManagement() {
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    value={formData.username}
+                    onChange={(e) => setFormData({...formData, username: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nom complet"
                   />
@@ -803,11 +726,11 @@ export default function UserManagement() {
                 {/* Avatar et nom */}
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                    {getInitials(selectedUser.name)}
+                    {getInitials(selectedUser.username)}
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {selectedUser.name}
+                      {selectedUser.username}
                     </h3>
                     <p className="text-gray-600 flex items-center">
                       <Mail className="w-4 h-4 mr-1" />
@@ -842,10 +765,10 @@ export default function UserManagement() {
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Dernière connexion</span>
-                    <span className="text-gray-900 flex items-center">
+                    {/* <span className="text-gray-900 flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
                       {new Date(selectedUser.lastLogin).toLocaleDateString()}
-                    </span>
+                    </span> */}
                   </div>
 
                   <div className="flex items-center justify-between">

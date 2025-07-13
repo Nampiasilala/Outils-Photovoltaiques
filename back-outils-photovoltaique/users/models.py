@@ -3,5 +3,9 @@ from django.db import models
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    USERNAME_FIELD = 'email'  # Utilise email pour l'authentification
-    REQUIRED_FIELDS = ['username']  # Champs requis lors de la création
+    role = models.CharField(max_length=50, default="Utilisateur")
+    status = models.CharField(max_length=20, default="Actif")
+    department = models.CharField(max_length=50, blank=True, null=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
