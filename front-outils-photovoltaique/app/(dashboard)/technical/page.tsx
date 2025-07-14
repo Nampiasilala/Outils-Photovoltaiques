@@ -3,7 +3,6 @@ import Navbar from "@/components/Navbar";
 export default function Technical() {
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar />
       <main className="pt-10 pb-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="bg-white shadow-md rounded-lg p-6">

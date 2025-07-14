@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { Button } from "@/components/ui/button"; // ← votre composant Button
 
 interface UserProfile {
   id: number;
@@ -81,7 +82,7 @@ export default function InfoProfile() {
     if (!form) return;
     try {
       const res = await fetch(`${API}/users/${form.id}/`, {
-        method: "PUT",
+        method: "PATCH",
         headers: authHeaders(),
         body: JSON.stringify({
           username: form.username,
@@ -116,6 +117,7 @@ export default function InfoProfile() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
       <div className="max-w-4xl mx-auto">
+        {/* En-tête */}
         <header className="mb-8 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -127,16 +129,18 @@ export default function InfoProfile() {
             </div>
           </div>
           <div className="flex space-x-2">
-            <button className="p-2 bg-white rounded-lg shadow text-gray-600 hover:text-gray-800">
+            <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5" />
-            </button>
-            <button className="p-2 bg-white rounded-lg shadow text-gray-600 hover:text-gray-800">
+            </Button>
+            <Button variant="ghost" size="icon">
               <Bell className="w-5 h-5" />
-            </button>
+            </Button>
           </div>
         </header>
 
+        {/* Carte de profil */}
         <div className="bg-white border rounded-xl shadow-lg p-6 space-y-6">
+          {/* Avatar & Nom */}
           <div className="flex items-center space-x-4">
             <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
               {initials}
@@ -149,20 +153,23 @@ export default function InfoProfile() {
             </div>
           </div>
 
+          {/* Méta */}
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <span className="flex items-center">
               <Calendar className="w-4 h-4 mr-1" />
               Inscrit le {new Date(profile.joinDate).toLocaleDateString()}
             </span>
             {profile.lastLogin && (
-              <span>
+              <span className="flex items-center">
                 Dernière connexion :{" "}
                 {new Date(profile.lastLogin).toLocaleString()}
               </span>
             )}
           </div>
 
+          {/* Formulaire / affichage */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <Mail className="inline w-4 h-4 mr-1" />
@@ -181,6 +188,7 @@ export default function InfoProfile() {
               )}
             </div>
 
+            {/* Département */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <Briefcase className="inline w-4 h-4 mr-1" />
@@ -210,34 +218,26 @@ export default function InfoProfile() {
             </div>
           </div>
 
+          {/* Boutons */}
           <div className="flex justify-end gap-3">
             {!editing ? (
-              <button
-                onClick={() => setEditing(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
-              >
+              <Button onClick={() => setEditing(true)}>
                 <Edit3 className="w-4 h-4" />
-                <span>Modifier</span>
-              </button>
+                Modifier
+              </Button>
             ) : (
               <>
-                <button
-                  onClick={saveProfile}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700"
-                >
+                <Button variant="secondary" onClick={saveProfile}>
                   <Save className="w-4 h-4" />
-                  <span>Sauvegarder</span>
-                </button>
-                <button
-                  onClick={() => {
+                  Sauvegarder
+                </Button>
+                <Button variant="outline" onClick={() => {
                     setEditing(false);
                     setForm(profile);
-                  }}
-                  className="bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-700"
-                >
+                  }}>
                   <X className="w-4 h-4" />
-                  <span>Annuler</span>
-                </button>
+                  Annuler
+                </Button>
               </>
             )}
           </div>

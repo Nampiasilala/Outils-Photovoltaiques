@@ -1,20 +1,32 @@
 // app/components/AuthContext.tsx
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { jwtDecode } from "jwt-decode";
 
-// Interface pour le contexte
+interface JwtPayload {
+  user_id: number;
+  email?: string;
+  exp: number;
+  iat: number;
+}
+
 interface AuthContextType {
-  user: { email: string } | null;
-  login: (email: string, password: string) => void;
-  register: (name: string, email: string, password: string) => void;
+  user: { id: number; email: string } | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
-// Interface de la réponse JWT attendue
 interface LoginResponse {
   access: string;
   refresh: string;
@@ -23,42 +35,52 @@ interface LoginResponse {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; email: string } | null>(
+    null
+  );
   const router = useRouter();
 
-  // Charger l'utilisateur depuis le localStorage (persistance)
+  // Au montage, restaurer le contexte si déjà connecté
   useEffect(() => {
     const token = localStorage.getItem("token");
     const email = localStorage.getItem("email");
-    if (token && email) {
-      setUser({ email });
+    const id = localStorage.getItem("user_id");
+    if (token && email && id) {
+      setUser({ id: Number(id), email });
     }
   }, []);
 
+  // Connexion
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post<LoginResponse>(
+      const { data } = await axios.post<LoginResponse>(
         "http://localhost:8000/login/",
         { username: email, password },
         { headers: { "Content-Type": "application/json" } }
       );
+      const token = data.access;
+      const payload = jwtDecode<JwtPayload>(token);
 
-      const token = response.data.access;
-
-      // Stocker token et email
       localStorage.setItem("token", token);
       localStorage.setItem("email", email);
+      localStorage.setItem("user_id", String(payload.user_id));
 
-      setUser({ email });
-
+      setUser({ id: payload.user_id, email });
       toast.success("Connexion réussie !");
       router.push("/calculate");
-    } catch (error: any) {
-      toast.error(`Échec de la connexion : ${error.response?.data?.detail || error.message}`);
+    } catch (err: any) {
+      toast.error(
+        `Échec de la connexion : ${err.response?.data?.detail || err.message}`
+      );
     }
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  // Inscription
+  const register = async (
+    name: string,
+    email: string,
+    password: string
+  ) => {
     try {
       await axios.post(
         "http://localhost:8000/register/",
@@ -67,16 +89,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       toast.success("Inscription réussie !");
       router.push("/login");
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.message;
-      console.error("Erreur d'inscription :", error.response?.data || error);
-      toast.error(`Échec de l'inscription : ${errorMessage}`);
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || err.message;
+      toast.error(`Échec de l'inscription : ${msg}`);
     }
   };
 
+  // Déconnexion
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
+    localStorage.removeItem("user_id");
     setUser(null);
     toast.info("Vous êtes déconnecté.");
     router.push("/login");
@@ -90,9 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
 }
