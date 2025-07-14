@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { Mail, Search, Filter } from "lucide-react";
 import { toast } from "react-toastify";
 import DeleteAlert from "@/components/DeleteAlert";           // ← nouveau composant
-
-/* ───────── Types & constantes ───────── */
 interface User {
   id: number;
   username: string;
@@ -17,14 +15,12 @@ interface User {
 const roles = ["Admin", "Utilisateur", "Modérateur", "Invité"];
 const API_BASE_URL = "http://localhost:8000/api";
 
-/* ───────── Composant principal ───────── */
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("Tous");
   const [loading, setLoading] = useState(false);
 
-  /* Récupération des utilisateurs */
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -47,7 +43,6 @@ export default function UserManagement() {
     }
   };
 
-  /* Suppression */
   const deleteUser = async (id: number) => {
     try {
       const res = await fetch(`${API_BASE_URL}/users/${id}/`, { method: "DELETE" });
@@ -63,7 +58,6 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  /* Filtre local */
   const filtered = users.filter((u) => {
     const s = searchTerm.toLowerCase();
     return (
@@ -72,15 +66,12 @@ export default function UserManagement() {
     );
   });
 
-  /* ───────── UI ───────── */
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Gestion des Utilisateurs</h1>
 
-        {/* Filtres */}
         <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-6 space-y-3 md:space-y-0">
-          {/* Recherche */}
           <div className="relative w-full md:w-60">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -91,7 +82,6 @@ export default function UserManagement() {
             />
           </div>
 
-          {/* Rôle */}
           <div className="relative w-full md:w-52">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <select
@@ -108,14 +98,12 @@ export default function UserManagement() {
             </select>
           </div>
 
-          {/* Compteur */}
           <span className="text-gray-600">
             {filtered.length} utilisateur{filtered.length !== 1 && "s"} trouvé
             {filtered.length !== 1 && "s"}
           </span>
         </div>
 
-        {/* Tableau */}
         <div className="overflow-x-auto bg-white rounded-xl shadow border">
           <table className="w-full text-sm">
             <thead>
@@ -132,7 +120,6 @@ export default function UserManagement() {
                   key={u.id}
                   className={`${i % 2 ? "bg-gray-50" : "bg-white"} border-b`}
                 >
-                  {/* Utilisateur + email */}
                   <td className="py-3 px-4">
                     <div className="font-medium text-gray-900">{u.username}</div>
                     <div className="text-xs text-gray-500 flex items-center">
@@ -147,7 +134,6 @@ export default function UserManagement() {
                     {new Date(u.joinDate).toLocaleDateString()}
                   </td>
 
-                  {/* Actions */}
                   <td className="py-3 px-4 text-right">
                     <DeleteAlert
                       label={`Supprimer ${u.username} ?`}
