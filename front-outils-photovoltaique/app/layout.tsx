@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/components/AuthContext";
-import "react-toastify/dist/ReactToastify.css";
-import { ToastContainer } from "react-toastify";
+import Providers from "./Providers";           // ← nouveau
 
 export const metadata: Metadata = {
   title: "Outil de Dimensionnement Photovoltaïque",
@@ -24,8 +22,8 @@ export default function RootLayout({
         />
       </head>
       <body className="font-inter">
-        <AuthProvider>{children}</AuthProvider>
-        <ToastContainer className={'text-sm'}/>
+        {/* Tous les providers côté client */}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
