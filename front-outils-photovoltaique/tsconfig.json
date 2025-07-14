@@ -1,3 +1,4 @@
+// tsconfig.json
 {
   "compilerOptions": {
     "target": "es2020",
@@ -33,9 +34,10 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "app/**/*",
     "next-env.d.ts",
     ".next/types/**/*.ts"
-, "app/(dashboard)/user_management"  ],
+  ],
   "exclude": [
     "node_modules"
   ]
