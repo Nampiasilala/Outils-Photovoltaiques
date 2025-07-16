@@ -4,65 +4,59 @@ from pathlib import Path
 # Chemin de base du projet
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-##SECRET_KEY = 'django-insecure-4_@z!k1e@v#8sd$j-7v(0%$=!y3z8#1w6v+e3!*@7w2q&^o(2_)'
-# nafindra an am .env mba ho portable kokoa ilay projet
+# Sécurité
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-key-not-set')
 
-
-##DEBUG = True
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+# Pour le dev / debug
+DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# Applications installées
+# Apps installées
 INSTALLED_APPS = [
-    'django.contrib.admin',          # Admin Django
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    'django.contrib.sessions',       # Sessions nécessaires pour auth
-    'django.contrib.messages',       # Messages nécessaires pour admin
-    'django.contrib.staticfiles',    # Gestion des fichiers statiques
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
 
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+
     'users',
-    'dimensionnements',
-    'equipements',
+    'donnees_entree',
     'parametres',
-    'donnees_entree',                        # Ton app utilisateurs
+    'equipements',
+    'dimensionnements',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',      # Obligatoire avant AuthenticationMiddleware
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',   # Obligatoire pour admin et auth
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# CORS (dev)
 CORS_ALLOW_ALL_ORIGINS = True
-
-# Ou spécifier des origines pour la production
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-]
 
 ROOT_URLCONF = 'django_project.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],    # Ajoute ici tes dossiers de templates si besoin
+        'DIRS': [], 
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request',    # Obligatoire pour admin
+                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -72,44 +66,33 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'django_project.wsgi.application'
 
-# Configuration de la base de données PostgreSQL
-##DATABASES = {
-##    'default': {
-##        'ENGINE': 'django.db.backends.postgresql',
-##        'NAME': 'dimensionnement',
-##        'USER': 'devuser',
-##        'PASSWORD': 'devpass',
-##        'HOST': 'localhost',
-##        'PORT': '5432',
-##    }
-##}
+# Postgres
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'dimensionnement'),
-        'USER': os.environ.get('DB_USER', 'devuser'),
+        'ENGINE':   'django.db.backends.postgresql',
+        'NAME':     os.environ.get('DB_NAME', 'dimensionnement'),
+        'USER':     os.environ.get('DB_USER', 'devuser'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'devpass'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'HOST':     os.environ.get('DB_HOST', 'localhost'),
+        'PORT':     os.environ.get('DB_PORT', '5432'),
     }
 }
 
-# Modèle utilisateur personnalisé
+# User custom
 AUTH_USER_MODEL = 'users.User'
 
-# Configuration Django REST Framework avec JWT
+# DRF + JWT + Basic pour tests
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
     ),
 }
 
-# Paramètre important pour la génération automatique de clé primaire
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# URL pour les fichiers statiques (CSS, JS, images)
 STATIC_URL = '/static/'
-
-# Optionnel : dossier où collecter les fichiers statiques en prod
-# STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEBUG_PROPAGATE_EXCEPTIONS = True

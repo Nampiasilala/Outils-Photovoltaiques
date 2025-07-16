@@ -1,5 +1,5 @@
 // app/components/AuthContext.tsx
-"use client";
+'use client';
 
 import {
   createContext,
@@ -7,113 +7,120 @@ import {
   useState,
   useEffect,
   ReactNode,
-} from "react";
-import axios from "axios";
-import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
-import { jwtDecode } from "jwt-decode";
+} from 'react';
+import axios from 'axios';
+import { useRouter } from 'next/navigation';
+// Utilisez le named import qui fonctionne chez vous
+import { jwtDecode } from 'jwt-decode';
 
 interface JwtPayload {
   user_id: number;
-  email?: string;
   exp: number;
   iat: number;
 }
 
-interface AuthContextType {
-  user: { id: number; email: string } | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+interface User {
+  id: number;
+  email: string;
 }
 
-interface LoginResponse {
-  access: string;
-  refresh: string;
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<{ id: number; email: string } | null>(
-    null
-  );
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Au montage, restaurer le contexte si déjà connecté
+  const API = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const AUTH_HOST = API?.replace(/\/api\/?$/, '') ?? '';
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const email = localStorage.getItem("email");
-    const id = localStorage.getItem("user_id");
-    if (token && email && id) {
-      setUser({ id: Number(id), email });
+    if (!API) {
+      console.error('NEXT_PUBLIC_API_BASE_URL non défini');
+      setLoading(false);
+      return;
     }
-  }, []);
+    axios.defaults.baseURL = API;
 
-  // Connexion
+    const access = localStorage.getItem('accessToken');
+    const refresh = localStorage.getItem('refreshToken');
+    const email = localStorage.getItem('userEmail');
+
+    if (access && refresh && email) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+      try {
+        // Named import jwtDecode est callable
+        const { user_id } = jwtDecode<JwtPayload>(access);
+        setUser({ id: user_id, email });
+      } catch {
+        console.error('JWT invalide au montage, purge session');
+        setUser(null);
+      }
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  }, [API]);
+
   const login = async (email: string, password: string) => {
-    try {
-      const { data } = await axios.post<LoginResponse>(
-        "http://localhost:8000/login/",
-        { username: email, password },
-        { headers: { "Content-Type": "application/json" } }
-      );
-      const token = data.access;
-      const payload = jwtDecode<JwtPayload>(token);
+    if (!API) throw new Error('API non configurée');
+    const { data } = await axios.post<{ access: string; refresh: string }>(
+      '/token/',
+      { email, password },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("email", email);
-      localStorage.setItem("user_id", String(payload.user_id));
+    localStorage.setItem('accessToken', data.access);
+    localStorage.setItem('refreshToken', data.refresh);
+    localStorage.setItem('userEmail', email);
 
-      setUser({ id: payload.user_id, email });
-      toast.success("Connexion réussie !");
-      router.push("/calculate");
-    } catch (err: any) {
-      toast.error(
-        `Échec de la connexion : ${err.response?.data?.detail || err.message}`
-      );
-    }
+    axios.defaults.headers.common['Authorization'] = `Bearer ${data.access}`;
+
+    // On décode avec jwtDecode nommé
+    const { user_id } = jwtDecode<JwtPayload>(data.access);
+    setUser({ id: user_id, email });
+
+    router.push('/calculate');
   };
 
-  // Inscription
-  const register = async (
-    name: string,
-    email: string,
-    password: string
-  ) => {
-    try {
-      await axios.post(
-        "http://localhost:8000/register/",
-        { username: name, email, password },
-        { headers: { "Content-Type": "application/json" } }
-      );
-      toast.success("Inscription réussie !");
-      router.push("/login");
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || err.message;
-      toast.error(`Échec de l'inscription : ${msg}`);
-    }
+  const register = async (username: string, email: string, password: string) => {
+    await axios.post(
+      '/register/',
+      { username, email, password },
+      {
+        baseURL: AUTH_HOST,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+    router.push('/login');
   };
 
-  // Déconnexion
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("email");
-    localStorage.removeItem("user_id");
+    delete axios.defaults.headers.common['Authorization'];
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userEmail');
     setUser(null);
-    toast.info("Vous êtes déconnecté.");
-    router.push("/login");
+    router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  if (!ctx) throw new Error('useAuth doit être utilisé dans AuthProvider');
   return ctx;
 }

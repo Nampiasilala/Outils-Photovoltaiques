@@ -1,250 +1,255 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Sun, Zap, Globe, AlertCircle, Calculator, Settings } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthContext';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import {
+  Sun,
+  Zap,
+  Globe,
+  AlertCircle,
+  Calculator,
+  Settings,
+} from 'lucide-react';
+import { toast } from 'react-toastify';
 
-export default function SolarFormExpert() {
-  const [formData, setFormData] = useState({
-    E_jour: 0, // Consommation journalière (Wh)
-    P_max: 0, // Puissance maximale simultanée (W)
-    N_autonomie: 1, // Jours d'autonomie souhaités
-    H_solaire: 4.5, // Irradiation solaire moyenne (kWh/m²/jour)
-    V_batterie: 24, // Tension du parc batterie (V)
+interface FormData {
+  E_jour: number;
+  P_max: number;
+  N_autonomie: number;
+  H_solaire: number;
+  V_battery: number;
+  localisation: string;
+}
+
+interface ResultData {
+  id: number;
+  date_calcul: string;
+  puissance_totale: number;
+  capacite_batterie: number;
+  nombre_panneaux: number;
+  bilan_energetique_annuel: number;
+  cout_total: number;
+  entree: number;
+  parametre: number;
+}
+
+export default function SolarForm() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // redirige si non connecté
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) return null;
+
+  const [formData, setFormData] = useState<FormData>({
+    E_jour:       0,
+    P_max:        0,
+    N_autonomie:  1,
+    H_solaire:    4.5,
+    V_battery:    24,
+    localisation: '',
   });
-
   const [errors, setErrors] = useState<string[]>([]);
+  const [result, setResult] = useState<ResultData | null>(null);
 
-  const updateField = (field: keyof typeof formData, value: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: string[] = [];
-
-    if (formData.E_jour <= 0)
-      newErrors.push("La consommation journalière doit être supérieure à 0.");
-    if (formData.P_max <= 0)
-      newErrors.push("La puissance maximale doit être supérieure à 0.");
-    if (formData.N_autonomie <= 0)
-      newErrors.push("Les jours d'autonomie doivent être supérieurs à 0.");
-    if (formData.H_solaire <= 0)
-      newErrors.push("L'irradiation solaire doit être supérieure à 0.");
-    if (![12, 24, 48].includes(formData.V_batterie))
-      newErrors.push("La tension du parc batterie doit être 12V, 24V ou 48V.");
-
-    setErrors(newErrors);
-    return newErrors.length === 0;
+  const validate = () => {
+    const errs: string[] = [];
+    if (formData.E_jour <= 0)          errs.push('La consommation journalière doit être > 0.');
+    if (formData.P_max <= 0)           errs.push('La puissance max doit être > 0.');
+    if (formData.N_autonomie <= 0)     errs.push('Le nombre de jours d’autonomie doit être > 0.');
+    if (formData.H_solaire <= 0)       errs.push('L’irradiation doit être > 0.');
+    if (![12, 24, 48].includes(formData.V_battery))
+                                        errs.push('La tension doit être 12 V, 24 V ou 48 V.');
+    if (!formData.localisation.trim()) errs.push('La localisation est requise.');
+    setErrors(errs);
+    return errs.length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!validate()) return;
 
     try {
-      const response = await fetch("/api/calculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      // ⚙️ Préparez un payload explicite
+      const payload = {
+        E_jour:       formData.E_jour,
+        P_max:        formData.P_max,
+        N_autonomie:  formData.N_autonomie,
+        H_solaire:    formData.H_solaire,
+        V_batterie:   formData.V_battery,    // clé attendue par le back
+        localisation: formData.localisation,
+      };
+      console.log('SolarForm payload:', payload);
+
+      // 🛰️ Appel de l’endpoint (fetchWithAuth préfixe avec NEXT_PUBLIC_API_BASE_URL)
+      const res = await fetchWithAuth('/dimensionnements/calculate/', {
+        method: 'POST',
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Erreur lors du calcul.");
-      const result = await response.json();
-      console.log("Résultat du calcul :", result);
-      // TODO : Afficher les résultats ici
-    } catch (error) {
-      setErrors([
-        error instanceof Error ? error.message : "Une erreur est survenue.",
-      ]);
+      if (res.status === 400) {
+        const err = await res.json();
+        toast.error(`Champs invalides : ${JSON.stringify(err)}`);
+        return;
+      }
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Erreur ${res.status} : ${txt}`);
+      }
+
+      const data: ResultData = await res.json();
+      setResult(data);
+      setErrors([]);
+    } catch (err: any) {
+      setResult(null);
+      setErrors([err.message || 'Erreur inattendue']);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      {/* Header Dashboard */}
-      <div className="mb-6">
+      <header className="mb-6">
         <div className="flex items-center space-x-3 mb-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <Sun className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Calculateur Solaire</h1>
+          <Sun className="w-8 h-8 text-blue-600" />
+          <h1 className="text-2xl font-bold">Calculateur Solaire</h1>
         </div>
-        <p className="text-gray-600 text-sm">Veillez nous renseignez vos besoins :</p>
-      </div>
+        <p className="text-gray-600">Renseignez vos besoins :</p>
+      </header>
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* FORM */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Section Consommation */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Zap className="w-5 h-5 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Consommation</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Consommation journalière
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={formData.E_jour || ''}
-                    onChange={(e) => updateField("E_jour", Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="3000"
-                    min="1"
-                  />
-                  <span className="absolute right-10 top-2 text-sm text-gray-500">Wh</span>
-                </div>
-              </div>
+          {/* Consommation */}
+          <section className="bg-white p-6 rounded-xl shadow-sm">
+            <h3 className="flex items-center gap-2 font-semibold mb-4">
+              <Zap /> Consommation
+            </h3>
+            <label className="block text-sm mb-1">Consommation journalière (Wh)</label>
+            <input
+              type="number"
+              className="w-full mb-4 p-2 border rounded"
+              value={formData.E_jour}
+              onChange={e => updateField('E_jour', +e.target.value)}
+            />
+            <label className="block text-sm mb-1">Puissance max (W)</label>
+            <input
+              type="number"
+              className="w-full p-2 border rounded"
+              value={formData.P_max}
+              onChange={e => updateField('P_max', +e.target.value)}
+            />
+          </section>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Puissance maximale
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={formData.P_max || ''}
-                    onChange={(e) => updateField("P_max", Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="1000"
-                    min="1"
-                  />
-                  <span className="absolute right-10 top-2 text-sm text-gray-500">W</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section Système */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Settings className="w-5 h-5 text-purple-600" />
-              <h3 className="font-semibold text-gray-900">Configuration</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Jours d'autonomie
-                </label>
-                <input
-                  type="number"
-                  value={formData.N_autonomie || ''}
-                  onChange={(e) => updateField("N_autonomie", Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="2"
-                  min="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tension batterie
-                </label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[12, 24, 48].map((voltage) => (
-                    <button
-                      key={voltage}
-                      type="button"
-                      onClick={() => updateField("V_batterie", voltage)}
-                      className={`px-2 py-1 text-sm rounded-md transition-colors ${
-                        formData.V_batterie === voltage
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {voltage}V
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section Environnement */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Globe className="w-5 h-5 text-orange-600" />
-              <h3 className="font-semibold text-gray-900">Environnement</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Irradiation solaire
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={formData.H_solaire || ''}
-                    onChange={(e) => updateField("H_solaire", Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="4.5"
-                    min="0.1"
-                    step="0.1"
-                  />
-                  <span className="absolute right-10 top-2 text-sm text-gray-500">kWh/m²</span>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Moyenne par jour</p>
-              </div>
-
-              <div className="pt-2">
-                <button 
-                  type="button" 
-                  onClick={handleSubmit}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+          {/* Configuration */}
+          <section className="bg-white p-6 rounded-xl shadow-sm">
+            <h3 className="flex items-center gap-2 font-semibold mb-4">
+              <Settings /> Configuration
+            </h3>
+            <label className="block text-sm mb-1">Jours d'autonomie</label>
+            <input
+              type="number"
+              className="w-full mb-4 p-2 border rounded"
+              value={formData.N_autonomie}
+              onChange={e => updateField('N_autonomie', +e.target.value)}
+            />
+            <label className="block text-sm mb-1">Tension batterie</label>
+            <div className="flex space-x-2">
+              {[12, 24, 48].map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => updateField('V_battery', v)}
+                  className={`px-3 py-1 rounded ${
+                    formData.V_battery === v
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100'
+                  }`}
                 >
-                  <Calculator className="w-4 h-4" />
-                  <span>Calculer</span>
+                  {v}V
                 </button>
-              </div>
+              ))}
             </div>
-          </div>
+          </section>
+
+          {/* Environnement */}
+          <section className="bg-white p-6 rounded-xl shadow-sm">
+            <h3 className="flex items-center gap-2 font-semibold mb-4">
+              <Globe /> Environnement
+            </h3>
+            <label className="block text-sm mb-1">Irradiation (kWh/m²/j)</label>
+            <input
+              type="number"
+              step="0.1"
+              className="w-full mb-4 p-2 border rounded"
+              value={formData.H_solaire}
+              onChange={e => updateField('H_solaire', +e.target.value)}
+            />
+            <label className="block text-sm mb-1">Localisation</label>
+            <input
+              type="text"
+              className="w-full mb-6 p-2 border rounded"
+              value={formData.localisation}
+              onChange={e => updateField('localisation', e.target.value)}
+            />
+            <button
+              onClick={handleSubmit}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+            >
+              <Calculator /> Calculer
+            </button>
+          </section>
         </div>
 
-        {/* Gestion des erreurs */}
+        {/* Erreurs */}
         {errors.length > 0 && (
-          <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-center mb-2">
-              <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
-              <h4 className="text-red-800 font-medium text-sm">Erreurs de validation</h4>
-            </div>
-            <ul className="space-y-1">
-              {errors.map((error, index) => (
-                <li key={index} className="text-red-700 text-sm flex items-start">
-                  <span className="w-1 h-1 bg-red-400 rounded-full mr-2 mt-1.5 flex-shrink-0"></span>
-                  {error}
-                </li>
+          <div className="bg-red-50 border border-red-200 p-4 rounded">
+            <h4 className="flex items-center gap-2 text-red-800 mb-2">
+              <AlertCircle /> Erreurs
+            </h4>
+            <ul className="list-disc pl-5 text-red-700">
+              {errors.map((e, i) => (
+                <li key={i}>{e}</li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Stats rapides */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
-            <div className="text-2xl font-bold text-blue-600">{formData.E_jour}</div>
-            <div className="text-sm text-gray-500">Wh/jour</div>
+        {/* Résultats */}
+        {result && (
+          <div className="bg-white p-6 rounded-xl shadow mt-6">
+            <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
+              <Sun /> Résultats
+            </h3>
+            <ul className="space-y-1">
+              <li>
+                Puissance totale : <strong>{result.puissance_totale} W</strong>
+              </li>
+              <li>
+                Capacité batterie : <strong>{result.capacite_batterie} Ah</strong>
+              </li>
+              <li>
+                Nombre panneaux : <strong>{result.nombre_panneaux}</strong>
+              </li>
+              <li>
+                Bilan annuel : <strong>{result.bilan_energetique_annuel} Wh</strong>
+              </li>
+              <li>
+                Coût total : <strong>{result.cout_total} €</strong>
+              </li>
+            </ul>
           </div>
-          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
-            <div className="text-2xl font-bold text-green-600">{formData.P_max}</div>
-            <div className="text-sm text-gray-500">W max</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
-            <div className="text-2xl font-bold text-purple-600">{formData.N_autonomie}</div>
-            <div className="text-sm text-gray-500">jour(s)</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center border border-gray-200">
-            <div className="text-2xl font-bold text-orange-600">{formData.H_solaire}</div>
-            <div className="text-sm text-gray-500">kWh/m²</div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
-  );
+);
 }

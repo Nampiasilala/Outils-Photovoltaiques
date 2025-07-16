@@ -1,7 +1,9 @@
 // app/components/InfoProfile.tsx
-"use client";
+'use client';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/components/AuthContext';
 import {
   User as UserIcon,
   Mail,
@@ -10,238 +12,236 @@ import {
   Edit3,
   Save,
   X,
-  Settings,
-  Bell,
   Loader2,
-} from "lucide-react";
-import { toast } from "react-toastify";
-import { Button } from "@/components/ui/button"; // ← votre composant Button
+} from 'lucide-react';
+import { toast } from 'react-toastify';
 
-interface UserProfile {
+interface Profile {
   id: number;
   username: string;
   email: string;
   department: string | null;
   role: string;
   status: string;
-  joinDate: string;
-  lastLogin: string | null;
+  date_joined: string;
+  last_login: string | null;
 }
 
-const API = "http://localhost:8000/api";
+const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function InfoProfile() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [form, setForm] = useState<UserProfile | null>(null);
+  const { user, logout } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [form, setForm] = useState<Profile | null>(null);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const authHeaders = () => {
-    const token = localStorage.getItem("token");
+  // DEBUG logs
+  console.log('🔍 InfoProfile render: user =', user);
+  console.log('🔍 accessToken =', localStorage.getItem('accessToken'));
+  console.log('🔍 NEXT_PUBLIC_API_BASE_URL =', API);
+
+  const authHeader = () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      console.error('❌ authHeader(): pas de token trouvé');
+      logout();
+      throw new Error('Token manquant');
+    }
     return {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     };
   };
 
   useEffect(() => {
-    const id = localStorage.getItem("user_id");
-    if (!id) {
-      toast.error("Identifiant utilisateur manquant");
+    // Si user n'est pas encore défini, on stoppe et on passe loading à false
+    if (user == null) {
+      console.warn('⚠️ InfoProfile: user non défini, arrêt du fetchWithAuth');
       setLoading(false);
       return;
     }
+
     (async () => {
       try {
-        const res = await fetch(`${API}/users/${id}/`, {
-          headers: authHeaders(),
+        console.log(`➡️ Fetching ${API}/users/${user.id}/`);
+        const res = await fetchWithAuth(`${API}/users/${user.id}/`, {
+          headers: authHeader(),
         });
-        if (!res.ok) throw new Error();
+        console.log('⬅️ Status fetchWithAuth profile:', res.status);
+        if (res.status === 401) {
+          console.error('❌ 401 Unauthorized, logout');
+          logout();
+          return;
+        }
+        if (!res.ok) {
+          throw new Error(`Erreur HTTP ${res.status}`);
+        }
         const d = await res.json();
-        const p: UserProfile = {
+        console.log('✅ profile JSON:', d);
+        const p: Profile = {
           id: d.id,
           username: d.username,
           email: d.email,
           department: d.department,
           role: d.role,
           status: d.status,
-          joinDate: d.date_joined,
-          lastLogin: d.last_login,
+          date_joined: d.date_joined,
+          last_login: d.last_login,
         };
         setProfile(p);
         setForm(p);
-      } catch {
-        toast.error("Impossible de charger le profil");
+      } catch (err: any) {
+        console.error('❌ Exception fetchProfile:', err);
+        toast.error(err.message || 'Erreur lors du chargement du profil');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [user, API, logout]);
 
   const saveProfile = async () => {
     if (!form) return;
     try {
-      const res = await fetch(`${API}/users/${form.id}/`, {
-        method: "PATCH",
-        headers: authHeaders(),
+      console.log(`➡️ Saving profile PUT ${API}/users/${form.id}/`, form);
+      const res = await fetchWithAuth(`${API}/users/${form.id}/`, {
+        method: 'PUT',
+        headers: authHeader(),
         body: JSON.stringify({
           username: form.username,
           email: form.email,
           department: form.department,
         }),
       });
-      if (!res.ok) throw new Error();
+      console.log('⬅️ Status save profile:', res.status);
+      if (res.status === 401) {
+        console.error('❌ 401 Unauthorized on save, logout');
+        logout();
+        return;
+      }
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Erreur ${res.status}: ${text}`);
+      }
       setProfile(form);
       setEditing(false);
-      toast.success("Profil mis à jour");
-    } catch {
-      toast.error("Erreur lors de la mise à jour");
+      toast.success('Profil mis à jour');
+    } catch (err: any) {
+      console.error('❌ Exception saveProfile:', err);
+      toast.error(err.message || 'Erreur lors de la mise à jour du profil');
     }
   };
 
-  if (loading || !profile || !form) {
+  if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="animate-spin w-8 h-8 text-blue-600" />
+      </div>
+    );
+  }
+
+  // Si on n'a pas de user ou pas de profile, on affiche un message
+  if (!user) {
+    return (
+      <div className="p-6 text-center text-red-600">
+        Identifiant utilisateur manquant. Veuillez vous reconnecter.
+      </div>
+    );
+  }
+  if (!profile || !form) {
+    return (
+      <div className="p-6 text-center">
+        Impossible de charger le profil. Vérifiez la console pour plus de détails.
       </div>
     );
   }
 
   const initials = profile.username
-    .trim()
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
+    .split(' ')
+    .map(w => w[0])
+    .join('')
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* En-tête */}
-        <header className="mb-8 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <UserIcon className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Mon profil</h1>
-              <p className="text-gray-600">Informations personnelles</p>
-            </div>
+    <div className="p-6 max-w-xl mx-auto space-y-6">
+      {/* Header */}
+      <header className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
+            <UserIcon className="w-6 h-6 text-white" />
           </div>
-          <div className="flex space-x-2">
-            <Button variant="ghost" size="icon">
-              <Settings className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="w-5 h-5" />
-            </Button>
-          </div>
-        </header>
-
-        {/* Carte de profil */}
-        <div className="bg-white border rounded-xl shadow-lg p-6 space-y-6">
-          {/* Avatar & Nom */}
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
-              {initials}
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                {profile.username}
-              </h2>
-              <p className="text-sm text-gray-600">Rôle : {profile.role}</p>
-            </div>
-          </div>
-
-          {/* Méta */}
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-            <span className="flex items-center">
-              <Calendar className="w-4 h-4 mr-1" />
-              Inscrit le {new Date(profile.joinDate).toLocaleDateString()}
-            </span>
-            {profile.lastLogin && (
-              <span className="flex items-center">
-                Dernière connexion :{" "}
-                {new Date(profile.lastLogin).toLocaleString()}
-              </span>
-            )}
-          </div>
-
-          {/* Formulaire / affichage */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Mail className="inline w-4 h-4 mr-1" />
-                Email
-              </label>
-              {editing ? (
-                <input
-                  value={form.email}
-                  onChange={(e) =>
-                    setForm({ ...form, email: e.target.value })
-                  }
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              ) : (
-                <p className="bg-gray-50 rounded-lg p-3">{profile.email}</p>
-              )}
-            </div>
-
-            {/* Département */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Briefcase className="inline w-4 h-4 mr-1" />
-                Département
-              </label>
-              {editing ? (
-                <select
-                  value={form.department ?? ""}
-                  onChange={(e) =>
-                    setForm({ ...form, department: e.target.value })
-                  }
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">--</option>
-                  <option value="IT">IT</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Ventes">Ventes</option>
-                  <option value="Support">Support</option>
-                  <option value="RH">RH</option>
-                  <option value="Finance">Finance</option>
-                </select>
-              ) : (
-                <p className="bg-gray-50 rounded-lg p-3">
-                  {profile.department || "-"}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Boutons */}
-          <div className="flex justify-end gap-3">
-            {!editing ? (
-              <Button onClick={() => setEditing(true)}>
-                <Edit3 className="w-4 h-4" />
-                Modifier
-              </Button>
-            ) : (
-              <>
-                <Button variant="secondary" onClick={saveProfile}>
-                  <Save className="w-4 h-4" />
-                  Sauvegarder
-                </Button>
-                <Button variant="outline" onClick={() => {
-                    setEditing(false);
-                    setForm(profile);
-                  }}>
-                  <X className="w-4 h-4" />
-                  Annuler
-                </Button>
-              </>
-            )}
+          <div>
+            <h1 className="text-2xl font-bold">{profile.username}</h1>
+            <p className="text-gray-600">{profile.role}</p>
           </div>
         </div>
+        {editing ? (
+          <div className="flex space-x-2">
+            <button onClick={saveProfile} className="text-green-600">
+              <Save />
+            </button>
+            <button
+              onClick={() => {
+                setEditing(false);
+                setForm(profile);
+              }}
+              className="text-red-600"
+            >
+              <X />
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setEditing(true)} className="text-blue-600">
+            <Edit3 />
+          </button>
+        )}
+      </header>
+
+      {/* Formulaire */}
+      <div className="space-y-4">
+        <div>
+          <label className="flex items-center gap-1 text-sm font-medium">
+            <Mail /> Email
+          </label>
+          {editing ? (
+            <input
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+              className="w-full border rounded p-2"
+            />
+          ) : (
+            <p className="p-2 bg-gray-50 rounded">{profile.email}</p>
+          )}
+        </div>
+        <div>
+          <label className="flex items-center gap-1 text-sm font-medium">
+            <Briefcase /> Département
+          </label>
+          {editing ? (
+            <input
+              value={form.department || ''}
+              onChange={e =>
+                setForm({ ...form, department: e.target.value })
+              }
+              className="w-full border rounded p-2"
+            />
+          ) : (
+            <p className="p-2 bg-gray-50 rounded">
+              {profile.department || '-'}
+            </p>
+          )}
+        </div>
+
+        <p className="text-sm text-gray-500 flex items-center gap-1">
+          <Calendar /> Inscrit le{' '}
+          {new Date(profile.date_joined).toLocaleDateString()}
+        </p>
+        {profile.last_login && (
+          <p className="text-sm text-gray-500">
+            Dernière connexion :{' '}
+            {new Date(profile.last_login).toLocaleString()}
+          </p>
+        )}
       </div>
     </div>
   );
