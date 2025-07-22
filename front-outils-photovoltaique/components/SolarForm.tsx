@@ -11,6 +11,10 @@ import {
   AlertCircle,
   Calculator,
   Settings,
+  DollarSign, // Ajouté pour le coût
+  BatteryCharging, // Ajouté pour la capacité batterie
+  PanelTop, // Ajouté pour la puissance totale
+  ClipboardCheck, // Ajouté pour le bilan énergétique
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -29,11 +33,28 @@ interface ResultData {
   puissance_totale: number;
   capacite_batterie: number;
   nombre_panneaux: number;
+  nombre_batteries: number;  // ✅ Ajout de cette propriété
   bilan_energetique_annuel: number;
   cout_total: number;
   entree: number;
   parametre: number;
+
+  equipements_recommandes: {
+    panneau: EquipmentDetail;
+    batterie: EquipmentDetail;
+    regulateur: EquipmentDetail;
+  };
 }
+
+interface EquipmentDetail {
+  id: number;
+  modele: string;
+  puissance?: number;
+  capacite?: number;
+  tension?: number;
+  prix_unitaire: number;
+}
+
 
 export default function SolarForm() {
   const { user, loading } = useAuth();
@@ -75,6 +96,8 @@ export default function SolarForm() {
     setErrors(errs);
     return errs.length === 0;
   };
+
+  
 
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -223,32 +246,85 @@ export default function SolarForm() {
             </ul>
           </div>
         )}
-
-        {/* Résultats */}
-        {result && (
+{result && (
           <div className="bg-white p-6 rounded-xl shadow mt-6">
             <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
-              <Sun /> Résultats
+              <Calculator /> Résumé du Dimensionnement
             </h3>
-            <ul className="space-y-1">
-              <li>
-                Puissance totale : <strong>{result.puissance_totale} W</strong>
-              </li>
-              <li>
-                Capacité batterie : <strong>{result.capacite_batterie} Ah</strong>
-              </li>
-              <li>
-                Nombre panneaux : <strong>{result.nombre_panneaux}</strong>
-              </li>
-              <li>
-                Bilan annuel : <strong>{result.bilan_energetique_annuel} Wh</strong>
-              </li>
-              <li>
-                Coût total : <strong>{result.cout_total} €</strong>
-              </li>
-            </ul>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
+                <PanelTop className="text-blue-500" />
+                <span>Puissance totale (Onduleur) : <strong>{result.puissance_totale} W</strong></span>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
+                <BatteryCharging className="text-green-500" />
+                <span>Capacité batterie totale : <strong>{result.capacite_batterie} Wh</strong></span>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
+                <ClipboardCheck className="text-purple-500" />
+                <span>Bilan énergétique annuel : <strong>{result.bilan_energetique_annuel} Wh</strong></span>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
+                <DollarSign className="text-yellow-600" />
+                <span>Coût total estimé : <strong>{result.cout_total} €</strong></span>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
+                <Sun className="text-orange-500" />
+                <span>Nombre de panneaux : <strong>{result.nombre_panneaux}</strong></span>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
+                <BatteryCharging className="text-green-500" />
+                <span>Nombre de batteries : <strong>{result.nombre_batteries}</strong></span>
+              </div>
+            </div>
           </div>
         )}
+        {/* Équipements recommandés */}
+{result && result.equipements_recommandes && (
+  <div className="bg-white p-6 rounded-xl shadow mt-6">
+    <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
+      <Zap /> Équipements recommandés
+    </h3>
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      {/* Panneau solaire */}
+      <div className="p-4 bg-gray-50 border rounded">
+        <h4 className="font-semibold text-blue-600">Panneau solaire</h4>
+        <ul className="mt-2 text-sm space-y-1">
+          <li>Modèle : <strong>{result.equipements_recommandes.panneau.modele}</strong></li>
+          <li>Puissance : <strong>{result.equipements_recommandes.panneau.puissance} W</strong></li>
+          <li>Quantité : <strong>{result.nombre_panneaux}</strong></li>
+          <li>Prix unitaire : <strong>{result.equipements_recommandes.panneau.prix_unitaire} €</strong></li>
+        </ul>
+      </div>
+
+      {/* Batterie */}
+      <div className="p-4 bg-gray-50 border rounded">
+        <h4 className="font-semibold text-green-600">Batterie</h4>
+        <ul className="mt-2 text-sm space-y-1">
+          <li>Modèle : <strong>{result.equipements_recommandes.batterie.modele}</strong></li>
+          <li>Capacité : <strong>{result.equipements_recommandes.batterie.capacite} Ah</strong></li>
+          <li>Quantité : <strong>{result.nombre_batteries}</strong></li>
+          <li>Prix unitaire : <strong>{result.equipements_recommandes.batterie.prix_unitaire} €</strong></li>
+        </ul>
+      </div>
+
+      {/* Régulateur */}
+      <div className="p-4 bg-gray-50 border rounded">
+        <h4 className="font-semibold text-purple-600">Régulateur</h4>
+        <ul className="mt-2 text-sm space-y-1">
+          <li>Modèle : <strong>{result.equipements_recommandes.regulateur.modele}</strong></li>
+          <li>Tension : <strong>{result.equipements_recommandes.regulateur.tension} V</strong></li>
+          <li>Quantité : <strong>1</strong></li>
+          <li>Prix unitaire : <strong>{result.equipements_recommandes.regulateur.prix_unitaire} €</strong></li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+)}
+
       </div>
     </div>
 );
