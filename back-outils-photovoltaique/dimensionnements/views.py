@@ -1,7 +1,8 @@
 import logging
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated # Importer IsAuthenticated
+# CORRECTION : Renommer permission_classes pour éviter tout conflit
+from rest_framework.decorators import action, permission_classes as api_permission_classes 
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Dimensionnement
@@ -10,17 +11,23 @@ from .utils import compute_dimensionnement
 
 from donnees_entree.models import DonneesEntree
 from parametres.models import ParametreSysteme
-from equipements.models import Equipement # Non directement utilisé ici pour la récupération, mais pour le modèle
+from equipements.models import Equipement
 
 logger = logging.getLogger(__name__)
 
 class DimensionnementViewSet(viewsets.ModelViewSet):
     queryset = Dimensionnement.objects.all()
     serializer_class = DimensionnementSerializer
-    # permission_classes = [IsAuthenticated] # Remettez-le pour la production
+    # permission_classes = [IsAuthenticated] # REMETTEZ CETTE LIGNE POUR LA PRODUCTION
+
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return Dimensionnement.objects.filter(entree__user=self.request.user).order_by('-date_calcul')
+        return Dimensionnement.objects.none()
 
     @action(detail=False, methods=['post'])
-    @permission_classes([AllowAny]) # Autorise temporairement pour debug, à remplacer par IsAuthenticated en prod
+    # CORRECTION : Utiliser le nom renommé du décorateur
+    @api_permission_classes([AllowAny]) 
     def calculate(self, request):
         # 1) Validation des données d'entrée
         input_ser = CalculationInputSerializer(data=request.data)
@@ -28,7 +35,6 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
         data = input_ser.validated_data
 
         # 2) Récupération du paramètre système
-        # Gérer le cas où l'utilisateur n'est pas authentifié (si AllowAny est utilisé)
         user = request.user if request.user.is_authenticated else None
         
         if user:
@@ -40,10 +46,8 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
         else:
-            # Si pas d'utilisateur connecté, utiliser un paramètre par défaut ou lever une erreur
-            # Pour l'exemple, prenons le premier paramètre disponible ou un ID spécifique (ex: 1)
             try:
-                param = ParametreSysteme.objects.first() # Ou .get(id=1)
+                param = ParametreSysteme.objects.first()
                 if not param:
                     return Response(
                         {'detail': 'Aucun paramètre système par défaut trouvé.'},
@@ -55,10 +59,7 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
-
-        # 3) Calcul métier (compute_dimensionnement choisit déjà les équipements)
-        # Les lignes de récupération de panneau et batterie ici sont supprimées car
-        # compute_dimensionnement s'en charge et retourne les objets Equipement.
+        # 3) Calcul métier
         try:
             calculated_results = compute_dimensionnement(data, param)
         except ValueError as e:
@@ -75,34 +76,30 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             )
 
         # 4) Création de l’historique DonneesEntree
-        # Assurez-vous que le champ 'user' dans DonneesEntree est nullable ou géré pour les utilisateurs non connectés
         entree = DonneesEntree.objects.create(
             e_jour      = data['E_jour'],
             p_max       = data['P_max'],
             n_autonomie = data['N_autonomie'],
             localisation= data['localisation'],
             v_batterie  = data['V_batterie'],
-            user        = user, # Assignez l'utilisateur (peut être None)
+            user        = user,
         )
 
         # 5) Sauvegarde du résultat Dimensionnement
-        # C'est la partie CRUCIALE : assigner les objets Equipement aux ForeignKeys
         dimensionnement = Dimensionnement.objects.create(
             entree                    = entree,
             parametre                 = param,
             puissance_totale          = calculated_results['puissance_totale'],
             capacite_batterie         = calculated_results['capacite_batterie'],
             nombre_panneaux           = calculated_results['nombre_panneaux'],
-            nombre_batteries          = calculated_results['nombre_batteries'], # <-- AJOUTÉ
+            nombre_batteries          = calculated_results['nombre_batteries'],
             bilan_energetique_annuel  = calculated_results['bilan_energetique_annuel'],
             cout_total                = calculated_results['cout_total'],
-            # ASSIGNATION DES OBJETS EQUIPEMENT AUX CHAMPS FOREIGNKEY
             panneau_recommande        = calculated_results['panneau_recommande'],
             batterie_recommandee      = calculated_results['batterie_recommandee'],
-            regulateur_recommande     = calculated_results['regulateur_recommande'],
+            regulateur_recommande     = calculated_results['regulateur_recommandee'],
         )
 
         # 6) Sérialisation et réponse
         out_ser = DimensionnementSerializer(dimensionnement)
         return Response(out_ser.data, status=status.HTTP_201_CREATED)
-

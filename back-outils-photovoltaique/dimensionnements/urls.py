@@ -1,9 +1,11 @@
+
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import DimensionnementViewSet
-from django.urls import path, include
 
 router = DefaultRouter()
-router.register(r'', DimensionnementViewSet)
+# CORRECTION : Spécifier explicitement le basename
+router.register(r'', DimensionnementViewSet, basename='dimensionnement')
 
 urlpatterns = [
     path('', include(router.urls)),
