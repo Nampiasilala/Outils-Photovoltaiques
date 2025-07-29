@@ -97,7 +97,7 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             cout_total                = calculated_results['cout_total'],
             panneau_recommande        = calculated_results['panneau_recommande'],
             batterie_recommandee      = calculated_results['batterie_recommandee'],
-            regulateur_recommande     = calculated_results['regulateur_recommandee'],
+            regulateur_recommande     = calculated_results['regulateur_recommande'],
         )
 
         # 6) Sérialisation et réponse
