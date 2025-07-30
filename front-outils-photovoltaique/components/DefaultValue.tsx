@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Parameters {
   n_global: number;
@@ -78,7 +80,6 @@ export default function DefaultValue() {
     },
   };
 
-  // 🔄 Chargement des params
   const fetchParameters = async () => {
     setLoading(true);
     setError(null);
@@ -108,18 +109,19 @@ export default function DefaultValue() {
           h_solaire:         mine.h_solaire,
         });
         setParamId(mine.id);
+        
       } else {
         setParamId(null);
       }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Erreur inconnue');
+      toast.error("Erreur de chargement : " + err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // 💾 Sauvegarde POST/PUT
   const saveParameters = async () => {
     if (!user) {
       logout();
@@ -149,10 +151,12 @@ export default function DefaultValue() {
       const savedData = await res.json();
       setParamId(savedData.id);
       setSaved(true);
+      toast.success("Paramètres sauvegardés avec succès.");
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Erreur sauvegarde');
+      toast.error("Erreur lors de la sauvegarde : " + err.message);
     } finally {
       setLoading(false);
     }
@@ -171,7 +175,7 @@ export default function DefaultValue() {
   }
 
   if (!user) {
-    return null; // logout() redirige déjà
+    return null;
   }
 
   const formatValue = (key: ParameterKey, value: number) => {
@@ -183,7 +187,7 @@ export default function DefaultValue() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {error && (
-        <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded">
+        <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
           <AlertTriangle />
           <span>{error}</span>
         </div>
@@ -197,11 +201,11 @@ export default function DefaultValue() {
             return (
               <div
                 key={key}
-                className="bg-white border rounded-lg shadow p-4 flex flex-col"
+                className="bg-white border rounded-lg shadow p-4 flex flex-col text-sm"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">{info.name}</h3>
-                  <Info className="cursor-pointer" />
+                  <h3 className="font-semibold text-sm">{info.name}</h3>
+                  <Info className="cursor-pointer w-4 h-4" />
                 </div>
                 {isEditing ? (
                   <div className="flex items-center space-x-2">
@@ -215,12 +219,12 @@ export default function DefaultValue() {
                           [key]: Number(e.target.value),
                         }))
                       }
-                      className="border rounded px-2 py-1 w-24"
+                      className="border rounded px-2 py-1 w-24 text-sm"
                     />
-                    {info.unit && <span>{info.unit}</span>}
+                    {info.unit && <span className="text-sm">{info.unit}</span>}
                   </div>
                 ) : (
-                  <div className="text-2xl">{formatValue(key, value)}</div>
+                  <div className="text-xl">{formatValue(key, value)}</div>
                 )}
                 <div className="mt-auto pt-2 flex space-x-2">
                   {isEditing ? (
@@ -230,7 +234,7 @@ export default function DefaultValue() {
                           saveParameters();
                           setEditing(null);
                         }}
-                        className="bg-green-600 text-white px-3 py-1 rounded"
+                        className="bg-green-600 text-white px-3 py-1 rounded text-sm"
                       >
                         <Save size={16} />
                       </button>
@@ -239,7 +243,7 @@ export default function DefaultValue() {
                           fetchParameters();
                           setEditing(null);
                         }}
-                        className="bg-gray-500 text-white px-3 py-1 rounded"
+                        className="bg-gray-500 text-white px-3 py-1 rounded text-sm"
                       >
                         <XCircle size={16} />
                       </button>
@@ -250,7 +254,7 @@ export default function DefaultValue() {
                         setEditing(key);
                         setSaved(false);
                       }}
-                      className="bg-blue-600 text-white px-3 py-1 rounded"
+                      className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
                     >
                       <Edit size={16} />
                     </button>
@@ -263,7 +267,7 @@ export default function DefaultValue() {
       </div>
 
       {saved && (
-        <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded">
+        <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded text-sm">
           <CheckCircle />
           <span>Paramètres sauvegardés !</span>
         </div>

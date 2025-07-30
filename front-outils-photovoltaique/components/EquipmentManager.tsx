@@ -1,9 +1,8 @@
-// app/components/EquipmentManager.tsx
 'use client';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
-
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, Edit, Search, Filter, Zap, AlertCircle, Loader, XCircle } from 'lucide-react';
+import { Plus, Trash2, Save, Edit, Search, Filter, Zap, Loader, XCircle } from 'lucide-react';
+import DeleteAlert from './DeleteAlert';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'react-toastify';
 
@@ -47,7 +46,7 @@ export default function EquipmentManager() {
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
       setEquipments(await res.json());
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error("Erreur de chargement : " + err.message);
     } finally {
       setLoading(false);
     }
@@ -56,7 +55,7 @@ export default function EquipmentManager() {
   const addEquipment = async () => {
     setSaving(true);
     try {
-      const payload = { type_equipement:'Nouvel équipement', categorie:'Autres', puissance:0, tension:12, capacite:0, prix_unitaire:0 };
+      const payload = { type_equipement:'Panneau solaire', categorie:'Autres', puissance:0, tension:12, capacite:0, prix_unitaire:0 };
       const res = await fetchWithAuth(`${API}/equipements/`, {
         method: 'POST',
         headers: authHeader(),
@@ -67,9 +66,9 @@ export default function EquipmentManager() {
       const created = await res.json();
       setEquipments((e) => [...e, created]);
       setEditingId(created.id);
-      toast.success('Équipement créé');
+      toast.success('Équipement ajouté avec succès');
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error("Erreur lors de la création : " + err.message);
     } finally {
       setSaving(false);
     }
@@ -88,16 +87,16 @@ export default function EquipmentManager() {
       const updated = await res.json();
       setEquipments((e) => e.map(x => x.id===equip.id?updated:x));
       setEditingId(null);
-      toast.success('Équipement mis à jour');
+      toast.success('Équipement mis à jour avec succès');
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error("Erreur lors de la mise à jour : " + err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const deleteEquipment = async (id: number) => {
-    if (!confirm('Supprimer cet équipement ?')) return;
+    
     try {
       const res = await fetchWithAuth(`${API}/equipements/${id}/`, {
         method: 'DELETE',
@@ -106,9 +105,9 @@ export default function EquipmentManager() {
       if (res.status === 401) { logout(); return; }
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
       setEquipments((e) => e.filter(x => x.id !== id));
-      toast.success('Équipement supprimé');
+      toast.success('Équipement supprimé avec succès');
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error("Erreur lors de la suppression : " + err.message);
     }
   };
 
@@ -126,21 +125,21 @@ export default function EquipmentManager() {
   }
 
   return (
-    <div className="p-4">
-      <div className="flex mb-4 space-x-2">
+    <div className="px-4 py-6 max-w-6xl mx-auto overflow-x-auto text-sm">
+      <div className="flex flex-wrap gap-2 mb-4">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
-            className="pl-8 border rounded"
+            className="pl-7 pr-2 py-1 border rounded text-sm"
             placeholder="Rechercher..."
             value={searchTerm}
             onChange={e=>setSearchTerm(e.target.value)}
           />
         </div>
         <div className="relative">
-          <Filter className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Filter className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <select
-            className="pl-8 border rounded"
+            className="pl-7 pr-2 py-1 border rounded text-sm"
             value={filterCategory}
             onChange={e=>setFilterCategory(e.target.value)}
           >
@@ -156,29 +155,29 @@ export default function EquipmentManager() {
         <button
           onClick={addEquipment}
           disabled={saving}
-          className="ml-auto bg-blue-600 text-white px-4 py-2 rounded flex items-center"
+          className="ml-auto bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1 text-sm"
         >
           {saving ? <Loader className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4" />}
           <span>Ajouter</span>
         </button>
       </div>
 
-      <table className="w-full table-auto text-sm">
-        <thead className="bg-gray-50">
+      <table className="w-full table-auto text-sm border rounded-md overflow-hidden shadow">
+        <thead className="bg-gray-100 text-gray-700 uppercase text-xs tracking-wider">
           <tr>
-            <th className="px-3 py-2">Type</th>
-            <th className="px-3 py-2">Catégorie</th>
-            <th className="px-3 py-2">W</th>
-            <th className="px-3 py-2">V</th>
-            <th className="px-3 py-2">Cap.</th>
-            <th className="px-3 py-2">Prix</th>
-            <th className="px-3 py-2">Actions</th>
+            <th className="px-2 py-1">Type</th>
+            <th className="px-2 py-1">Catégorie</th>
+            <th className="px-2 py-1">Puissance \(W\)</th>
+            <th className="px-2 py-1">Tension \(V\)</th>
+            <th className="px-2 py-1">Capacité</th>
+            <th className="px-2 py-1">Prix \(Ar\)</th>
+            <th className="px-2 py-1">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-white divide-y divide-gray-200">
           {filtered.map(equip => (
             <tr key={equip.id} className="border-b">
-              <td className="px-3 py-2">
+              <td className="px-2 py-1">
                 {editingId===equip.id
                   ? <input
                       value={equip.type_equipement}
@@ -188,7 +187,7 @@ export default function EquipmentManager() {
                   : equip.type_equipement
                 }
               </td>
-              <td className="px-3 py-2">
+              <td className="px-2 py-1">
                 {editingId===equip.id
                   ? <select
                       value={equip.categorie}
@@ -205,7 +204,7 @@ export default function EquipmentManager() {
                   : equip.categorie
                 }
               </td>
-              <td className="px-3 py-2">
+              <td className="px-2 py-1">
                 {editingId===equip.id
                   ? <input
                       type="number"
@@ -216,7 +215,7 @@ export default function EquipmentManager() {
                   : equip.puissance
                 }
               </td>
-              <td className="px-3 py-2">
+              <td className="px-2 py-1">
                 {editingId===equip.id
                   ? <input
                       type="number"
@@ -227,7 +226,7 @@ export default function EquipmentManager() {
                   : equip.tension
                 }
               </td>
-              <td className="px-3 py-2">
+              <td className="px-2 py-1">
                 {editingId===equip.id
                   ? <input
                       type="number"
@@ -238,7 +237,7 @@ export default function EquipmentManager() {
                   : equip.capacite
                 }
               </td>
-              <td className="px-3 py-2">
+              <td className="px-2 py-1">
                 {editingId===equip.id
                   ? <input
                       type="number"
@@ -249,15 +248,15 @@ export default function EquipmentManager() {
                   : equip.prix_unitaire.toLocaleString()
                 }
               </td>
-              <td className="px-3 py-2 space-x-2">
+              <td className="px-2 py-1 space-x-1">
                 {editingId===equip.id
                   ? <>
-                      <button onClick={()=>saveEquipment(equip)} disabled={saving} className="text-green-600"><Save /></button>
-                      <button onClick={()=>setEditingId(null)} className="text-red-600"><XCircle /></button>
+                      <button onClick={()=>saveEquipment(equip)} disabled={saving} className="text-green-600"><Save size={14} /></button>
+                      <button onClick={()=>setEditingId(null)} className="text-red-600"><XCircle size={14} /></button>
                     </>
                   : <>
-                      <button onClick={()=>setEditingId(equip.id)} className="text-blue-600"><Edit /></button>
-                      <button onClick={()=>deleteEquipment(equip.id)} className="text-red-600"><Trash2 /></button>
+                      <button onClick={()=>setEditingId(equip.id)} className="text-blue-600"><Edit size={14} /></button>
+                      <DeleteAlert label="Supprimer cet équipement ?" onConfirm={() => deleteEquipment(equip.id)} />
                     </>
                 }
               </td>
@@ -266,9 +265,9 @@ export default function EquipmentManager() {
         </tbody>
       </table>
 
-      {filtered.length===0 && (
+      {filtered.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          <Zap className="mx-auto mb-2 w-8 h-8" />
+          <Zap className="mx-auto mb-2 w-6 h-6" />
           <p>Aucun équipement à afficher</p>
         </div>
       )}
