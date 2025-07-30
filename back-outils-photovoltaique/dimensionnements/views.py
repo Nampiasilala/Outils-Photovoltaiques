@@ -16,7 +16,7 @@ from equipements.models import Equipement
 logger = logging.getLogger(__name__)
 
 class DimensionnementViewSet(viewsets.ModelViewSet):
-    queryset = Dimensionnement.objects.all()
+    # queryset = Dimensionnement.objects.all()
     serializer_class = DimensionnementSerializer
     # permission_classes = [IsAuthenticated] # REMETTEZ CETTE LIGNE POUR LA PRODUCTION
 

@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from .models import Dimensionnement
 from equipements.models import Equipement
-from donnees_entree.models import DonneesEntree  # Assure-toi que ce modèle existe bien
+from donnees_entree.models import DonneesEntree
 from decimal import Decimal
 
-# Serializer pour valider les données d'entrée de la requête de calcul
+# Serializer pour valider les données d'entrée
 class CalculationInputSerializer(serializers.Serializer):
     E_jour      = serializers.FloatField(min_value=0.1)
     P_max       = serializers.FloatField(min_value=0.1)
@@ -36,7 +36,7 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
     def get_prix_unitaire(self, obj):
         return float(obj.prix_unitaire) if obj.prix_unitaire is not None else None
 
-# ✅ Nouveau : serializer pour afficher les détails des données d'entrée
+# Serializer pour afficher les détails des données d'entrée
 class DonneesEntreeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DonneesEntree
@@ -46,7 +46,7 @@ class DonneesEntreeSerializer(serializers.ModelSerializer):
 class DimensionnementSerializer(serializers.ModelSerializer):
     equipements_recommandes = serializers.SerializerMethodField()
     date_calcul = serializers.SerializerMethodField()
-    entree_details = DonneesEntreeSerializer(source='entree', read_only=True)  # ✅ Ajout ici
+    entree_details = DonneesEntreeSerializer(source='entree', read_only=True)
 
     class Meta:
         model = Dimensionnement
@@ -59,15 +59,13 @@ class DimensionnementSerializer(serializers.ModelSerializer):
             "nombre_batteries",
             "bilan_energetique_annuel",
             "cout_total",
-            "entree_details",  # ✅ Ce champ remplace 'entree' pour exposer les vraies données
+            "entree_details",
             "parametre",
             "equipements_recommandes",
         ]
 
     def get_date_calcul(self, obj):
-        if hasattr(obj.date_calcul, 'date'):
-            return obj.date_calcul.date().isoformat()
-        return obj.date_calcul
+        return obj.date_calcul.isoformat() if obj.date_calcul else None
 
     def get_equipements_recommandes(self, obj):
         return {

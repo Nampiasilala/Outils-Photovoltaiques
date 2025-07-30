@@ -7,8 +7,7 @@ from django.conf import settings
 class Dimensionnement(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-
-    date_calcul = models.DateField(auto_now_add=True)
+    date_calcul = models.DateTimeField(auto_now_add=True)  # <-- important
     puissance_totale = models.FloatField()
     capacite_batterie = models.FloatField()
     nombre_panneaux = models.IntegerField()
