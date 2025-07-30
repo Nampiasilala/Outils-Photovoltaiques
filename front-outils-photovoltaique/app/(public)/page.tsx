@@ -26,11 +26,11 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center lg:text-left lg:flex lg:items-center lg:justify-between">
             <div className="lg:w-1/2">
-              <h1 className="text-4xl lg:text-6xl font-bold tracking-tight bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
+              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold tracking-tight bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
                 Outil de Dimensionnement 
                 <span className="block text-cyan-300">Photovoltaïque</span>
               </h1>
-              <p className="mt-6 text-lg lg:text-xl text-blue-100 leading-relaxed">
+              <p className="mt-6 text-base sm:text-lg lg:text-xl text-blue-100 leading-relaxed">
                 Planifiez votre installation solaire autonome avec notre outil simple et précis.
                 Connectez-vous ou inscrivez-vous pour commencer votre transition énergétique.
               </p>
@@ -38,8 +38,8 @@ export default function Home() {
               <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link
                   href="/login"
-                  className="group inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 
-                           rounded-2xl text-lg font-semibold hover:bg-blue-50 transition-all duration-300
+                  className="group inline-flex items-center justify-center px-5 py-2.5 sm:px-6 sm:py-3 bg-white text-blue-600 
+                           rounded-2xl text-base sm:text-lg font-semibold hover:bg-blue-50 transition-all duration-300
                            shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
                 >
                   <svg className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" 
@@ -51,8 +51,8 @@ export default function Home() {
                 </Link>
                 <Link
                   href="/register"
-                  className="group inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 
-                           text-white rounded-2xl text-lg font-semibold hover:from-cyan-600 hover:to-blue-600 
+                  className="group inline-flex items-center justify-center px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-cyan-500 to-blue-500 
+                           text-white rounded-2xl text-base sm:text-lg font-semibold hover:from-cyan-600 hover:to-blue-600 
                            transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95
                            border border-cyan-400/30"
                 >
@@ -126,11 +126,11 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Features Section */}
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-800 mb-6">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-6">
               Pourquoi utiliser notre 
               <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"> outil ?</span>
             </h2>
-            <p className="text-gray-600 text-lg max-w-3xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
               Notre application vous guide pour dimensionner une installation photovoltaïque
               autonome, en évitant les erreurs de surdimensionnement ou sous-dimensionnement.
               Accessible à tous, elle fournit des résultats fiables pour votre projet solaire.
@@ -139,64 +139,64 @@ export default function Home() {
 
           {/* Feature Cards */}
           <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-xl 
+            <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-xl 
                           transition-all duration-300 hover:scale-105 border border-blue-100/50">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl 
-                            flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl 
+                            flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300">
+                <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                         d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Calcul Précis</h3>
-              <p className="text-gray-600">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Calcul Précis</h3>
+              <p className="text-sm sm:text-base text-gray-600">
                 Algorithmes avancés pour un dimensionnement optimal de votre installation solaire.
               </p>
             </div>
 
-            <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-xl 
+            <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-xl 
                           transition-all duration-300 hover:scale-105 border border-blue-100/50">
-              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-2xl 
-                            flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-2xl 
+                            flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300">
+                <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                         d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Simple d'Utilisation</h3>
-              <p className="text-gray-600">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Simple d'Utilisation</h3>
+              <p className="text-sm sm:text-base text-gray-600">
                 Interface intuitive accessible à tous, aucune expertise technique requise.
               </p>
             </div>
 
-            <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-xl 
+            <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-xl 
                           transition-all duration-300 hover:scale-105 border border-blue-100/50">
-              <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl 
-                            flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl 
+                            flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300">
+                <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Résultats Fiables</h3>
-              <p className="text-gray-600">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Résultats Fiables</h3>
+              <p className="text-sm sm:text-base text-gray-600">
                 Basé sur des données météorologiques réelles et des standards de l'industrie.
               </p>
             </div>
           </div>
 
           {/* Call to Action */}
-          <div className="text-center bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-12 text-white">
-            <h3 className="text-2xl lg:text-3xl font-bold mb-4">
+          <div className="text-center bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-8 sm:p-12 text-white">
+            <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4">
               Prêt à commencer votre projet solaire ?
             </h3>
-            <p className="text-blue-100 mb-8 text-lg">
+            <p className="text-sm sm:text-base text-blue-100 mb-6 sm:mb-8">
               Rejoignez des milliers d'utilisateurs qui ont fait confiance à notre outil.
             </p>
             <Link
               href="/register"
-              className="inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 
-                       rounded-2xl text-lg font-semibold hover:bg-blue-50 transition-all duration-300
+              className="inline-flex items-center justify-center px-5 py-2.5 sm:px-6 sm:py-3 bg-white text-blue-600 
+                       rounded-2xl text-base sm:text-lg font-semibold hover:bg-blue-50 transition-all duration-300
                        shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

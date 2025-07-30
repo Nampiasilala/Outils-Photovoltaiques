@@ -13,8 +13,12 @@ import {
   UserPlus, 
   AlertCircle,
   Check,
-  X
+  X,
+  CheckCircle,
+  Home as HomeIcon
 } from "lucide-react";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Register() {
   const router = useRouter();
@@ -30,13 +34,12 @@ export default function Register() {
     confirmPassword: ""
   });
 
-  // Validation du mot de passe
   const passwordValidation = {
     length: formData.password.length >= 8,
     uppercase: /[A-Z]/.test(formData.password),
     lowercase: /[a-z]/.test(formData.password),
     number: /\d/.test(formData.password),
-    special: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password)
+    special: /[!@#$%^&*(),.?\":{}|<>]/.test(formData.password)
   };
 
   const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== "";
@@ -54,39 +57,56 @@ export default function Register() {
     setError(null);
 
     try {
-      // Validation côté client
-      if (!formData.name.trim()) {
-        setError("Le nom est requis.");
+      if (!formData.name.trim() || !formData.email.trim() || !formData.password || formData.password !== formData.confirmPassword || !Object.values(passwordValidation).every(Boolean)) {
+        toast.error(
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">
+              Veuillez remplir tous les champs correctement.
+            </span>
+          </div>,
+          {
+            className:
+              "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm",
+            icon: false,
+          }
+        );
         return;
       }
 
-      if (!formData.email.trim()) {
-        setError("L'email est requis.");
-        return;
-      }
-
-      if (!formData.password) {
-        setError("Le mot de passe est requis.");
-        return;
-      }
-
-      if (formData.password !== formData.confirmPassword) {
-        setError("Les mots de passe ne correspondent pas.");
-        return;
-      }
-
-      if (!Object.values(passwordValidation).every(Boolean)) {
-        setError("Veuillez respecter tous les critères de sécurité du mot de passe.");
-        return;
-      }
-
-      // Tentative d'inscription
       await register(formData.name.trim(), formData.email.trim(), formData.password);
-      router.push("/calculate");
-      
+
+      toast.success(
+        <div className="flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+          <span className="text-sm text-green-700">
+            Compte créé avec succès !
+          </span>
+        </div>,
+        {
+          className:
+            "bg-green-50 border border-green-200 rounded-xl shadow-md p-4 backdrop-blur-sm",
+          icon: false,
+        }
+      );
+
+      setTimeout(() => {
+        router.push("/calculate");
+      }, 600);
     } catch (error: any) {
-      console.error("Erreur d'inscription:", error);
-      setError(error?.message || "Une erreur est survenue lors de l'inscription. Veuillez réessayer.");
+      toast.error(
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <span className="text-sm text-red-700">
+            {error?.message || "Une erreur est survenue lors de l'inscription."}
+          </span>
+        </div>,
+        {
+          className:
+            "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm",
+          icon: false,
+        }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -102,29 +122,31 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 relative overflow-hidden">
-      <main className="relative z-10 pt-10 flex items-center justify-center min-h-[calc(100vh-4rem)] py-8">
-        <div className="w-full max-w-xl px-6">
-          {/* Carte principale avec effet glassmorphism */}
-          <div className="bg-white/80 backdrop-blur-xl shadow-2xl rounded-2xl p-8 border border-white/20 transform hover:scale-[1.01] transition-all duration-300">
-            {/* En-tête avec icône */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-                <UserPlus className="w-8 h-8 text-white" />
+      {/* Bouton de retour à l'accueil en haut à gauche */}
+      <div className="absolute top-4 left-4 z-20">
+        <Link 
+          href="/" 
+          className="inline-flex items-center px-4 py-2 bg-white/70 backdrop-blur-md text-gray-800 rounded-full 
+                     shadow-md hover:bg-white transition-all duration-200 text-sm"
+        >
+          <HomeIcon className="w-4 h-4 mr-2" />
+          Accueil
+        </Link>
+      </div>
+
+      <main className="relative z-10 pt-10 flex items-center justify-center min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6">
+        <div className="w-full max-w-md">
+          <div className="bg-white/80 backdrop-blur-xl shadow-2xl rounded-2xl p-6 sm:p-8 border border-white/20 transform hover:scale-[1.01] transition-all duration-300">
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-3 sm:mb-4 shadow-lg">
+                <UserPlus className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Inscription
               </h2>
             </div>
 
-            {/* Message d'erreur amélioré */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 text-sm">
               {/* Nom et Email sur la même ligne */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -218,7 +240,9 @@ export default function Register() {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       {showConfirmPassword ? (
@@ -234,41 +258,77 @@ export default function Register() {
               {/* Indicateurs de validation du mot de passe */}
               {formData.password && (
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <p className="text-sm font-semibold text-gray-700 mb-3">Critères de sécurité :</p>
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    Critères de sécurité :
+                  </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <div className="flex items-center gap-2">
                       <ValidationIcon isValid={passwordValidation.length} />
-                      <span className={passwordValidation.length ? "text-emerald-600" : "text-gray-500"}>
+                      <span
+                        className={
+                          passwordValidation.length
+                            ? "text-emerald-600"
+                            : "text-gray-500"
+                        }
+                      >
                         8 caractères minimum
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <ValidationIcon isValid={passwordValidation.uppercase} />
-                      <span className={passwordValidation.uppercase ? "text-emerald-600" : "text-gray-500"}>
+                      <span
+                        className={
+                          passwordValidation.uppercase
+                            ? "text-emerald-600"
+                            : "text-gray-500"
+                        }
+                      >
                         Une majuscule
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <ValidationIcon isValid={passwordValidation.lowercase} />
-                      <span className={passwordValidation.lowercase ? "text-emerald-600" : "text-gray-500"}>
+                      <span
+                        className={
+                          passwordValidation.lowercase
+                            ? "text-emerald-600"
+                            : "text-gray-500"
+                        }
+                      >
                         Une minuscule
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <ValidationIcon isValid={passwordValidation.number} />
-                      <span className={passwordValidation.number ? "text-emerald-600" : "text-gray-500"}>
+                      <span
+                        className={
+                          passwordValidation.number
+                            ? "text-emerald-600"
+                            : "text-gray-500"
+                        }
+                      >
                         Un chiffre
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <ValidationIcon isValid={passwordValidation.special} />
-                      <span className={passwordValidation.special ? "text-emerald-600" : "text-gray-500"}>
+                      <span
+                        className={
+                          passwordValidation.special
+                            ? "text-emerald-600"
+                            : "text-gray-500"
+                        }
+                      >
                         Un caractère spécial
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <ValidationIcon isValid={passwordsMatch} />
-                      <span className={passwordsMatch ? "text-emerald-600" : "text-gray-500"}>
+                      <span
+                        className={
+                          passwordsMatch ? "text-emerald-600" : "text-gray-500"
+                        }
+                      >
                         Mots de passe identiques
                       </span>
                     </div>
@@ -296,8 +356,7 @@ export default function Register() {
               </button>
             </form>
 
-            {/* Lien de connexion */}
-            <div className="mt-8 text-center text-sm">
+            <div className="mt-6 sm:mt-8 text-center text-sm">
               <p className="text-gray-600">
                 Déjà un compte ?{" "}
                 <Link
@@ -310,7 +369,6 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Indicateur de sécurité */}
           <div className="mt-6 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
