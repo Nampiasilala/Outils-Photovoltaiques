@@ -1,9 +1,8 @@
-# dimensionnements/serializers.py
-
 from rest_framework import serializers
 from .models import Dimensionnement
 from equipements.models import Equipement
-from decimal import Decimal # Importer Decimal si vous l'utilisez pour la conversion
+from donnees_entree.models import DonneesEntree  # Assure-toi que ce modèle existe bien
+from decimal import Decimal
 
 # Serializer pour valider les données d'entrée de la requête de calcul
 class CalculationInputSerializer(serializers.Serializer):
@@ -14,15 +13,8 @@ class CalculationInputSerializer(serializers.Serializer):
     V_batterie  = serializers.ChoiceField(choices=[12, 24, 48])
     localisation = serializers.CharField(max_length=255)
 
-# Serializer pour afficher les détails d'un équipement (panneau, batterie, régulateur)
+# Serializer pour afficher les détails d'un équipement
 class EquipementDetailSerializer(serializers.ModelSerializer):
-    # Convertir les champs DecimalField en float pour la sortie JSON
-    # Utilisez SerializerMethodField pour les champs qui peuvent être null
-    # ou si vous voulez un contrôle plus fin sur la conversion.
-    # Sinon, un simple FloatField(source='votre_champ') peut suffire.
-
-    # Exemple pour puissance, capacite, tension, prix_unitaire
-    # Si ces champs peuvent être null dans la base de données, gérons-les avec SerializerMethodField
     puissance = serializers.SerializerMethodField()
     capacite = serializers.SerializerMethodField()
     tension = serializers.SerializerMethodField()
@@ -31,10 +23,7 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Equipement
         fields = ['id', 'modele', 'puissance', 'capacite', 'tension', 'prix_unitaire']
-        # Assurez-vous que 'modele' existe sur votre modèle Equipement.
-        # Sinon, utilisez 'nom' ou 'type_equipement' selon votre modèle et ajustez le frontend.
 
-    # Méthodes pour convertir les DecimalField en float, gérant les valeurs null
     def get_puissance(self, obj):
         return float(obj.puissance) if obj.puissance is not None else None
 
@@ -47,11 +36,17 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
     def get_prix_unitaire(self, obj):
         return float(obj.prix_unitaire) if obj.prix_unitaire is not None else None
 
+# ✅ Nouveau : serializer pour afficher les détails des données d'entrée
+class DonneesEntreeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DonneesEntree
+        fields = ['e_jour', 'p_max', 'n_autonomie', 'v_batterie', 'localisation']
 
-# Serializer principal pour le modèle Dimensionnement (inchangé, car déjà correct)
+# Serializer principal pour le modèle Dimensionnement
 class DimensionnementSerializer(serializers.ModelSerializer):
     equipements_recommandes = serializers.SerializerMethodField()
     date_calcul = serializers.SerializerMethodField()
+    entree_details = DonneesEntreeSerializer(source='entree', read_only=True)  # ✅ Ajout ici
 
     class Meta:
         model = Dimensionnement
@@ -64,21 +59,19 @@ class DimensionnementSerializer(serializers.ModelSerializer):
             "nombre_batteries",
             "bilan_energetique_annuel",
             "cout_total",
-            "entree",
+            "entree_details",  # ✅ Ce champ remplace 'entree' pour exposer les vraies données
             "parametre",
             "equipements_recommandes",
         ]
 
     def get_date_calcul(self, obj):
-        # Corrige le problème de datetime vs date
         if hasattr(obj.date_calcul, 'date'):
             return obj.date_calcul.date().isoformat()
         return obj.date_calcul
 
     def get_equipements_recommandes(self, obj):
-        data = {
+        return {
             'panneau': EquipementDetailSerializer(obj.panneau_recommande).data if obj.panneau_recommande else None,
             'batterie': EquipementDetailSerializer(obj.batterie_recommandee).data if obj.batterie_recommandee else None,
             'regulateur': EquipementDetailSerializer(obj.regulateur_recommande).data if obj.regulateur_recommande else None,
         }
-        return data
