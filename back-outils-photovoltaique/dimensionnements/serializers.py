@@ -51,6 +51,7 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
 # Serializer principal pour le modèle Dimensionnement (inchangé, car déjà correct)
 class DimensionnementSerializer(serializers.ModelSerializer):
     equipements_recommandes = serializers.SerializerMethodField()
+    date_calcul = serializers.SerializerMethodField()
 
     class Meta:
         model = Dimensionnement
@@ -68,21 +69,16 @@ class DimensionnementSerializer(serializers.ModelSerializer):
             "equipements_recommandes",
         ]
 
+    def get_date_calcul(self, obj):
+        # Corrige le problème de datetime vs date
+        if hasattr(obj.date_calcul, 'date'):
+            return obj.date_calcul.date().isoformat()
+        return obj.date_calcul
+
     def get_equipements_recommandes(self, obj):
-        data = {}
-        if obj.panneau_recommande:
-            data['panneau'] = EquipementDetailSerializer(obj.panneau_recommande).data
-        else:
-            data['panneau'] = None
-
-        if obj.batterie_recommandee:
-            data['batterie'] = EquipementDetailSerializer(obj.batterie_recommandee).data
-        else:
-            data['batterie'] = None
-
-        if obj.regulateur_recommande:
-            data['regulateur'] = EquipementDetailSerializer(obj.regulateur_recommande).data
-        else:
-            data['regulateur'] = None
-            
+        data = {
+            'panneau': EquipementDetailSerializer(obj.panneau_recommande).data if obj.panneau_recommande else None,
+            'batterie': EquipementDetailSerializer(obj.batterie_recommandee).data if obj.batterie_recommandee else None,
+            'regulateur': EquipementDetailSerializer(obj.regulateur_recommande).data if obj.regulateur_recommande else None,
+        }
         return data

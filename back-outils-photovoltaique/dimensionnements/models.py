@@ -2,8 +2,12 @@ from django.db import models
 from donnees_entree.models import DonneesEntree
 from parametres.models import ParametreSysteme
 from equipements.models import Equipement # <-- N'oubliez pas d'importer le modèle Equipement
+from django.conf import settings
 
 class Dimensionnement(models.Model):
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
     date_calcul = models.DateField(auto_now_add=True)
     puissance_totale = models.FloatField()
     capacite_batterie = models.FloatField()
