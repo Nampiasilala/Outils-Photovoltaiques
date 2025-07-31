@@ -71,6 +71,7 @@ interface ResultData {
 }
 
 export default function History() {
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [history, setHistory] = useState<ResultData[]>([]);
@@ -103,7 +104,7 @@ export default function History() {
         }
 
         const data: ResultData[] = await res.json();
-        
+
         const parsed = data.map((item) => ({
           ...item,
           _timestamp: item.date_calcul
@@ -134,6 +135,7 @@ export default function History() {
   }, [user, authLoading]);
 
   const handleDelete = async (id: number) => {
+    setDeletingId(id);
     try {
       const res = await fetchWithAuth(
         `/dimensionnements/${id}/`,
@@ -151,11 +153,13 @@ export default function History() {
     } catch (err: any) {
       console.error("Échec de la suppression :", err);
       toast.error(err.message || "Erreur lors de la suppression du calcul.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const toggleExpanded = (id: number) => {
-    setExpandedItems(prev => {
+    setExpandedItems((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
@@ -167,7 +171,7 @@ export default function History() {
   };
 
   const toggleInputs = (id: number) => {
-    setShowInputs(prev => {
+    setShowInputs((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
@@ -179,7 +183,7 @@ export default function History() {
   };
 
   const toggleEquipments = (id: number) => {
-    setShowEquipments(prev => {
+    setShowEquipments((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
@@ -191,7 +195,7 @@ export default function History() {
   };
 
   const expandAll = () => {
-    const allIds = new Set(history.map(calc => calc.id));
+    const allIds = new Set(history.map((calc) => calc.id));
     setExpandedItems(allIds);
     setShowInputs(allIds);
     setShowEquipments(allIds);
@@ -208,7 +212,9 @@ export default function History() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-700 font-medium">Chargement de l'authentification...</p>
+          <p className="text-gray-700 font-medium">
+            Chargement de l'authentification...
+          </p>
         </div>
       </div>
     );
@@ -226,7 +232,7 @@ export default function History() {
                   <HistoryIcon className="w-8 h-8" />
                   Historique des calculs
                 </h2>
-                
+
                 {history.length > 0 && (
                   <div className="flex gap-2">
                     <button
@@ -269,8 +275,13 @@ export default function History() {
                   <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Info className="w-12 h-12 text-gray-400" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">Aucun calcul enregistré</h3>
-                  <p className="text-gray-500 mb-6">Effectuez votre premier calcul pour commencer à voir l'historique ici.</p>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    Aucun calcul enregistré
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Effectuez votre premier calcul pour commencer à voir
+                    l'historique ici.
+                  </p>
                   <button
                     onClick={() => router.push("/calculate")}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl"
@@ -287,7 +298,7 @@ export default function History() {
                       className="border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-200"
                     >
                       {/* Header de l'accordéon */}
-                      <div 
+                      <div
                         className="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
                         onClick={() => toggleExpanded(calc.id)}
                       >
@@ -301,19 +312,23 @@ export default function History() {
                               )}
                               <div>
                                 <h3 className="text-lg font-semibold text-gray-800">
-                                  Calcul du {new Date(calc.date_calcul).toLocaleDateString('fr-FR', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
+                                  Calcul du{" "}
+                                  {new Date(
+                                    calc.date_calcul
+                                  ).toLocaleDateString("fr-FR", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
                                   })}
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">
-                                  {calc.entree_details.localisation} • {calc.cout_total}€
+                                  {calc.entree_details.localisation} •{" "}
+                                  {calc.cout_total}€
                                 </p>
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-3">
                             {/* Indicateurs rapides */}
                             <div className="hidden sm:flex items-center gap-4 text-sm text-gray-600">
@@ -330,15 +345,14 @@ export default function History() {
                                 <span>{calc.cout_total}€</span>
                               </div>
                             </div>
-                            
+
                             <div onClick={(e) => e.stopPropagation()}>
                               <DeleteAlert
-                                label={`Supprimer le calcul du ${new Date(calc.date_calcul).toLocaleDateString('fr-FR', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })} ?`}
+                                label={`Supprimer le calcul du ${new Date(
+                                  calc.date_calcul
+                                ).toLocaleDateString("fr-FR")} ?`}
                                 onConfirm={() => handleDelete(calc.id)}
+                                isLoading={deletingId === calc.id}
                               />
                             </div>
                           </div>
@@ -357,33 +371,57 @@ export default function History() {
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                               <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center">
                                 <PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-gray-600">Puissance totale</p>
-                                <p className="text-lg font-bold text-gray-800">{calc.puissance_totale} W</p>
+                                <p className="text-sm font-medium text-gray-600">
+                                  Puissance totale
+                                </p>
+                                <p className="text-lg font-bold text-gray-800">
+                                  {calc.puissance_totale} W
+                                </p>
                               </div>
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
                                 <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-gray-600">Capacité batterie</p>
-                                <p className="text-lg font-bold text-gray-800">{calc.capacite_batterie} Wh</p>
+                                <p className="text-sm font-medium text-gray-600">
+                                  Capacité batterie
+                                </p>
+                                <p className="text-lg font-bold text-gray-800">
+                                  {calc.capacite_batterie} Wh
+                                </p>
                               </div>
                               <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
                                 <Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-gray-600">Panneaux</p>
-                                <p className="text-lg font-bold text-gray-800">{calc.nombre_panneaux}</p>
+                                <p className="text-sm font-medium text-gray-600">
+                                  Panneaux
+                                </p>
+                                <p className="text-lg font-bold text-gray-800">
+                                  {calc.nombre_panneaux}
+                                </p>
                               </div>
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
                                 <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-gray-600">Batteries</p>
-                                <p className="text-lg font-bold text-gray-800">{calc.nombre_batteries}</p>
+                                <p className="text-sm font-medium text-gray-600">
+                                  Batteries
+                                </p>
+                                <p className="text-lg font-bold text-gray-800">
+                                  {calc.nombre_batteries}
+                                </p>
                               </div>
                               <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center">
                                 <ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-gray-600">Bilan annuel</p>
-                                <p className="text-lg font-bold text-gray-800">{calc.bilan_energetique_annuel} Wh</p>
+                                <p className="text-sm font-medium text-gray-600">
+                                  Bilan annuel
+                                </p>
+                                <p className="text-lg font-bold text-gray-800">
+                                  {calc.bilan_energetique_annuel} Wh
+                                </p>
                               </div>
                               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg text-center">
                                 <DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-gray-600">Coût total</p>
-                                <p className="text-lg font-bold text-gray-800">{calc.cout_total} €</p>
+                                <p className="text-sm font-medium text-gray-600">
+                                  Coût total
+                                </p>
+                                <p className="text-lg font-bold text-gray-800">
+                                  {calc.cout_total} €
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -405,7 +443,7 @@ export default function History() {
                                   <ChevronRight className="w-5 h-5 text-gray-500" />
                                 )}
                               </button>
-                              
+
                               {showInputs.has(calc.id) && (
                                 <div className="mt-4 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -419,7 +457,9 @@ export default function History() {
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
                                           {calc.entree_details.e_jour}{" "}
-                                          <span className="text-sm font-normal text-gray-500">Wh</span>
+                                          <span className="text-sm font-normal text-gray-500">
+                                            Wh
+                                          </span>
                                         </p>
                                       </div>
                                     </div>
@@ -434,7 +474,9 @@ export default function History() {
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
                                           {calc.entree_details.p_max}{" "}
-                                          <span className="text-sm font-normal text-gray-500">W</span>
+                                          <span className="text-sm font-normal text-gray-500">
+                                            W
+                                          </span>
                                         </p>
                                       </div>
                                     </div>
@@ -449,7 +491,9 @@ export default function History() {
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
                                           {calc.entree_details.n_autonomie}{" "}
-                                          <span className="text-sm font-normal text-gray-500">jours</span>
+                                          <span className="text-sm font-normal text-gray-500">
+                                            jours
+                                          </span>
                                         </p>
                                       </div>
                                     </div>
@@ -464,7 +508,9 @@ export default function History() {
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
                                           {calc.entree_details.v_batterie}{" "}
-                                          <span className="text-sm font-normal text-gray-500">V</span>
+                                          <span className="text-sm font-normal text-gray-500">
+                                            V
+                                          </span>
                                         </p>
                                       </div>
                                     </div>
@@ -505,49 +551,157 @@ export default function History() {
                                   <ChevronRight className="w-5 h-5 text-gray-500" />
                                 )}
                               </button>
-                              
+
                               {showEquipments.has(calc.id) && (
                                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                                   {calc.equipements_recommandes.panneau && (
                                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <Sun className="w-5 h-5 text-blue-600" />
-                                        <p className="font-semibold text-blue-700">Panneau solaire</p>
+                                        <p className="font-semibold text-blue-700">
+                                          Panneau solaire
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.panneau.modele}</p>
-                                        <p><span className="font-medium">Puissance:</span> {calc.equipements_recommandes.panneau.puissance} W</p>
-                                        <p><span className="font-medium">Tension:</span> {calc.equipements_recommandes.panneau.tension} V</p>
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-blue-700">{calc.equipements_recommandes.panneau.prix_unitaire} €</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes.panneau
+                                              .modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Puissance:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes.panneau
+                                              .puissance
+                                          }{" "}
+                                          W
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Tension:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes.panneau
+                                              .tension
+                                          }{" "}
+                                          V
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-blue-700">
+                                            {
+                                              calc.equipements_recommandes
+                                                .panneau.prix_unitaire
+                                            }{" "}
+                                            €
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}
-                                  
+
                                   {calc.equipements_recommandes.batterie && (
                                     <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <BatteryCharging className="w-5 h-5 text-green-600" />
-                                        <p className="font-semibold text-green-700">Batterie</p>
+                                        <p className="font-semibold text-green-700">
+                                          Batterie
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.batterie.modele}</p>
-                                        <p><span className="font-medium">Capacité:</span> {calc.equipements_recommandes.batterie.capacite} Ah</p>
-                                        <p><span className="font-medium">Tension:</span> {calc.equipements_recommandes.batterie.tension} V</p>
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-green-700">{calc.equipements_recommandes.batterie.prix_unitaire} €</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .batterie.modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Capacité:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .batterie.capacite
+                                          }{" "}
+                                          Ah
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Tension:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .batterie.tension
+                                          }{" "}
+                                          V
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-green-700">
+                                            {
+                                              calc.equipements_recommandes
+                                                .batterie.prix_unitaire
+                                            }{" "}
+                                            €
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}
-                                  
+
                                   {calc.equipements_recommandes.regulateur && (
                                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <Settings className="w-5 h-5 text-purple-600" />
-                                        <p className="font-semibold text-purple-700">Régulateur</p>
+                                        <p className="font-semibold text-purple-700">
+                                          Régulateur
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.regulateur.modele}</p>
-                                        <p><span className="font-medium">Tension:</span> {calc.equipements_recommandes.regulateur.tension} V</p>
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-purple-700">{calc.equipements_recommandes.regulateur.prix_unitaire} €</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .regulateur.modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Tension:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .regulateur.tension
+                                          }{" "}
+                                          V
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-purple-700">
+                                            {
+                                              calc.equipements_recommandes
+                                                .regulateur.prix_unitaire
+                                            }{" "}
+                                            €
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}
