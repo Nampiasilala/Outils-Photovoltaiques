@@ -1,9 +1,9 @@
 // app/components/InfoProfile.tsx
-'use client';
+"use client";
 
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/components/AuthContext';
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/AuthContext";
 import {
   User as UserIcon,
   Mail,
@@ -13,9 +13,16 @@ import {
   Save,
   X,
   Loader2,
-  Lock
-} from 'lucide-react';
-import { toast } from 'react-toastify';
+  Lock,
+  Eye,
+  EyeOff,
+  Shield,
+  Clock,
+  UserCheck,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
+import { toast } from "react-toastify";
 
 interface Profile {
   id: number;
@@ -37,17 +44,24 @@ export default function InfoProfile() {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showPasswordField, setShowPasswordField] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const authHeader = () => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem("accessToken");
     if (!token) {
       logout();
-      throw new Error('Token manquant');
+      throw new Error("Token manquant");
     }
     return {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
   };
 
@@ -80,7 +94,7 @@ export default function InfoProfile() {
         setProfile(p);
         setForm(p);
       } catch (err: any) {
-        toast.error(err.message || 'Erreur lors du chargement du profil');
+        toast.error(err.message || "Erreur lors du chargement du profil");
       } finally {
         setLoading(false);
       }
@@ -89,9 +103,10 @@ export default function InfoProfile() {
 
   const saveProfile = async () => {
     if (!form) return;
+    setIsSaving(true);
     try {
       const res = await fetchWithAuth(`${API}/users/${form.id}/`, {
-        method: 'PUT',
+        method: "PUT",
         headers: authHeader(),
         body: JSON.stringify({
           username: form.username,
@@ -109,154 +124,377 @@ export default function InfoProfile() {
       }
       setProfile(form);
       setEditing(false);
-      toast.success('Profil mis à jour avec succès');
+      toast.success("Profil mis à jour avec succès");
     } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la mise à jour du profil');
+      toast.error(err.message || "Erreur lors de la mise à jour du profil");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const changePassword = async () => {
-    if (!newPassword.trim()) {
-      toast.error("Le mot de passe ne peut pas être vide");
+    if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      toast.error("Tous les champs sont requis");
       return;
     }
+    if (newPassword !== confirmPassword) {
+      toast.error("Les nouveaux mots de passe ne correspondent pas");
+      return;
+    }
+    setIsChangingPassword(true);
     try {
-      const res = await fetchWithAuth(`${API}/users/${user?.id}/change-password/`, {
-        method: 'POST',
-        headers: authHeader(),
-        body: JSON.stringify({ password: newPassword }),
-      });
-      if (!res.ok) throw new Error('Erreur lors du changement de mot de passe');
-      toast.success('Mot de passe mis à jour');
-      setNewPassword('');
+      const res = await fetchWithAuth(
+        `${API}/users/${user?.id}/change-password/`,
+        {
+          method: "POST",
+          headers: authHeader(),
+          body: JSON.stringify({
+            old_password: oldPassword,
+            new_password: newPassword,
+            confirm_password: confirmPassword,
+          }),
+        }
+      );
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        Object.entries(result).forEach(([field, messages]) => {
+          if (Array.isArray(messages)) {
+            messages.forEach((msg) => toast.error(`${field} : ${msg}`));
+          } else {
+            toast.error(`${field} : ${messages}`);
+          }
+        });
+        return;
+      }
+
+      toast.success("Mot de passe mis à jour");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
       setShowPasswordField(false);
     } catch (err: any) {
-      toast.error(err.message || 'Erreur lors du changement de mot de passe');
+      toast.error(err.message || "Erreur lors du changement de mot de passe");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role.toLowerCase()) {
+      case "admin": return "bg-red-100 text-red-700 border-red-200";
+      case "manager": return "bg-purple-100 text-purple-700 border-purple-200";
+      case "user": return "bg-blue-100 text-blue-700 border-blue-200";
+      default: return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "active": return "text-green-600";
+      case "inactive": return "text-red-600";
+      default: return "text-gray-600";
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="animate-spin w-8 h-8 text-blue-600" />
+      <div className="flex items-center justify-center min-h-[400px] bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl">
+        <div className="text-center">
+          <Loader2 className="animate-spin w-12 h-12 text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Chargement du profil...</p>
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="p-6 text-center text-red-600">
-        Identifiant utilisateur manquant. Veuillez vous reconnecter.
+      <div className="p-8 text-center bg-red-50 border border-red-200 rounded-xl">
+        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-red-800 mb-2">Erreur d'authentification</h3>
+        <p className="text-red-600">Identifiant utilisateur manquant. Veuillez vous reconnecter.</p>
       </div>
     );
   }
+
   if (!profile || !form) {
     return (
-      <div className="p-6 text-center">
-        Impossible de charger le profil. Vérifiez la console pour plus de détails.
+      <div className="p-8 text-center bg-yellow-50 border border-yellow-200 rounded-xl">
+        <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-yellow-800 mb-2">Erreur de chargement</h3>
+        <p className="text-yellow-700">Impossible de charger le profil. Vérifiez la console pour plus de détails.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6 bg-white shadow rounded-lg">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
-            {profile.username[0].toUpperCase()}
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold">{profile.username}</h1>
-            <span className="text-sm bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{profile.role}</span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {editing ? (
-            <>
-              <button onClick={saveProfile} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
-                <Save size={16} />
-              </button>
-              <button onClick={() => { setEditing(false); setForm(profile); }} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
-                <X size={16} />
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setEditing(true)} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
-              <Edit3 size={16} /> Modifier
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700">
-            <Mail size={16} /> Email
-          </label>
-          {editing ? (
-            <input
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-              className="w-full border rounded px-3 py-2 mt-1"
-            />
-          ) : (
-            <p className="mt-1 text-gray-900">{profile.email}</p>
-          )}
-        </div>
-        <div>
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700">
-            <Briefcase size={16} /> Département
-          </label>
-          {editing ? (
-            <input
-              value={form.department || ''}
-              onChange={e => setForm({ ...form, department: e.target.value })}
-              className="w-full border rounded px-3 py-2 mt-1"
-            />
-          ) : (
-            <p className="mt-1 text-gray-900">{profile.department || '-'}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="text-sm text-gray-500">
-        <p className="flex items-center gap-2">
-          <Calendar size={16} /> Inscrit le {new Date(profile.date_joined).toLocaleDateString()}
-        </p>
-        {profile.last_login && (
-          <p className="flex items-center gap-2 mt-1">
-            <Calendar size={16} /> Dernière connexion : {new Date(profile.last_login).toLocaleString()}
-          </p>
-        )}
-      </div>
-
-      <div className="pt-4 border-t">
-        {showPasswordField ? (
-          <>
-            <label className="flex items-center gap-1 text-sm font-medium text-gray-700">
-              <Lock size={16} /> Nouveau mot de passe
-            </label>
-            <div className="flex gap-2 mt-1">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="flex-1 border rounded px-3 py-2"
-              />
-              <button onClick={changePassword} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm">
-                Enregistrer
-              </button>
-              <button onClick={() => setShowPasswordField(false)} className="text-gray-500 hover:text-red-600 text-sm">Annuler</button>
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Header Card */}
+      <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-2xl font-bold border-2 border-white/30">
+                  {profile.username[0].toUpperCase()}
+                </div>
+                <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${profile.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}>
+                  <UserCheck className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold mb-2">{profile.username}</h1>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleColor(profile.role)} bg-white/90`}>
+                    <Shield className="w-4 h-4 inline mr-1" />
+                    {profile.role}
+                  </span>
+                  <span className={`text-sm font-medium ${getStatusColor(profile.status)}`}>
+                    • {profile.status}
+                  </span>
+                </div>
+              </div>
             </div>
-          </>
-        ) : (
-          <button
-            onClick={() => setShowPasswordField(true)}
-            className="flex items-center gap-2 text-sm text-indigo-600 hover:underline"
-          >
-            <Lock size={16} /> Modifier le mot de passe
-          </button>
-        )}
+            <div className="flex gap-3">
+              {editing ? (
+                <>
+                  <button
+                    onClick={saveProfile}
+                    disabled={isSaving}
+                    className="bg-green-500 hover:bg-green-600 disabled:bg-green-400 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
+                  >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditing(false);
+                      setForm(profile);
+                    }}
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm"
+                  >
+                    <X className="w-4 h-4" />
+                    Annuler
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  Modifier
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Information */}
+        <div className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                  <Mail className="w-5 h-5 text-blue-500" />
+                  Adresse email
+                </label>
+                {editing ? (
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                    placeholder="votre@email.com"
+                  />
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-gray-900 font-medium">{profile.email}</p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                  <Briefcase className="w-5 h-5 text-green-500" />
+                  Département
+                </label>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={form.department || ""}
+                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                    placeholder="Nom du département"
+                  />
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-gray-900 font-medium">{profile.department || "Non spécifié"}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-500" />
+                  Informations du compte
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Membre depuis</p>
+                      <p className="text-gray-900 font-semibold">
+                        {new Date(profile.date_joined).toLocaleDateString('fr-FR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  {profile.last_login && (
+                    <div className="flex items-center gap-3">
+                      <UserCheck className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Dernière connexion</p>
+                        <p className="text-gray-900 font-semibold">
+                          {new Date(profile.last_login).toLocaleString('fr-FR')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Password Section */}
+      <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
+          <h2 className="text-xl font-bold flex items-center gap-3">
+            <Lock className="w-6 h-6" />
+            Sécurité du compte
+          </h2>
+        </div>
+
+        <div className="p-8">
+          {showPasswordField ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                    <Lock className="w-4 h-4 text-gray-500" />
+                    Mot de passe actuel
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showOldPassword ? "text" : "password"}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 pr-12 focus:border-purple-500 focus:outline-none transition-colors"
+                      placeholder="Mot de passe actuel"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOldPassword(!showOldPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {showOldPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                    <Lock className="w-4 h-4 text-green-500" />
+                    Nouveau mot de passe
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 pr-12 focus:border-purple-500 focus:outline-none transition-colors"
+                      placeholder="Nouveau mot de passe"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-md">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                  <CheckCircle className="w-4 h-4 text-blue-500" />
+                  Confirmer le nouveau mot de passe
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 pr-12 focus:border-purple-500 focus:outline-none transition-colors"
+                    placeholder="Confirmer le mot de passe"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={changePassword}
+                  disabled={isChangingPassword}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-purple-400 disabled:to-pink-400 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
+                >
+                  {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  {isChangingPassword ? 'Modification...' : 'Modifier le mot de passe'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPasswordField(false);
+                    setOldPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                  className="px-6 py-3 rounded-lg font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Lock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Modifier votre mot de passe</h3>
+              <p className="text-gray-500 mb-6">Assurez-vous que votre compte reste sécurisé</p>
+              <button
+                onClick={() => setShowPasswordField(true)}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl"
+              >
+                <Lock className="w-4 h-4" />
+                Modifier le mot de passe
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
