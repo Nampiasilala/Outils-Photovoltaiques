@@ -1,29 +1,48 @@
-import Navbar from "@/components/Navbar";
+'use client';
+
+import dynamic from 'next/dynamic';
+import { useState } from 'react';
+
+// Assure-toi que ce chemin est bon
+const TiptapEditor = dynamic(() => import('@/components/TiptapEditor'), { ssr: false });
 
 export default function Technical() {
+  const [content, setContent] = useState('<p>Contenu initial</p>');
+  const [isEditing, setIsEditing] = useState(false);
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <main className="pt-10 pb-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-              Fiche technique
-            </h2>
-            <p className="text-gray-600">
-              Cette section fournit des informations techniques sur les installations photovoltaïques autonomes, telles que :
-            </p>
-            <ul className="list-disc pl-5 mt-2 text-gray-600">
-              <li>Dimensionnement des panneaux solaires.</li>
-              <li>Choix des batteries (autonomie, voltage).</li>
-              <li>Types d’onduleurs (AC/DC).</li>
-              <li>Conseils pour optimiser votre installation.</li>
-            </ul>
-            <p className="mt-4 text-gray-600">
-              (Placeholder) Plus de détails seront ajoutés bientôt.
-            </p>
-          </div>
+    <div className="min-h-screen bg-gray-100 p-10">
+      <div className="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+        <h1 className="text-2xl font-bold mb-4">Fiche technique</h1>
+
+        <TiptapEditor content={content} onChange={setContent} editable={isEditing} />
+
+        <div className="mt-4 flex gap-3">
+          {isEditing ? (
+            <>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Enregistrer
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="bg-gray-300 px-4 py-2 rounded"
+              >
+                Annuler
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              Modifier
+            </button>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
