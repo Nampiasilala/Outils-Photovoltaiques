@@ -20,7 +20,13 @@ import {
   Trash2,
   Calendar,
   MapPin,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import DeleteAlert from "@/components/DeleteAlert";
 
 interface ResultData {
   id: number;
@@ -70,6 +76,9 @@ export default function History() {
   const [history, setHistory] = useState<ResultData[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [showInputs, setShowInputs] = useState<Set<number>>(new Set());
+  const [showEquipments, setShowEquipments] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -94,12 +103,7 @@ export default function History() {
         }
 
         const data: ResultData[] = await res.json();
-        console.log(
-          "💬 Historique brut:",
-          data.map((d) => d.date_calcul)
-        );
-
-        // 🔍 DEBUG : vérifier les dates valides
+        
         const parsed = data.map((item) => ({
           ...item,
           _timestamp: item.date_calcul
@@ -108,7 +112,6 @@ export default function History() {
         }));
 
         const sortedData = parsed.sort((a, b) => b._timestamp - a._timestamp);
-
         setHistory(sortedData);
       } catch (err: any) {
         console.error("Échec du chargement de l'historique :", err);
@@ -131,12 +134,6 @@ export default function History() {
   }, [user, authLoading]);
 
   const handleDelete = async (id: number) => {
-    if (
-      !confirm("Êtes-vous sûr de vouloir supprimer ce calcul de l'historique ?")
-    ) {
-      return;
-    }
-
     try {
       const res = await fetchWithAuth(
         `/dimensionnements/${id}/`,
@@ -157,293 +154,427 @@ export default function History() {
     }
   };
 
+  const toggleExpanded = (id: number) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleInputs = (id: number) => {
+    setShowInputs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleEquipments = (id: number) => {
+    setShowEquipments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const expandAll = () => {
+    const allIds = new Set(history.map(calc => calc.id));
+    setExpandedItems(allIds);
+    setShowInputs(allIds);
+    setShowEquipments(allIds);
+  };
+
+  const collapseAll = () => {
+    setExpandedItems(new Set());
+    setShowInputs(new Set());
+    setShowEquipments(new Set());
+  };
+
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <Loader2 className="animate-spin h-10 w-10 text-blue-500" />
-        <p className="ml-2 text-gray-700">
-          Chargement de l'authentification...
-        </p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
+          <p className="text-gray-700 font-medium">Chargement de l'authentification...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
       <main className="pt-10 pb-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-              <HistoryIcon className="w-7 h-7 text-blue-600" /> Historique des
-              calculs
-            </h2>
+          <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 className="text-3xl font-bold flex items-center gap-3">
+                  <HistoryIcon className="w-8 h-8" />
+                  Historique des calculs
+                </h2>
+                
+                {history.length > 0 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={expandAll}
+                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Tout développer
+                    </button>
+                    <button
+                      onClick={collapseAll}
+                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
+                    >
+                      <EyeOff className="w-4 h-4" />
+                      Tout réduire
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
-            {loadingHistory ? (
-              <div className="flex items-center justify-center py-10 text-gray-500">
-                <Loader2 className="animate-spin mr-2" /> Chargement de
-                l'historique...
-              </div>
-            ) : error ? (
-              <div className="bg-red-50 border border-red-200 p-4 rounded text-red-800 flex items-center gap-2">
-                <AlertCircle /> {error}
-              </div>
-            ) : history.length === 0 ? (
-              <div className="text-gray-600 py-10 text-center">
-                <Info className="w-10 h-10 mx-auto mb-3 text-gray-400" />
-                <p>Aucun calcul enregistré pour le moment.</p>
-                <p>Effectuez un calcul pour voir l’historique ici.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {history.map((calc) => (
-                  <div
-                    key={calc.id}
-                    className="border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm"
+            <div className="p-8">
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-16 text-gray-500">
+                  <div className="text-center">
+                    <Loader2 className="animate-spin w-12 h-12 text-blue-500 mx-auto mb-4" />
+                    <p className="font-medium">Chargement de l'historique...</p>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="bg-red-50 border border-red-200 p-6 rounded-xl text-red-800 flex items-center gap-3">
+                  <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold mb-1">Erreur de chargement</h3>
+                    <p>{error}</p>
+                  </div>
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Info className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">Aucun calcul enregistré</h3>
+                  <p className="text-gray-500 mb-6">Effectuez votre premier calcul pour commencer à voir l'historique ici.</p>
+                  <button
+                    onClick={() => router.push("/calculate")}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl"
                   >
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-semibold text-lg text-gray-700">
-                        Calcul du{" "}
-                        {new Date(calc.date_calcul).toLocaleDateString()}
-                      </h3>
-                      <button
-                        onClick={() => handleDelete(calc.id)}
-                        className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                        title="Supprimer ce calcul"
+                    <Calculator className="w-5 h-5" />
+                    Nouveau calcul
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {history.map((calc) => (
+                    <div
+                      key={calc.id}
+                      className="border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-200"
+                    >
+                      {/* Header de l'accordéon */}
+                      <div 
+                        className="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+                        onClick={() => toggleExpanded(calc.id)}
                       >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    {calc.entree_details && (
-                      <div className="mb-6">
-                        <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <Info className="w-5 h-5 text-blue-500" />
-                          Données d'entrée
-                        </h4>
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
-                              <div className="p-2 bg-yellow-100 rounded-full">
-                                <Zap className="w-5 h-5 text-yellow-600" />
-                              </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
+                              {expandedItems.has(calc.id) ? (
+                                <ChevronDown className="w-5 h-5 text-gray-500" />
+                              ) : (
+                                <ChevronRight className="w-5 h-5 text-gray-500" />
+                              )}
                               <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                  Énergie journalière
-                                </p>
-                                <p className="text-lg font-semibold text-gray-800">
-                                  {calc.entree_details.e_jour}{" "}
-                                  <span className="text-sm font-normal text-gray-500">
-                                    Wh
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
-                              <div className="p-2 bg-red-100 rounded-full">
-                                <Zap className="w-5 h-5 text-red-600" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                  Puissance max
-                                </p>
-                                <p className="text-lg font-semibold text-gray-800">
-                                  {calc.entree_details.p_max}{" "}
-                                  <span className="text-sm font-normal text-gray-500">
-                                    W
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
-                              <div className="p-2 bg-purple-100 rounded-full">
-                                <Calendar className="w-5 h-5 text-purple-600" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                  Autonomie
-                                </p>
-                                <p className="text-lg font-semibold text-gray-800">
-                                  {calc.entree_details.n_autonomie}{" "}
-                                  <span className="text-sm font-normal text-gray-500">
-                                    jours
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
-                              <div className="p-2 bg-green-100 rounded-full">
-                                <BatteryCharging className="w-5 h-5 text-green-600" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                  Tension batterie
-                                </p>
-                                <p className="text-lg font-semibold text-gray-800">
-                                  {calc.entree_details.v_batterie}{" "}
-                                  <span className="text-sm font-normal text-gray-500">
-                                    V
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100 md:col-span-2 lg:col-span-1">
-                              <div className="p-2 bg-blue-100 rounded-full">
-                                <MapPin className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                  Localisation
-                                </p>
-                                <p className="text-lg font-semibold text-gray-800">
-                                  {calc.entree_details.localisation}
+                                <h3 className="text-lg font-semibold text-gray-800">
+                                  Calcul du {new Date(calc.date_calcul).toLocaleDateString('fr-FR', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {calc.entree_details.localisation} • {calc.cout_total}€
                                 </p>
                               </div>
                             </div>
                           </div>
+                          
+                          <div className="flex items-center gap-3">
+                            {/* Indicateurs rapides */}
+                            <div className="hidden sm:flex items-center gap-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Sun className="w-4 h-4 text-orange-500" />
+                                <span>{calc.nombre_panneaux} panneaux</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <BatteryCharging className="w-4 h-4 text-green-500" />
+                                <span>{calc.nombre_batteries} batteries</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="w-4 h-4 text-yellow-600" />
+                                <span>{calc.cout_total}€</span>
+                              </div>
+                            </div>
+                            
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <DeleteAlert
+                                label={`Supprimer le calcul du ${new Date(calc.date_calcul).toLocaleDateString('fr-FR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })} ?`}
+                                onConfirm={() => handleDelete(calc.id)}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <PanelTop className="text-blue-500 w-4 h-4" />{" "}
-                        <strong>Puissance totale:</strong>{" "}
-                        {calc.puissance_totale} W
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <BatteryCharging className="text-green-500 w-4 h-4" />{" "}
-                        <strong>Capacité batterie:</strong>{" "}
-                        {calc.capacite_batterie} Wh
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Sun className="text-orange-500 w-4 h-4" />{" "}
-                        <strong>Nombre de panneaux:</strong>{" "}
-                        {calc.nombre_panneaux}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <BatteryCharging className="text-green-500 w-4 h-4" />{" "}
-                        <strong>Nombre de batteries:</strong>{" "}
-                        {calc.nombre_batteries}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ClipboardCheck className="text-purple-500 w-4 h-4" />{" "}
-                        <strong>Bilan annuel:</strong>{" "}
-                        {calc.bilan_energetique_annuel} Wh
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="text-yellow-600 w-4 h-4" />{" "}
-                        <strong>Coût total:</strong> {calc.cout_total} €
-                      </div>
+                      {/* Contenu développable */}
+                      {expandedItems.has(calc.id) && (
+                        <div className="px-6 pb-6 border-t border-gray-100">
+                          {/* Résultats principaux */}
+                          <div className="mb-6 pt-4">
+                            <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                              <ClipboardCheck className="w-5 h-5 text-blue-500" />
+                              Résultats du dimensionnement
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center">
+                                <PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-gray-600">Puissance totale</p>
+                                <p className="text-lg font-bold text-gray-800">{calc.puissance_totale} W</p>
+                              </div>
+                              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
+                                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-gray-600">Capacité batterie</p>
+                                <p className="text-lg font-bold text-gray-800">{calc.capacite_batterie} Wh</p>
+                              </div>
+                              <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
+                                <Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-gray-600">Panneaux</p>
+                                <p className="text-lg font-bold text-gray-800">{calc.nombre_panneaux}</p>
+                              </div>
+                              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
+                                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-gray-600">Batteries</p>
+                                <p className="text-lg font-bold text-gray-800">{calc.nombre_batteries}</p>
+                              </div>
+                              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center">
+                                <ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-gray-600">Bilan annuel</p>
+                                <p className="text-lg font-bold text-gray-800">{calc.bilan_energetique_annuel} Wh</p>
+                              </div>
+                              <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg text-center">
+                                <DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-gray-600">Coût total</p>
+                                <p className="text-lg font-bold text-gray-800">{calc.cout_total} €</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Accordéon pour les données d'entrée */}
+                          {calc.entree_details && (
+                            <div className="mb-6">
+                              <button
+                                onClick={() => toggleInputs(calc.id)}
+                                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                              >
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                                  <Info className="w-5 h-5 text-blue-500" />
+                                  Données d'entrée
+                                </h4>
+                                {showInputs.has(calc.id) ? (
+                                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                                )}
+                              </button>
+                              
+                              {showInputs.has(calc.id) && (
+                                <div className="mt-4 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                                      <div className="p-2 bg-yellow-100 rounded-full">
+                                        <Zap className="w-5 h-5 text-yellow-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                          Énergie journalière
+                                        </p>
+                                        <p className="text-lg font-semibold text-gray-800">
+                                          {calc.entree_details.e_jour}{" "}
+                                          <span className="text-sm font-normal text-gray-500">Wh</span>
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                                      <div className="p-2 bg-red-100 rounded-full">
+                                        <Zap className="w-5 h-5 text-red-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                          Puissance max
+                                        </p>
+                                        <p className="text-lg font-semibold text-gray-800">
+                                          {calc.entree_details.p_max}{" "}
+                                          <span className="text-sm font-normal text-gray-500">W</span>
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                                      <div className="p-2 bg-purple-100 rounded-full">
+                                        <Calendar className="w-5 h-5 text-purple-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                          Autonomie
+                                        </p>
+                                        <p className="text-lg font-semibold text-gray-800">
+                                          {calc.entree_details.n_autonomie}{" "}
+                                          <span className="text-sm font-normal text-gray-500">jours</span>
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                                      <div className="p-2 bg-green-100 rounded-full">
+                                        <BatteryCharging className="w-5 h-5 text-green-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                          Tension batterie
+                                        </p>
+                                        <p className="text-lg font-semibold text-gray-800">
+                                          {calc.entree_details.v_batterie}{" "}
+                                          <span className="text-sm font-normal text-gray-500">V</span>
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100 md:col-span-2 lg:col-span-1">
+                                      <div className="p-2 bg-blue-100 rounded-full">
+                                        <MapPin className="w-5 h-5 text-blue-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                          Localisation
+                                        </p>
+                                        <p className="text-lg font-semibold text-gray-800">
+                                          {calc.entree_details.localisation}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Accordéon pour les équipements */}
+                          {calc.equipements_recommandes && (
+                            <div>
+                              <button
+                                onClick={() => toggleEquipments(calc.id)}
+                                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                              >
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                                  <Settings className="w-5 h-5 text-purple-500" />
+                                  Équipements recommandés
+                                </h4>
+                                {showEquipments.has(calc.id) ? (
+                                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                                )}
+                              </button>
+                              
+                              {showEquipments.has(calc.id) && (
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  {calc.equipements_recommandes.panneau && (
+                                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <Sun className="w-5 h-5 text-blue-600" />
+                                        <p className="font-semibold text-blue-700">Panneau solaire</p>
+                                      </div>
+                                      <div className="space-y-2 text-sm">
+                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.panneau.modele}</p>
+                                        <p><span className="font-medium">Puissance:</span> {calc.equipements_recommandes.panneau.puissance} W</p>
+                                        <p><span className="font-medium">Tension:</span> {calc.equipements_recommandes.panneau.tension} V</p>
+                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-blue-700">{calc.equipements_recommandes.panneau.prix_unitaire} €</span></p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {calc.equipements_recommandes.batterie && (
+                                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <BatteryCharging className="w-5 h-5 text-green-600" />
+                                        <p className="font-semibold text-green-700">Batterie</p>
+                                      </div>
+                                      <div className="space-y-2 text-sm">
+                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.batterie.modele}</p>
+                                        <p><span className="font-medium">Capacité:</span> {calc.equipements_recommandes.batterie.capacite} Ah</p>
+                                        <p><span className="font-medium">Tension:</span> {calc.equipements_recommandes.batterie.tension} V</p>
+                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-green-700">{calc.equipements_recommandes.batterie.prix_unitaire} €</span></p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {calc.equipements_recommandes.regulateur && (
+                                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <Settings className="w-5 h-5 text-purple-600" />
+                                        <p className="font-semibold text-purple-700">Régulateur</p>
+                                      </div>
+                                      <div className="space-y-2 text-sm">
+                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.regulateur.modele}</p>
+                                        <p><span className="font-medium">Tension:</span> {calc.equipements_recommandes.regulateur.tension} V</p>
+                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-purple-700">{calc.equipements_recommandes.regulateur.prix_unitaire} €</span></p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  ))}
+                </div>
+              )}
 
-                    {calc.equipements_recommandes && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h4 className="font-medium text-gray-700 mb-2">
-                          Équipements Recommandés :
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {calc.equipements_recommandes.panneau && (
-                            <div className="bg-white p-3 rounded border">
-                              <p className="font-semibold text-blue-600">
-                                Panneau:
-                              </p>
-                              <p>
-                                Modèle:{" "}
-                                {calc.equipements_recommandes.panneau.modele}
-                              </p>
-                              <p>
-                                Puissance:{" "}
-                                {calc.equipements_recommandes.panneau.puissance}{" "}
-                                W
-                              </p>
-                              <p>
-                                Tension:{" "}
-                                {calc.equipements_recommandes.panneau.tension} V
-                              </p>
-                              <p>
-                                Prix:{" "}
-                                {
-                                  calc.equipements_recommandes.panneau
-                                    .prix_unitaire
-                                }{" "}
-                                €
-                              </p>
-                            </div>
-                          )}
-                          {calc.equipements_recommandes.batterie && (
-                            <div className="bg-white p-3 rounded border">
-                              <p className="font-semibold text-green-600">
-                                Batterie:
-                              </p>
-                              <p>
-                                Modèle:{" "}
-                                {calc.equipements_recommandes.batterie.modele}
-                              </p>
-                              <p>
-                                Capacité:{" "}
-                                {calc.equipements_recommandes.batterie.capacite}{" "}
-                                Ah
-                              </p>
-                              <p>
-                                Tension:{" "}
-                                {calc.equipements_recommandes.batterie.tension}{" "}
-                                V
-                              </p>
-                              <p>
-                                Prix:{" "}
-                                {
-                                  calc.equipements_recommandes.batterie
-                                    .prix_unitaire
-                                }{" "}
-                                €
-                              </p>
-                            </div>
-                          )}
-                          {calc.equipements_recommandes.regulateur && (
-                            <div className="bg-white p-3 rounded border">
-                              <p className="font-semibold text-purple-600">
-                                Régulateur:
-                              </p>
-                              <p>
-                                Modèle:{" "}
-                                {calc.equipements_recommandes.regulateur.modele}
-                              </p>
-                              <p>
-                                Tension:{" "}
-                                {
-                                  calc.equipements_recommandes.regulateur
-                                    .tension
-                                }{" "}
-                                V
-                              </p>
-                              <p>
-                                Prix:{" "}
-                                {
-                                  calc.equipements_recommandes.regulateur
-                                    .prix_unitaire
-                                }{" "}
-                                €
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={() => router.push("/calculate")}
-              className="mt-6 inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-md text-base font-medium hover:bg-blue-700 transition-colors shadow-md"
-            >
-              <Calculator className="mr-2 h-5 w-5" /> Nouveau calcul
-            </button>
+              {/* Bouton nouveau calcul */}
+              {history.length > 0 && (
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={() => router.push("/calculate")}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center gap-3 mx-auto shadow-lg hover:shadow-xl"
+                  >
+                    <Calculator className="w-6 h-6" />
+                    Nouveau calcul
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>
