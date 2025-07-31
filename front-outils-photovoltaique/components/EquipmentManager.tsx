@@ -23,6 +23,7 @@ interface Equipment {
 const API = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 export default function EquipmentManager() {
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const { user, logout } = useAuth();
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -98,22 +99,26 @@ export default function EquipmentManager() {
   };
 
   const deleteEquipment = async (id: number) => {
-    try {
-      const res = await fetchWithAuth(`${API}/equipements/${id}/`, {
-        method: 'DELETE',
-        headers: authHeader(),
-      });
-      if (res.status === 401) {
-        logout();
-        return;
-      }
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
-      setEquipments((e) => e.filter(x => x.id !== id));
-      toast.success('Équipement supprimé avec succès');
-    } catch (err: any) {
-      toast.error("Erreur lors de la suppression : " + err.message);
+  setDeletingId(id); // on démarre le chargement
+  try {
+    const res = await fetchWithAuth(`${API}/equipements/${id}/`, {
+      method: 'DELETE',
+      headers: authHeader(),
+    });
+    if (res.status === 401) {
+      logout();
+      return;
     }
-  };
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    setEquipments((e) => e.filter(x => x.id !== id));
+    toast.success('Équipement supprimé avec succès');
+  } catch (err: any) {
+    toast.error("Erreur lors de la suppression : " + err.message);
+  } finally {
+    setDeletingId(null); // on arrête le chargement
+  }
+};
+
 
   const filtered = equipments.filter(e =>
     e.type_equipement.toLowerCase().includes(searchTerm.toLowerCase()) &&
@@ -240,7 +245,8 @@ export default function EquipmentManager() {
                   ) : (
                     <>
                       <button onClick={() => setEditingId(equip.id)} className="text-blue-600"><Edit size={14} /></button>
-                      <DeleteAlert label="Supprimer cet équipement ?" onConfirm={() => deleteEquipment(equip.id)} />
+                      <DeleteAlert label="Supprimer cet équipement ?" onConfirm={() => deleteEquipment(equip.id)}   isLoading={deletingId === equip.id} />
+                      
                     </>
                   )}
                 </td>
