@@ -3,9 +3,9 @@ import "./globals.css";
 import Providers from "./Providers";           // ← nouveau
 
 export const metadata: Metadata = {
-  title: "Outil de Dimensionnement Photovoltaïque",
+  title: "Calculateur Solaire",
   description:
-    "Application pour calculer et planifier une installation solaire autonome",
+    "Application pour dimensionner une installation solaire autonome",
 };
 
 export default function RootLayout({

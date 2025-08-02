@@ -185,7 +185,7 @@ export default function DefaultValue() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {error && (
         <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
           <AlertTriangle />

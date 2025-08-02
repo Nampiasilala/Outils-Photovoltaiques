@@ -112,7 +112,7 @@ export default function UserManagement() {
   );
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto text-sm">
+    <div className="p-2 sm:p-2 max-w-7xl mx-auto text-sm">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-3 text-gray-800">
           <Users className="w-7 h-7 text-blue-600" />
@@ -120,7 +120,7 @@ export default function UserManagement() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input

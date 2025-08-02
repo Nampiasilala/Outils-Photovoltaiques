@@ -17,16 +17,16 @@ export default function Calculate() {
   }, [user, router]);
 
   if (!user) {
-    return null; // ou un composant de chargement
+    return null;
   }
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <main className="pt-10 pb-10"> {/* Changé de py-8 à pt-20 pb-8 */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <main className="pt-2 pb-2">
+        <div className="mx-auto max-w-7xl px-2">
           <div className="bg-white shadow-md rounded-lg p-6">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-              Dimensionnement de votre installation photovoltaïque
+              Espace pour le calcul
             </h2>
             <SolarForm />
           </div>

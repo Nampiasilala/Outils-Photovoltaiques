@@ -221,15 +221,15 @@ export default function History() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
-      <main className="pt-10 pb-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 ">
+      <main className="pt-2 pb-2">
+        <div className="mx-auto max-w-7xl px-2">
           <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h2 className="text-3xl font-bold flex items-center gap-3">
-                  <HistoryIcon className="w-8 h-8" />
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 text-white">
+              <div className="flex flex-col px-4 sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 className="text-base font-bold flex items-center gap-3">
+                  <HistoryIcon className="w-6 h-6" />
                   Historique des calculs
                 </h2>
 

@@ -11,8 +11,8 @@ export default function Technical() {
   const [isEditing, setIsEditing] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-10">
-      <div className="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
+    <div className="min-h-screen bg-gray-100 p-2">
+      <div className="max-w-7xl mx-auto bg-white shadow-md rounded-lg p-6">
         <h1 className="text-2xl font-bold mb-4">Fiche technique</h1>
 
         <TiptapEditor content={content} onChange={setContent} editable={isEditing} />

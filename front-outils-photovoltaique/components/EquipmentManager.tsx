@@ -134,7 +134,7 @@ export default function EquipmentManager() {
   }
 
   return (
-    <div className="px-4 py-6 max-w-screen-lg mx-auto overflow-x-auto text-sm">
+    <div className="py-6 max-w-screen-xl mx-auto overflow-x-auto text-sm">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div className="flex gap-2 flex-wrap">
           <div className="relative">
@@ -163,7 +163,7 @@ export default function EquipmentManager() {
         <button
           onClick={() => setShowAddModal(true)}
           disabled={saving}
-          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 text-sm w-full sm:w-auto justify-center"
+          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 text-sm w-1/3 sm:w-auto justify-center"
         >
           {saving ? <Loader className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4" />}
           <span>Ajouter</span>

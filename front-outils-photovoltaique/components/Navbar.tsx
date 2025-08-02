@@ -35,8 +35,8 @@ export default function Navbar() {
     <>
       <nav className="fixed top-0 w-full z-50 bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="font-bold text-blue-600 text-sm">Solaire</Link>
+          <div className="flex justify-between items-center h-12">
+            <Link href="/" className="font-bold text-blue-600 text-sm">Calulateur Solaire</Link>
 
             {/* Desktop navigation */}
             <div className="hidden md:flex space-x-1">
@@ -113,7 +113,7 @@ export default function Navbar() {
       </nav>
 
       {/* Push content below navbar */}
-      <div className="h-16" />
+      <div className="h-12" />
     </>
   );
 }

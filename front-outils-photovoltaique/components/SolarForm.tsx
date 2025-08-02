@@ -198,7 +198,7 @@ export default function SolarForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen">
       <header className="mb-6">
         <div className="flex items-center space-x-3 mb-2">
           <Sun className="w-8 h-8 text-blue-600" />
