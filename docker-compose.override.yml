@@ -3,10 +3,13 @@ services:
     build:
       context: ./front-outils-photovoltaique
       dockerfile: Dockerfile.dev
+      # dockerfile: Dockerfile.prod
     volumes:
       - ./front-outils-photovoltaique:/app
       - /app/node_modules
+      - /app/.next
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      # - NODE_ENV=production

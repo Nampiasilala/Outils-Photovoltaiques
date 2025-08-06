@@ -5,12 +5,13 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "esnext",
+      "es2021"  // Ajout de la lib ES2021 pour les fonctionnalités récentes
     ],
     "allowSyntheticDefaultImports": true,
-
     "allowJs": true,
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,  // Ajout pour de meilleures performances
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,

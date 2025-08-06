@@ -52,6 +52,9 @@ Le tout conteneurisé avec Docker Compose pour faciliter le déploiement et le d
 - Exécuter une commande dans le conteneur backend :  
   docker compose exec backend python manage.py migrate
 
+- Nettoyer le cache Docker : Si tu as déjà exécuté des constructions précédentes et que des volumes ou cache ont été créés, essaie de supprimer les caches Docker avec la commande suivante :
+  docker builder prune --all
+
 ## Structure du projet
 
 ├── back-outils-photovoltaique/  # Backend Django  
