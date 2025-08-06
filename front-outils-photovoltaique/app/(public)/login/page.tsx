@@ -1,19 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { useState, useEffect } from 'react';
-import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  LogIn,
-  AlertCircle,
-  CheckCircle,
-  Home as HomeIcon // Renommé pour éviter le conflit avec la page Home
-} from 'lucide-react';
+
+const Eye = dynamic(() => import("lucide-react").then(mod => mod.Eye));
+const EyeOff = dynamic(() => import("lucide-react").then(mod => mod.EyeOff));
+const Mail = dynamic(() => import("lucide-react").then(mod => mod.Mail));
+const Lock = dynamic(() => import("lucide-react").then(mod => mod.Lock));
+const LogIn = dynamic(() => import("lucide-react").then(mod => mod.LogIn));
+const AlertCircle = dynamic(() => import("lucide-react").then(mod => mod.AlertCircle));
+const CheckCircle = dynamic(() => import("lucide-react").then(mod => mod.CheckCircle));
+const HomeIcon = dynamic(() => import("lucide-react").then(mod => mod.Home));
+
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 

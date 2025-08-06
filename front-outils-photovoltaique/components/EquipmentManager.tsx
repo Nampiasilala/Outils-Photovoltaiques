@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from "next/dynamic";
+
+// Ces composants sont chargés à la demande
+const DeleteAlert = dynamic(() => import('./DeleteAlert'), { ssr: false });
+const AddEquipmentModal = dynamic(() => import('./AddEquipmentModal'), { ssr: false });
+
 import { Plus, Trash2, Save, Edit, Search, Filter, Zap, Loader, XCircle } from 'lucide-react';
-import DeleteAlert from './DeleteAlert';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'react-toastify';
-import AddEquipmentModal from './AddEquipmentModal';
 
 interface Equipment {
   id: number;

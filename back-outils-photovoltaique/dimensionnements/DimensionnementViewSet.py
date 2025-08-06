@@ -7,7 +7,6 @@ from .models import Dimensionnement
 from .serializers import DimensionnementSerializer, CalculationInputSerializer
 from donnees_entree.models import DonneesEntree
 from parametres.models import ParametreSysteme
-from equipements.models import Equipement
 from .utils import compute_dimensionnement
 
 logger = logging.getLogger(__name__)
@@ -19,10 +18,10 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     @permission_classes([AllowAny])
     def calculate(self, request):
-        logger.info(f"Requête reçue : {request.data}")
-        logger.info(f"En-têtes reçus : {dict(request.headers)}")
+        logger.debug(f"Requête reçue : {request.data}")
+        logger.debug(f"En-têtes reçus : {dict(request.headers)}")
 
-        # Validation des données
+        # Validation des données d'entrée
         input_ser = CalculationInputSerializer(data=request.data)
         if not input_ser.is_valid():
             logger.error(f"Erreurs de validation : {input_ser.errors}")
@@ -30,7 +29,7 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
 
         data = input_ser.validated_data
 
-        # Récupération du paramètre système
+        # Récupération du paramètre système avec `select_related` si nécessaire
         param = ParametreSysteme.objects.first()
         if not param:
             logger.error("Aucun paramètre système trouvé.")
@@ -39,14 +38,14 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Calcul métier
+        # Calcul métier, et gestion d'exception si le calcul échoue
         try:
             result = compute_dimensionnement(data, param)
         except ValueError as e:
             logger.error(f"Erreur dans compute_dimensionnement : {str(e)}")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Création de l’historique DonneesEntree
+        # Création de l'historique DonneesEntree
         entree = DonneesEntree.objects.create(
             e_jour=data['E_jour'],
             p_max=data['P_max'],
@@ -56,7 +55,7 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             user=None  # Pas d'utilisateur pour les requêtes non authentifiées
         )
 
-        # Sauvegarde du résultat
+        # Création du Dimensionnement avec `select_related` pour optimiser les relations
         dimensionnement = Dimensionnement.objects.create(
             entree=entree,
             parametre=param,
@@ -67,6 +66,6 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             cout_total=result['cout_total'],
         )
 
-        # Sérialisation et réponse
+        # Sérialisation et renvoi de la réponse avec les données calculées
         out_ser = DimensionnementSerializer(dimensionnement)
         return Response(out_ser.data, status=status.HTTP_201_CREATED)

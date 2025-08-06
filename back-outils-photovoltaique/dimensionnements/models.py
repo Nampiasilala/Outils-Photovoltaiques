@@ -1,29 +1,29 @@
 from django.db import models
+from django.conf import settings
+from equipements.models import Equipement
 from donnees_entree.models import DonneesEntree
 from parametres.models import ParametreSysteme
-from equipements.models import Equipement # <-- N'oubliez pas d'importer le modèle Equipement
-from django.conf import settings
+from django.core.cache import cache
 
 class Dimensionnement(models.Model):
-
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    date_calcul = models.DateTimeField(auto_now_add=True)  # <-- important
+    date_calcul = models.DateTimeField(auto_now_add=True)  # Date de calcul
     puissance_totale = models.FloatField()
     capacite_batterie = models.FloatField()
     nombre_panneaux = models.IntegerField()
-    nombre_batteries = models.IntegerField(default=0) # <-- Assurez-vous d'avoir ce champ pour le nombre de batteries
+    nombre_batteries = models.IntegerField(default=0)  # Nombre de batteries
     bilan_energetique_annuel = models.FloatField()
     cout_total = models.FloatField()
     entree = models.ForeignKey(DonneesEntree, on_delete=models.CASCADE)
     parametre = models.ForeignKey(ParametreSysteme, on_delete=models.CASCADE)
 
-    # NOUVEAUX CHAMPS : Références aux équipements choisis
+    # Champs supplémentaires pour référencer les équipements recommandés
     panneau_recommande = models.ForeignKey(
         Equipement,
-        on_delete=models.SET_NULL, # Si le panneau est supprimé, la référence devient NULL
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='dimensionnements_panneau' # Nom pour la relation inverse
+        related_name='dimensionnements_panneau'
     )
     batterie_recommandee = models.ForeignKey(
         Equipement,
@@ -40,6 +40,45 @@ class Dimensionnement(models.Model):
         related_name='dimensionnements_regulateur'
     )
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['date_calcul']),  # Indexation pour date_calcul
+            models.Index(fields=['user']),  # Indexation pour user
+            models.Index(fields=['entree']),  # Indexation pour entree
+        ]
+
     def __str__(self):
         return f"Dimensionnement {self.id} - {self.date_calcul}"
 
+    # Calcul optimisé lors de la sauvegarde de l'objet
+    def save(self, *args, **kwargs):
+        # Calculs optimisés pour la puissance totale, capacité de batterie et bilan énergétique
+        self.puissance_totale = self.nombre_panneaux * self.capacite_batterie
+        self.bilan_energetique_annuel = self.puissance_totale * 365  # Exemple d'estimation annuelle
+        self.cout_total = self.calculer_cout_total()  # Fonction à créer pour calculer le coût total
+
+        # Appeler la méthode de sauvegarde parente pour persister les données
+        super().save(*args, **kwargs)
+
+    # Méthode pour calculer le coût total (exemple d'implémentation)
+    def calculer_cout_total(self):
+        cout_panneau = self.panneau_recommande.prix_unitaire if self.panneau_recommande else 0
+        cout_batterie = self.batterie_recommandee.prix_unitaire if self.batterie_recommandee else 0
+        cout_regulateur = self.regulateur_recommande.prix_unitaire if self.regulateur_recommande else 0
+
+        return (cout_panneau * self.nombre_panneaux) + (cout_batterie * self.nombre_batteries) + cout_regulateur
+
+    # Méthode pour récupérer les équipements recommandés, avec mise en cache pour éviter les calculs répétés
+    def get_equipements_recommandes(self):
+        cache_key = f"equipements_{self.id}"
+        cached_data = cache.get(cache_key)
+        
+        if not cached_data:
+            cached_data = {
+                'panneau': EquipementDetailSerializer(self.panneau_recommande).data if self.panneau_recommande else {},
+                'batterie': EquipementDetailSerializer(self.batterie_recommandee).data if self.batterie_recommandee else {},
+                'regulateur': EquipementDetailSerializer(self.regulateur_recommande).data if self.regulateur_recommande else {},
+            }
+            cache.set(cache_key, cached_data, timeout=60*15)  # Cache pour 15 minutes
+        
+        return cached_data

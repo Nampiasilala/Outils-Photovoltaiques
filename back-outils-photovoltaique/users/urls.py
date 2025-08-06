@@ -4,13 +4,13 @@ from .views import (
     LoginView,
     UserListCreateView,
     UserRetrieveUpdateDestroyView,
-    ChangePasswordView
+    ChangePasswordView,
 )
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='register'),
-    path('login/', LoginView.as_view(), name='login'),
-    path('', UserListCreateView.as_view()),    
-    path('<int:pk>/', UserRetrieveUpdateDestroyView.as_view(), name='user-detail'),
-    path('<int:pk>/change-password/', ChangePasswordView.as_view(), name='change-password'), 
+    path("register/", RegisterView.as_view(), name="register"),
+    path("login/", LoginView.as_view(), name="login"),
+    path("", UserListCreateView.as_view(), name="user-list-create"),
+    path("<int:pk>/", UserRetrieveUpdateDestroyView.as_view(), name="user-detail"),
+    path("<int:pk>/change-password/", ChangePasswordView.as_view(), name="change-password"),
 ]

@@ -1,22 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthContext";
 import { useState } from "react";
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  User, 
-  UserPlus, 
-  AlertCircle,
-  Check,
-  X,
-  CheckCircle,
-  Home as HomeIcon
-} from "lucide-react";
+const Eye = dynamic(() => import("lucide-react").then(mod => mod.Eye));
+const EyeOff = dynamic(() => import("lucide-react").then(mod => mod.EyeOff));
+const AlertCircle = dynamic(() => import("lucide-react").then(mod => mod.AlertCircle));
+const Check = dynamic(() => import("lucide-react").then(mod => mod.Check));
+const X = dynamic(() => import("lucide-react").then(mod => mod.X));
+const CheckCircle = dynamic(() => import("lucide-react").then(mod => mod.CheckCircle));
+const HomeIcon = dynamic(() => import("lucide-react").then(mod => mod.Home));
+const UserPlus = dynamic(() => import("lucide-react").then(mod => mod.UserPlus));
+const Mail = dynamic(() => import("lucide-react").then(mod => mod.Mail));
+const Lock = dynamic(() => import("lucide-react").then(mod => mod.Lock));
+const User = dynamic(() => import("lucide-react").then(mod => mod.User));
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 

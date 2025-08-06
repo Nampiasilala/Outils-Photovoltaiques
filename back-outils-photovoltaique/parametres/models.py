@@ -7,7 +7,13 @@ class ParametreSysteme(models.Model):
     dod = models.FloatField()
     k_dimensionnement = models.FloatField()
     h_solaire = models.FloatField()
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='parametres_systeme')  # Ajout du related_name pour une gestion inverse efficace
 
     def __str__(self):
-        return f"Paramètre {self.id}"
+        # Affichage plus lisible de l'objet
+        return f"Paramètre {self.id} - Utilisateur: {self.user.username if self.user else 'N/A'}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),  # Indexation sur 'user' pour améliorer la recherche des paramètres de l'utilisateur
+        ]

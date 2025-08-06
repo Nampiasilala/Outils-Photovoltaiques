@@ -1,19 +1,25 @@
 import os
 from pathlib import Path
+import environ
+
+# Initialiser environ pour charger les variables d'environnement
+env = environ.Env()
+environ.Env.read_env()  # Charger le fichier .env
 
 # Chemin de base du projet
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Sécurité
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-key-not-set')
+SECRET_KEY = env('DJANGO_SECRET_KEY', default='django-insecure-key-not-set')
 
 # Pour le dev / debug
-DEBUG = True
+DEBUG = env.bool('DJANGO_DEBUG', default=True)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
 # Apps installées
 INSTALLED_APPS = [
+    # Django apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -21,10 +27,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Third-party apps
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
 
+    # Local apps
     'users',
     'donnees_entree',
     'parametres',
@@ -32,6 +40,7 @@ INSTALLED_APPS = [
     'dimensionnements',
 ]
 
+# Middleware
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -44,8 +53,7 @@ MIDDLEWARE = [
 ]
 
 # CORS (dev)
-CORS_ALLOW_ALL_ORIGINS = True
-
+CORS_ALLOW_ALL_ORIGINS = env.bool('CORS_ALLOW_ALL_ORIGINS', default=True)
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -66,12 +74,14 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# URL Configuration
 ROOT_URLCONF = 'django_project.urls'
 
+# Templates Configuration
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [], 
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -84,24 +94,25 @@ TEMPLATES = [
     },
 ]
 
+# WSGI Application
 WSGI_APPLICATION = 'django_project.wsgi.application'
 
-# Postgres
+# Database configuration
 DATABASES = {
     'default': {
-        'ENGINE':   'django.db.backends.postgresql',
-        'NAME':     os.environ.get('DB_NAME', 'dimensionnement'),
-        'USER':     os.environ.get('DB_USER', 'devuser'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'devpass'),
-        'HOST':     os.environ.get('DB_HOST', 'localhost'),
-        'PORT':     os.environ.get('DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME', default='dimensionnement'),
+        'USER': env('DB_USER', default='devuser'),
+        'PASSWORD': env('DB_PASSWORD', default='devpass'),
+        'HOST': env('DB_HOST', default='localhost'),
+        'PORT': env('DB_PORT', default='5432'),
     }
 }
 
-# User custom
+# Auth User Model
 AUTH_USER_MODEL = 'users.User'
 
-# DRF + JWT + Basic pour tests
+# Django Rest Framework (DRF) Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -113,6 +124,43 @@ REST_FRAMEWORK = {
     ),
 }
 
+# Default auto field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
+
+# Security settings
+# SECURE_SSL_REDIRECT = env.bool('DJANGO_SECURE_SSL_REDIRECT', default=True)
+# SECURE_HSTS_SECONDS = 3600  # Only in production
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Only in production
+# SECURE_HSTS_PRELOAD = True  # Only in production
+# SECURE_CONTENT_TYPE_NOSNIFF = True
+# X_FRAME_OPTIONS = 'DENY'  # Protects against clickjacking
+# CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=True)
+# SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=True)
+
+# Logging Configuration (production-ready)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
+# Default settings for auto migration (auto generation of IDs)
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Debugging and exception handling
 DEBUG_PROPAGATE_EXCEPTIONS = True
