@@ -48,14 +48,14 @@ class UserListCreateView(generics.ListCreateAPIView):
     """Lister ou créer des utilisateurs."""
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAdminUser]
 
 
 class UserRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     """Voir, modifier ou supprimer un utilisateur."""
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [permissions.IsAdminUser]
+    # permission_classes = [permissions.IsAdminUser]
 
 
 class ChangePasswordView(APIView):

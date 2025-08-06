@@ -132,7 +132,7 @@ export default function DefaultValue() {
     setError(null);
 
     const payload = { ...parameters, user: user.id };
-    const url     = paramId ? `/parametres/${paramId}/` : '/parametres/';
+    const url     = paramId ? `parametres/${paramId}/` : 'parametres/';
     const method  = paramId ? 'PUT' : 'POST';
 
     try {
