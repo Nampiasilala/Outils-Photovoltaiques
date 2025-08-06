@@ -24,7 +24,7 @@ interface Equipment {
   prix_unitaire: number;
 }
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 export default function EquipmentManager() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
