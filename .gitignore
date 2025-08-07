@@ -1,34 +1,64 @@
+# ======================
 # Python
+# ======================
 __pycache__/
 *.py[cod]
-*.sqlite3
+*.pyc
+*.pyo
+*.pyd
 *.log
 *.pot
-*.pyc
+*.mo
+*.sqlite3
 
+# ======================
 # Environnement virtuel
+# ======================
+env/
 venv/
+ENV/
+.venv/
 .env
 .env.*
 
+# ======================
 # Django
+# ======================
+static/
 staticfiles/
 media/
 db.sqlite3
+*.sqlite3
+*.json
 
-# Node / Next.js
+# ======================
+# Node.js / React / Next.js
+# ======================
 node_modules/
 .next/
 out/
+dist/
+build/
+package-lock.json
+yarn.lock
+npm-debug.log*
 
+# ======================
 # Docker
+# ======================
 *.pid
 *.sock
 
-# IDEs
+# ======================
+# IDEs & Editors
+# ======================
 .vscode/
 .idea/
+*.sublime-workspace
+*.sublime-project
 
-# OS
+# ======================
+# OS files
+# ======================
 .DS_Store
 Thumbs.db
