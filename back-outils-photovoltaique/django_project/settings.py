@@ -4,7 +4,11 @@ import environ
 
 # Initialiser environ pour charger les variables d'environnement
 env = environ.Env()
-environ.Env.read_env()  # Charger le fichier .env
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# environ.Env.read_env()  # Charger le fichier .env
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Chemin de base du projet
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -164,3 +168,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Debugging and exception handling
 DEBUG_PROPAGATE_EXCEPTIONS = True
+
+AUTHENTICATION_BACKENDS = [
+    'users.backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]

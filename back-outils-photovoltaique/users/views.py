@@ -26,10 +26,13 @@ class LoginView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = authenticate(
-            username=serializer.validated_data["username"],
-            password=serializer.validated_data["password"]
-        )
+        email = serializer.validated_data["email"]
+        password = serializer.validated_data["password"]
+
+        # user = authenticate(request, email=email, password=password)
+
+        # fallback vers username=email au cas où le backend ne lit pas email
+        user = authenticate(request, email=email, username=email, password=password)
 
         if user:
             refresh = RefreshToken.for_user(user)
@@ -39,7 +42,7 @@ class LoginView(generics.GenericAPIView):
             })
 
         return Response(
-            {"detail": "Identifiants invalides."},
+            {"detail": "Email ou mot de passe invalide"},
             status=status.HTTP_401_UNAUTHORIZED
         )
 

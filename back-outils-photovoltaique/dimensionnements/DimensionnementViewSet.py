@@ -52,7 +52,7 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             n_autonomie=data['N_autonomie'],
             localisation=data['localisation'],
             v_batterie=data['V_batterie'],
-            user=None  # Pas d'utilisateur pour les requêtes non authentifiées
+            user=request.user,  # Pas d'utilisateur pour les requêtes non authentifiées
         )
 
         # Création du Dimensionnement avec `select_related` pour optimiser les relations

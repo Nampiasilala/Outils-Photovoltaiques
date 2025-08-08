@@ -14,26 +14,39 @@ class RegisterSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'date_joined', 'last_login'
         ]
         extra_kwargs = {
-            'password': {'write_only': True, 'min_length': 6}
+            'password': {'write_only': True, 'required': False, 'min_length': 6}
         }
 
     def create(self, validated_data):
         # Utiliser create_user pour garantir un mot de passe haché
         user = User.objects.create_user(**validated_data)
         return user
+    
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
 
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
+
+        
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    email = serializers.EmailField()
     password = serializers.CharField()
 
     def validate(self, data):
-        username = data.get('username')
+        email = data.get('email')
         password = data.get('password')
 
         # Vérifier que l'utilisateur existe avant de vérifier le mot de passe
-        user = User.objects.filter(username=username).first()
+        user = User.objects.filter(email=email).first()
         if not user:
-            raise serializers.ValidationError({'username': 'Utilisateur non trouvé.'})
+            raise serializers.ValidationError({'email': 'Utilisateur non trouvé.'})
 
         if not user.check_password(password):
             raise serializers.ValidationError({'password': 'Mot de passe incorrect.'})
