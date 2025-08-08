@@ -1,6 +1,27 @@
 import math
 from decimal import Decimal
 from equipements.models import Equipement
+from dimensionnements.serializers import EquipementDetailSerializer
+from django.core.cache import cache
+
+def get_equipements_recommandes(dimensionnement):
+    """
+    Récupère les équipements recommandés d’un dimensionnement donné,
+    en utilisant le cache pour éviter de recalculer à chaque fois.
+    """
+    cache_key = f"equipements_{dimensionnement.id}"
+    cached_data = cache.get(cache_key)
+
+    if not cached_data:
+        cached_data = {
+            'panneau': EquipementDetailSerializer(dimensionnement.panneau_recommande).data if dimensionnement.panneau_recommande else {},
+            'batterie': EquipementDetailSerializer(dimensionnement.batterie_recommandee).data if dimensionnement.batterie_recommandee else {},
+            'regulateur': EquipementDetailSerializer(dimensionnement.regulateur_recommande).data if dimensionnement.regulateur_recommande else {},
+        }
+        cache.set(cache_key, cached_data, timeout=60 * 15)  # 15 minutes
+
+    return cached_data
+
 
 def choisir_equipement(type_eq, valeur_cible, attribut_comparaison):
     """

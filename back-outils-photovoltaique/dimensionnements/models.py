@@ -67,18 +67,4 @@ class Dimensionnement(models.Model):
         cout_regulateur = self.regulateur_recommande.prix_unitaire if self.regulateur_recommande else 0
 
         return (cout_panneau * self.nombre_panneaux) + (cout_batterie * self.nombre_batteries) + cout_regulateur
-
-    # Méthode pour récupérer les équipements recommandés, avec mise en cache pour éviter les calculs répétés
-    def get_equipements_recommandes(self):
-        cache_key = f"equipements_{self.id}"
-        cached_data = cache.get(cache_key)
         
-        if not cached_data:
-            cached_data = {
-                'panneau': EquipementDetailSerializer(self.panneau_recommande).data if self.panneau_recommande else {},
-                'batterie': EquipementDetailSerializer(self.batterie_recommandee).data if self.batterie_recommandee else {},
-                'regulateur': EquipementDetailSerializer(self.regulateur_recommande).data if self.regulateur_recommande else {},
-            }
-            cache.set(cache_key, cached_data, timeout=60*15)  # Cache pour 15 minutes
-        
-        return cached_data
