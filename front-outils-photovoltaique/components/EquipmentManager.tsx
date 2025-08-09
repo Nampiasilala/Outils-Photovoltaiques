@@ -37,7 +37,7 @@ export default function EquipmentManager() {
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const EQUIPMENT_TYPES = ['Panneau solaire', 'Batterie', 'Régulateur', 'Onduleur'];
+  const EQUIPMENT_TYPES = ['Panneau solaire', 'Batterie', 'Régulateur', 'Onduleur', 'Câble'];
 
   const authHeader = () => {
     const token = localStorage.getItem('accessToken');

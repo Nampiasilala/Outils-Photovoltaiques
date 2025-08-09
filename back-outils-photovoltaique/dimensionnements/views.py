@@ -79,6 +79,8 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             panneau_recommande=calculated_results['panneau_recommande'],
             batterie_recommandee=calculated_results['batterie_recommandee'],
             regulateur_recommande=calculated_results['regulateur_recommande'],
+            onduleur_recommande=calculated_results.get('onduleur_recommande'),  # ✅ AJOUTÉ
+            cable_recommande=calculated_results.get('cable_recommande'), 
             user=user,
         )
 

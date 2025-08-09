@@ -27,6 +27,16 @@ interface FormData {
   V_battery: number;
   localisation: string;
 }
+
+interface EquipmentDetail {
+  id: number;
+  modele: string;
+  puissance?: number;
+  capacite?: number;
+  tension?: number;
+  prix_unitaire: number;
+}
+
 interface ResultData {
   id: number;
   date_calcul: string;
@@ -39,20 +49,45 @@ interface ResultData {
   entree: number;
   parametre: number;
   equipements_recommandes: {
-    panneau: EquipmentDetail;
-    batterie: EquipmentDetail;
-    regulateur: EquipmentDetail;
+    panneau: EquipmentDetail | null;
+    batterie: EquipmentDetail | null;
+    regulateur: EquipmentDetail | null;
+    onduleur?: EquipmentDetail | null;
+    cable?: EquipmentDetail | null;
   };
 }
-interface EquipmentDetail {
-  id: number;
-  modele: string;
-  puissance?: number;
-  capacite?: number;
-  tension?: number;
-  prix_unitaire: number;
-}
 
+/* ---------- Helpers & UI atoms ---------- */
+const price = (n?: number) => (typeof n === 'number' ? `${n} €` : '—');
+const num = (n?: number) => (typeof n === 'number' ? n : '—');
+
+const EquipCard = ({
+  title,
+  c,
+  extra,
+}: {
+  title: string;
+  c: EquipmentDetail | null | undefined;
+  extra?: React.ReactNode;
+}) => (
+  <div className="p-4 bg-gray-50 border rounded">
+    <h4 className="font-semibold">{title}</h4>
+    {c ? (
+      <ul className="mt-2 text-sm space-y-1">
+        <li>Modèle : <strong>{c.modele}</strong></li>
+        {c.puissance !== undefined && <li>Puissance : <strong>{c.puissance} W</strong></li>}
+        {c.capacite !== undefined && <li>Capacité : <strong>{c.capacite} Ah</strong></li>}
+        {c.tension !== undefined && <li>Tension : <strong>{c.tension} V</strong></li>}
+        <li>Prix unitaire : <strong>{price(c.prix_unitaire)}</strong></li>
+        {extra}
+      </ul>
+    ) : (
+      <p className="mt-2 text-sm text-gray-500">Aucune recommandation.</p>
+    )}
+  </div>
+);
+
+/* ---------- Page ---------- */
 export default function SolarForm() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -81,7 +116,6 @@ export default function SolarForm() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loadingIrradiation, setLoadingIrradiation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any | null>(null);
-  // Correction: le type de latLon est maintenant explicitement défini
   const [latLon, setLatLon] = useState<{ lat: number | null; lon: number | null }>({
     lat: null,
     lon: null,
@@ -95,11 +129,13 @@ export default function SolarForm() {
       setLoadingIrradiation(true);
       const fetchLocations = async () => {
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${debouncedLocalisation}&format=json&limit=5`);
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${debouncedLocalisation}&format=json&limit=5`
+          );
           const data = await res.json();
           setSuggestions(data);
         } catch (error) {
-          console.error("Erreur lors de la recherche de la localisation", error);
+          console.error('Erreur lors de la recherche de la localisation', error);
         } finally {
           setLoadingIrradiation(false);
         }
@@ -120,16 +156,15 @@ export default function SolarForm() {
       const res = await fetch(api_url);
       const data = await res.json();
 
-      // Extraction de la valeur moyenne de l'irradiation
       const annualData = data.properties.parameter.ALLSKY_SFC_SW_DWN;
       const values = Object.values(annualData).map(val => val as number).filter(val => val !== -999);
       const avgIrradiation = values.reduce((sum, current) => sum + current, 0) / values.length;
 
       updateField('H_solaire', parseFloat(avgIrradiation.toFixed(2)));
     } catch (error) {
-      console.error("Erreur lors de la récupération de l'irradiation", error);
+      console.error('Erreur lors de la récupération de l\'irradiation', error);
       toast.error("Impossible de récupérer l'irradiation pour cette localisation.");
-      updateField('H_solaire', 0); // Réinitialise l'irradiation en cas d'erreur
+      updateField('H_solaire', 0);
     } finally {
       setLoadingIrradiation(false);
     }
@@ -140,7 +175,6 @@ export default function SolarForm() {
   };
 
   const handleSelectLocation = (location: any) => {
-    // 🌍 Met à jour la localisation et déclenche l'appel pour l'irradiation
     updateField('localisation', location.display_name);
     setSelectedLocation(location);
     setLatLon({ lat: parseFloat(location.lat), lon: parseFloat(location.lon) });
@@ -206,6 +240,7 @@ export default function SolarForm() {
         </div>
         <p className="text-gray-600">Renseignez vos besoins :</p>
       </header>
+
       <div className="max-w-6xl mx-auto space-y-6">
         {/* FORM */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -229,6 +264,7 @@ export default function SolarForm() {
               onChange={e => updateField('P_max', +e.target.value)}
             />
           </section>
+
           {/* Configuration */}
           <section className="bg-white p-6 rounded-xl shadow-sm">
             <h3 className="flex items-center gap-2 font-semibold mb-4">
@@ -249,9 +285,7 @@ export default function SolarForm() {
                   type="button"
                   onClick={() => updateField('V_battery', v)}
                   className={`px-3 py-1 rounded ${
-                    formData.V_battery === v
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100'
+                    formData.V_battery === v ? 'bg-blue-600 text-white' : 'bg-gray-100'
                   }`}
                 >
                   {v}V
@@ -259,6 +293,7 @@ export default function SolarForm() {
               ))}
             </div>
           </section>
+
           {/* Environnement */}
           <section className="bg-white p-6 rounded-xl shadow-sm">
             <h3 className="flex items-center gap-2 font-semibold mb-4">
@@ -321,6 +356,7 @@ export default function SolarForm() {
             </button>
           </section>
         </div>
+
         {/* Erreurs */}
         {errors.length > 0 && (
           <div className="bg-red-50 border border-red-200 p-4 rounded">
@@ -334,6 +370,8 @@ export default function SolarForm() {
             </ul>
           </div>
         )}
+
+        {/* Résumé */}
         {result && (
           <div className="bg-white p-6 rounded-xl shadow mt-6">
             <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
@@ -367,43 +405,46 @@ export default function SolarForm() {
             </div>
           </div>
         )}
+
         {/* Équipements recommandés */}
-        {result && result.equipements_recommandes && (
+        {result?.equipements_recommandes && (
           <div className="bg-white p-6 rounded-xl shadow mt-6">
             <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
               <Zap /> Équipements recommandés
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Panneau solaire */}
-              <div className="p-4 bg-gray-50 border rounded">
-                <h4 className="font-semibold text-blue-600">Panneau solaire</h4>
-                <ul className="mt-2 text-sm space-y-1">
-                  <li>Modèle : <strong>{result.equipements_recommandes.panneau.modele}</strong></li>
-                  <li>Puissance : <strong>{result.equipements_recommandes.panneau.puissance} W</strong></li>
-                  <li>Quantité : <strong>{result.nombre_panneaux}</strong></li>
-                  <li>Prix unitaire : <strong>{result.equipements_recommandes.panneau.prix_unitaire} €</strong></li>
-                </ul>
-              </div>
-              {/* Batterie */}
-              <div className="p-4 bg-gray-50 border rounded">
-                <h4 className="font-semibold text-green-600">Batterie</h4>
-                <ul className="mt-2 text-sm space-y-1">
-                  <li>Modèle : <strong>{result.equipements_recommandes.batterie.modele}</strong></li>
-                  <li>Capacité : <strong>{result.equipements_recommandes.batterie.capacite} Ah</strong></li>
-                  <li>Quantité : <strong>{result.nombre_batteries}</strong></li>
-                  <li>Prix unitaire : <strong>{result.equipements_recommandes.batterie.prix_unitaire} €</strong></li>
-                </ul>
-              </div>
-              {/* Régulateur */}
-              <div className="p-4 bg-gray-50 border rounded">
-                <h4 className="font-semibold text-purple-600">Régulateur</h4>
-                <ul className="mt-2 text-sm space-y-1">
-                  <li>Modèle : <strong>{result.equipements_recommandes.regulateur.modele}</strong></li>
-                  <li>Tension : <strong>{result.equipements_recommandes.regulateur.tension} V</strong></li>
-                  <li>Quantité : <strong>1</strong></li>
-                  <li>Prix unitaire : <strong>{result.equipements_recommandes.regulateur.prix_unitaire} €</strong></li>
-                </ul>
-              </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+              <EquipCard
+                title="Panneau solaire"
+                c={result.equipements_recommandes.panneau}
+                extra={<li>Quantité : <strong>{num(result?.nombre_panneaux)}</strong></li>}
+              />
+
+              <EquipCard
+                title="Batterie"
+                c={result.equipements_recommandes.batterie}
+                extra={<li>Quantité : <strong>{num(result?.nombre_batteries)}</strong></li>}
+              />
+
+              <EquipCard
+                title="Régulateur"
+                c={result.equipements_recommandes.regulateur}
+                extra={<li>Quantité : <strong>1</strong></li>}
+              />
+
+              {/* 👇 Nouveau : Onduleur */}
+              <EquipCard
+                title="Onduleur"
+                c={result.equipements_recommandes.onduleur}
+                extra={<li>Quantité : <strong>1</strong></li>}
+              />
+
+              {/* 👇 Nouveau : Câble */}
+              <EquipCard
+                title="Câble"
+                c={result.equipements_recommandes.cable}
+                extra={<li>Quantité : <strong>À calculer selon installation</strong></li>}
+              />
             </div>
           </div>
         )}

@@ -8,7 +8,7 @@ class CalculationInputSerializer(serializers.Serializer):
     E_jour = serializers.FloatField(min_value=0.1)
     P_max = serializers.FloatField(min_value=0.1)
     N_autonomie = serializers.IntegerField(min_value=1)
-    H_solaire = serializers.FloatField(min_value=0.1)
+    H_solaire = serializers.FloatField(required=True, min_value=0.1)
     V_batterie = serializers.ChoiceField(choices=[12, 24, 48])
     localisation = serializers.CharField(max_length=255)
 
@@ -65,6 +65,8 @@ class DimensionnementSerializer(serializers.ModelSerializer):
         equipements = {
             'panneau': obj.panneau_recommande,
             'batterie': obj.batterie_recommandee,
-            'regulateur': obj.regulateur_recommande
+            'regulateur': obj.regulateur_recommande,
+            'onduleur': obj.onduleur_recommande, 
+            'cable': obj.cable_recommande,  
         }
         return {key: EquipementDetailSerializer(equipement).data if equipement else None for key, equipement in equipements.items()}

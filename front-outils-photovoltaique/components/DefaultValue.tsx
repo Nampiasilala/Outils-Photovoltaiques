@@ -20,7 +20,6 @@ interface Parameters {
   k_securite: number;
   dod: number;
   k_dimensionnement: number;
-  h_solaire: number;
 }
 
 interface ParameterInfo {
@@ -39,7 +38,6 @@ export default function DefaultValue() {
     k_securite:       1.3,
     dod:              0.5,
     k_dimensionnement:1.25,
-    h_solaire:        5.5,
   });
   const [paramId, setParamId] = useState<number | null>(null);
   const [editing, setEditing] = useState<ParameterKey | null>(null);
@@ -72,12 +70,6 @@ export default function DefaultValue() {
       unit: '',
       range: '1.2–1.4',
     },
-    h_solaire: {
-      name: 'Heures Solaires',
-      description: "Nombre d'heures d'ensoleillement par jour",
-      unit: 'h',
-      range: '4.0–8.0',
-    },
   };
 
   const fetchParameters = async () => {
@@ -106,7 +98,6 @@ export default function DefaultValue() {
           k_securite:        mine.k_securite,
           dod:               mine.dod,
           k_dimensionnement: mine.k_dimensionnement,
-          h_solaire:         mine.h_solaire,
         });
         setParamId(mine.id);
         
@@ -180,7 +171,6 @@ export default function DefaultValue() {
 
   const formatValue = (key: ParameterKey, value: number) => {
     if (key === 'dod')       return `${(value * 100).toFixed(0)}%`;
-    if (key === 'h_solaire') return `${value.toFixed(1)}h`;
     return value.toString();
   };
 

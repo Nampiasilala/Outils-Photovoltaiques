@@ -17,6 +17,8 @@ def get_equipements_recommandes(dimensionnement):
             'panneau': EquipementDetailSerializer(dimensionnement.panneau_recommande).data if dimensionnement.panneau_recommande else {},
             'batterie': EquipementDetailSerializer(dimensionnement.batterie_recommandee).data if dimensionnement.batterie_recommandee else {},
             'regulateur': EquipementDetailSerializer(dimensionnement.regulateur_recommande).data if dimensionnement.regulateur_recommande else {},
+            'onduleur': EquipementDetailSerializer(dimensionnement.onduleur_recommande).data if dimensionnement.onduleur_recommande else {},
+            'cable': EquipementDetailSerializer(dimensionnement.cable_recommande).data if dimensionnement.cable_recommande else {},
         }
         cache.set(cache_key, cached_data, timeout=60 * 15)  # 15 minutes
 
@@ -28,11 +30,20 @@ def choisir_equipement(type_eq, valeur_cible, attribut_comparaison):
     Sélectionne un équipement dont l'attribut est >= à la valeur cible.
     Si aucun, retourne le plus puissant/disponible.
     """
+    print(f"🔍 DEBUG: Recherche categorie='{type_eq}', valeur_cible={valeur_cible}, attribut='{attribut_comparaison}'")
+    
     if not isinstance(valeur_cible, Decimal):
         valeur_cible = Decimal(str(valeur_cible))
 
-    candidats = Equipement.objects.filter(type_equipement=type_eq).order_by(attribut_comparaison)
+    candidats = Equipement.objects.filter(categorie=type_eq).order_by(attribut_comparaison)
+    print(f"📊 DEBUG: Trouvé {candidats.count()} candidats")
+    
+    if candidats.exists():
+        for c in candidats:
+            print(f"   - {c.nom}: {attribut_comparaison}={getattr(c, attribut_comparaison)}")
+    
     if not candidats.exists():
+        print(f"❌ DEBUG: Aucun équipement trouvé pour categorie='{type_eq}'")
         raise ValueError(f"Aucun équipement de type '{type_eq}' trouvé dans la base de données.")
 
     for equip in candidats:
@@ -41,9 +52,12 @@ def choisir_equipement(type_eq, valeur_cible, attribut_comparaison):
             attr_value = Decimal(str(attr_value))
 
         if attr_value >= valeur_cible:
+            print(f"✅ DEBUG: Sélectionné {equip.nom}")
             return equip
 
-    return candidats.last()
+    selected = candidats.last()
+    print(f"⚠️ DEBUG: Aucun >= {valeur_cible}, pris le dernier: {selected.nom if selected else 'None'}")
+    return selected
 
 
 def compute_dimensionnement(data, param):
@@ -65,33 +79,44 @@ def compute_dimensionnement(data, param):
 
     # 1) Générateur PV
     P_crête = (E_jour * Ksec) / (H_solaire * n_global)
-    panneau_choisi = choisir_equipement('Panneau solaire', P_crête, 'puissance')
+    panneau_choisi = choisir_equipement('panneau_solaire', P_crête, 'puissance')
     if panneau_choisi is None:
         raise ValueError("Aucun panneau solaire trouvé.")
     nombre_panneaux = math.ceil(P_crête / panneau_choisi.puissance)
 
     # 2) Capacité batterie
     capacite_batt = (E_jour * N_autonomie) / (V_batterie * DoD)  # ❌ Enlever *1000 ici !
-    batterie_choisie = choisir_equipement('Batterie', capacite_batt, 'capacite')
+    batterie_choisie = choisir_equipement('batterie', capacite_batt, 'capacite')
     if batterie_choisie is None:
         raise ValueError("Aucune batterie trouvée.")
     nombre_batteries = math.ceil(capacite_batt / batterie_choisie.capacite)
 
     # 3) Onduleur
     puissance_totale = P_max * Kdim
+    onduleur_choisi = choisir_equipement('onduleur', puissance_totale, 'puissance')
+    if onduleur_choisi is None:
+        raise ValueError("Aucun onduleur trouvé.")
 
     # 4) Régulateur
-    courant_regulateur = (P_crête * Decimal('1000')) / V_batterie  # P en W, donc x1000 pour courant en mA
-    regulateur_choisi = choisir_equipement('Régulateur', courant_regulateur, 'tension')
+    courant_regulateur = (P_crête * Decimal('1000')) / V_batterie  # ✅ GARDER cette ligne
+    regulateur_choisi = choisir_equipement('regulateur', P_crête, 'puissance')  # ✅ CHANGER juste le critère
     if regulateur_choisi is None:
         raise ValueError("Aucun régulateur trouvé.")
+
+    # 5) Câble
+    courant_cable = puissance_totale * Decimal('1000') / V_batterie  # ✅ GARDER cette ligne aussi
+    cable_choisi = choisir_equipement('cable', Decimal('1'), 'prix_unitaire')  # ✅ CHANGER juste le critère
+    if cable_choisi is None:
+        raise ValueError("Aucun câble trouvé.")
 
     # 5) Résumé
     bilan_energetique_annuel = E_jour * Decimal('365')
     cout_total = (
         nombre_panneaux * panneau_choisi.prix_unitaire +
         nombre_batteries * batterie_choisie.prix_unitaire +
-        regulateur_choisi.prix_unitaire
+        regulateur_choisi.prix_unitaire +
+        onduleur_choisi.prix_unitaire +
+        cable_choisi.prix_unitaire
     )
 
     # 6) Résultats
@@ -108,4 +133,6 @@ def compute_dimensionnement(data, param):
         "panneau_recommande": panneau_choisi,
         "batterie_recommandee": batterie_choisie,
         "regulateur_recommande": regulateur_choisi,
+        "onduleur_recommande": onduleur_choisi,
+        "cable_recommande": cable_choisi,
     }

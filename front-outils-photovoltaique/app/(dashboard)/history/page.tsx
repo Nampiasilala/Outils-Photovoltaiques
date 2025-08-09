@@ -25,6 +25,7 @@ import {
   Settings,
   Eye,
   EyeOff,
+  Cable,
 } from "lucide-react";
 import DeleteAlert from "@/components/DeleteAlert";
 
@@ -58,6 +59,18 @@ interface ResultData {
       id: number;
       modele: string;
       tension?: number | null;
+      prix_unitaire: number;
+    } | null;
+    onduleur: {
+      id: number;
+      modele: string;
+      puissance?: number | null;
+      prix_unitaire: number;
+      tension?: number | null;
+    } | null;
+    cable: {
+      id: number;
+      modele: string;
       prix_unitaire: number;
     } | null;
   };
@@ -700,6 +713,103 @@ export default function History() {
                                                 .regulateur.prix_unitaire
                                             }{" "}
                                             €
+                                          </span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {calc.equipements_recommandes.onduleur && (
+                                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <Zap className="w-5 h-5 text-orange-600" />
+                                        <p className="font-semibold text-orange-700">
+                                          Onduleur
+                                        </p>
+                                      </div>
+                                      <div className="space-y-2 text-sm">
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .onduleur.modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Puissance:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .onduleur.puissance
+                                          }{" "}
+                                          W
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Tension:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .onduleur.tension
+                                          }{" "}
+                                          V
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-orange-700">
+                                            {
+                                              calc.equipements_recommandes
+                                                .onduleur.prix_unitaire
+                                            }{" "}
+                                            €
+                                          </span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* ✅ NOUVEAU : Câble */}
+                                  {calc.equipements_recommandes.cable && (
+                                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <Cable className="w-5 h-5 text-gray-600" />
+                                        <p className="font-semibold text-gray-700">
+                                          Câble
+                                        </p>
+                                      </div>
+                                      <div className="space-y-2 text-sm">
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes.cable
+                                              .modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-gray-700">
+                                            {
+                                              calc.equipements_recommandes.cable
+                                                .prix_unitaire
+                                            }{" "}
+                                            € / m
+                                          </span>
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Quantité:
+                                          </span>{" "}
+                                          <span className="text-gray-600">
+                                            À calculer selon installation
                                           </span>
                                         </p>
                                       </div>

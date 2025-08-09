@@ -39,6 +39,22 @@ class Dimensionnement(models.Model):
         blank=True,
         related_name='dimensionnements_regulateur'
     )
+    
+    onduleur_recommande = models.ForeignKey(  # ✅ Ajouter l'onduleur
+        Equipement,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='dimensionnements_onduleur'
+    )
+    
+    cable_recommande = models.ForeignKey(  # ✅ Ajouter le câble
+        Equipement,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='dimensionnements_cable'
+    )
 
     class Meta:
         indexes = [
@@ -65,6 +81,14 @@ class Dimensionnement(models.Model):
         cout_panneau = self.panneau_recommande.prix_unitaire if self.panneau_recommande else 0
         cout_batterie = self.batterie_recommandee.prix_unitaire if self.batterie_recommandee else 0
         cout_regulateur = self.regulateur_recommande.prix_unitaire if self.regulateur_recommande else 0
+        cout_onduleur = self.onduleur_recommande.prix_unitaire if self.onduleur_recommande else 0
+        cout_cable = self.cable_recommande.prix_unitaire if self.cable_recommande else 0
 
-        return (cout_panneau * self.nombre_panneaux) + (cout_batterie * self.nombre_batteries) + cout_regulateur
-        
+        return (
+            (cout_panneau * self.nombre_panneaux) +
+            (cout_batterie * self.nombre_batteries) +
+            cout_regulateur +
+            cout_onduleur +
+            cout_cable
+        )
+ 

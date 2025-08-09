@@ -1,5 +1,3 @@
-// Code mis à jour dans AddEquipmentModal.tsx
-
 'use client';
 
 import { Dialog } from '@headlessui/react';
@@ -29,7 +27,19 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
   });
 
   const [saving, setSaving] = useState(false);
-  const EQUIPMENT_TYPES = ['Panneau solaire', 'Batterie', 'Régulateur', 'Onduleur'];
+  const EQUIPMENT_TYPES = ['Panneau solaire', 'Batterie', 'Régulateur', 'Onduleur', 'Câble'];
+
+  // ✅ AJOUTÉ : Mapping des types vers catégories backend
+  const getCategorieFromType = (type: string): string => {
+    const mapping: Record<string, string> = {
+      'Panneau solaire': 'panneau_solaire',
+      'Batterie': 'batterie',
+      'Régulateur': 'regulateur',
+      'Onduleur': 'onduleur',
+      'Câble': 'cable'
+    };
+    return mapping[type] || 'general';
+  };
 
   const handleChange = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -65,15 +75,38 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
     if (!validateFields()) return;
     setSaving(true);
     try {
+      // ✅ MODIFIÉ : Ajout du mapping categorie
+      const payload = {
+        ...form,
+        nom: form.modele, // Utiliser le modèle comme nom aussi
+        categorie: getCategorieFromType(form.type_equipement) // ✅ Mapping automatique
+      };
+
+      console.log('Payload envoyé:', payload); // Pour debug
+
       const res = await fetchWithAuth(`${API}/equipements/`, {
         method: 'POST',
         headers: authHeader(),
-        body: JSON.stringify({ ...form, nom: '' }),
+        body: JSON.stringify(payload),
       });
+      
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
       const created = await res.json();
       onCreated(created);
-      toast.success('Équipement ajouté');
+      toast.success('Équipement ajouté avec succès');
+      
+      // ✅ Reset du formulaire
+      setForm({
+        type_equipement: 'Panneau solaire',
+        modele: '',
+        nom: '',
+        categorie: 'Général',
+        puissance: null,
+        tension: null,
+        capacite: null,
+        prix_unitaire: 0,
+      });
+      
       onClose();
     } catch (err: any) {
       toast.error("Erreur : " + err.message);
@@ -100,6 +133,10 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
+              {/* ✅ AJOUTÉ : Affichage de la catégorie pour debug */}
+              <p className="text-xs text-gray-500 mt-1">
+                Catégorie: {getCategorieFromType(form.type_equipement)}
+              </p>
             </div>
 
             <div>
@@ -109,6 +146,7 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
                 value={form.modele}
                 onChange={(e) => handleChange('modele', e.target.value)}
                 className="border p-2 rounded w-full"
+                placeholder="Ex: Standard 100W"
               />
             </div>
 
@@ -119,6 +157,7 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
                 value={form.puissance ?? ''}
                 onChange={(e) => handleChange('puissance', e.target.value === '' ? null : +e.target.value)}
                 className="border p-2 rounded w-full"
+                min="0"
               />
             </div>
 
@@ -129,16 +168,18 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
                 value={form.tension ?? ''}
                 onChange={(e) => handleChange('tension', e.target.value === '' ? null : +e.target.value)}
                 className="border p-2 rounded w-full"
+                min="0"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Capacité</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Capacité (Ah)</label>
               <input
                 type="number"
                 value={form.capacite ?? ''}
                 onChange={(e) => handleChange('capacite', e.target.value === '' ? null : +e.target.value)}
                 className="border p-2 rounded w-full"
+                min="0"
               />
             </div>
 
@@ -147,8 +188,9 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
               <input
                 type="number"
                 value={form.prix_unitaire}
-                onChange={(e) => handleChange('prix_unitaire', +e.target.value)}
+                onChange={(e) => handleChange('prix_unitaire', +e.target.value || 0)}
                 className="border p-2 rounded w-full"
+                min="0"
               />
             </div>
           </div>
@@ -157,13 +199,14 @@ export default function AddEquipmentModal({ isOpen, onClose, onCreated, authHead
             <button
               onClick={onClose}
               className="px-4 py-2 border rounded hover:bg-gray-50"
+              disabled={saving}
             >
               Annuler
             </button>
             <button
               onClick={handleSubmit}
               disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
             >
               {saving && <Loader className="w-4 h-4 animate-spin" />}
               Ajouter

@@ -6,14 +6,14 @@ class Equipement(models.Model):
         ('Batterie', 'Batterie'),
         ('Onduleur', 'Onduleur'),
         ('Régulateur', 'Régulateur'),
-  ('Câble', 'Câble'),
-    ('Disjoncteur', 'Disjoncteur'),
-    ('Parafoudre', 'Parafoudre'),
-    ('Support', 'Support'),
-    ('Boîtier de jonction', 'Boîtier de jonction'),
-    ('Connecteur', 'Connecteur'),
-    ('Monitoring', 'Monitoring'),    ]
-    
+        ('Câble', 'Câble'),
+        ('Disjoncteur', 'Disjoncteur'),
+        ('Parafoudre', 'Parafoudre'),
+        ('Support', 'Support'),
+        ('Boîtier de jonction', 'Boîtier de jonction'),
+        ('Connecteur', 'Connecteur'),
+        ('Monitoring', 'Monitoring'),    ]
+        
     CATEGORIE_CHOICES = [
         ('Général', 'Général'),
         ('Spécial', 'Spécial'),
