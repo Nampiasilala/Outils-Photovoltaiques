@@ -4,6 +4,16 @@ from .models import Equipement
 
 @admin.register(Equipement)
 class EquipementAdmin(admin.ModelAdmin):
-    list_display = ('id', 'type_equipement', 'modele', 'puissance', 'capacite', 'tension', 'prix_unitaire') # <-- AJOUTEZ 'modele' ici
-    list_filter = ('type_equipement',)
-    search_fields = ('modele', 'type_equipement')
+    list_display = (
+        'id',
+        'reference',
+        'categorie',            # choix (ex: Panneau solaire, Batterie, etc.)
+        'modele',
+        'puissance_W',
+        'capacite_Ah',
+        'tension_nominale_V',
+        'prix_unitaire',
+        'devise',
+    )
+    list_filter = ('categorie', 'devise', 'disponible')
+    search_fields = ('reference', 'modele', 'nom_commercial', 'marque')
