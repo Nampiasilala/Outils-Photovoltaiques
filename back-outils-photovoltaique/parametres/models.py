@@ -1,19 +1,41 @@
+# apps/parametres/models.py
 from django.db import models
-from users.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class ParametreSysteme(models.Model):
-    n_global = models.FloatField()
-    k_securite = models.FloatField()
-    dod = models.FloatField()
-    k_dimensionnement = models.FloatField()
-    h_solaire = models.FloatField()
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='parametres_systeme')  # Ajout du related_name pour une gestion inverse efficace
+    # Rendements / coefficients
+    n_global = models.FloatField(
+        default=0.75, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)]
+    )
+    k_securite = models.FloatField(
+        default=1.30, validators=[MinValueValidator(1.0)]
+    )
+    dod = models.FloatField(  # profondeur de décharge (0..1)
+        default=0.50, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)]
+    )
+    k_dimensionnement = models.FloatField(
+        default=1.25, validators=[MinValueValidator(1.0)]
+    )
+
+    # ➜ Nouveaux paramètres demandés
+    s_max = models.FloatField(  # seuil de surdimensionnement (0..1)
+        default=0.25,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Seuil de surdimensionnement autorisé pour modules PV/batteries (0–1).",
+    )
+    i_sec = models.FloatField(   # marge courant régulateur
+        default=1.25,
+        validators=[MinValueValidator(1.0)],
+        help_text="Facteur de sécurité sur le courant régulateur (ex. 1.25).",
+    )
+
+    # Métadonnées
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        # Affichage plus lisible de l'objet
-        return f"Paramètre {self.id} - Utilisateur: {self.user.username if self.user else 'N/A'}"
+        return f"Paramètres système (id={self.id})"
 
     class Meta:
-        indexes = [
-            models.Index(fields=['user']),  # Indexation sur 'user' pour améliorer la recherche des paramètres de l'utilisateur
-        ]
+        verbose_name = "Paramètres système"
+        verbose_name_plural = "Paramètres système"
+        # Pas d'index user (supprimé)

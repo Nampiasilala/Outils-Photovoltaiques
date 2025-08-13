@@ -16,13 +16,25 @@ class CalculationInputSerializer(serializers.Serializer):
 class EquipementDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Equipement
-        fields = ['id', 'modele', 'puissance', 'capacite', 'tension', 'prix_unitaire']
-    
-    # Optimisation : on n'a plus besoin des méthodes personnalisées car elles sont gérées directement par DRF
+        fields = [
+            'id', 
+            'reference',
+            'modele', 
+            'marque',
+            'nom_commercial',
+            'puissance_W',        # ✅ Correct selon votre modèle (pas 'puissance')
+            'capacite_Ah',        # ✅ Correct selon votre modèle (pas 'capacite')  
+            'tension_nominale_V', # ✅ Correct selon votre modèle (pas 'tension')
+            'prix_unitaire',
+            'devise',
+            'categorie'
+        ]
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Utilisation de float() directement si l'attribut est non null
-        for field in ['puissance', 'capacite', 'tension', 'prix_unitaire']:
+        # Conversion en float pour les champs numériques avec les BONS noms de champs
+        numeric_fields = ['puissance_W', 'capacite_Ah', 'tension_nominale_V', 'prix_unitaire']
+        for field in numeric_fields:
             if data.get(field) is not None:
                 data[field] = float(data[field])
         return data
@@ -54,19 +66,19 @@ class DimensionnementSerializer(serializers.ModelSerializer):
             "parametre",
             "equipements_recommandes",
         ]
-    
-    # Optimisation : Formatage direct avec la méthode isoformat()
+
     def get_date_calcul(self, obj):
         return obj.date_calcul.isoformat() if obj.date_calcul else None
 
-    # Optimisation : Simplification de la logique pour éviter des appels multiples
     def get_equipements_recommandes(self, obj):
-        # Optimisation : on évite de faire plusieurs sérialiseurs si possible
         equipements = {
             'panneau': obj.panneau_recommande,
             'batterie': obj.batterie_recommandee,
             'regulateur': obj.regulateur_recommande,
-            'onduleur': obj.onduleur_recommande, 
-            'cable': obj.cable_recommande,  
+            'onduleur': obj.onduleur_recommande,
+            'cable': obj.cable_recommande,
         }
-        return {key: EquipementDetailSerializer(equipement).data if equipement else None for key, equipement in equipements.items()}
+        return {
+            key: EquipementDetailSerializer(equipement).data if equipement else None 
+            for key, equipement in equipements.items()
+        }

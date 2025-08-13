@@ -1,42 +1,60 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from .models import ParametreSysteme
-from .serializers import ParametreSystemeSerializer
+# parametres/views.py
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
-class ParametreSystemeViewSet(viewsets.ModelViewSet):
-    # Filtrage des paramètres pour l'utilisateur authentifié
-    queryset = ParametreSysteme.objects.all()
-    serializer_class = ParametreSystemeSerializer
+from .models import ParametreSysteme
+from .serializers import ParametreSystemeSerializer
+from .services import get_or_create_global_params
 
-    # Permission pour s'assurer que l'utilisateur est authentifié
-    permission_classes = [IsAuthenticated]
+
+class ParametreSystemeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet pour paramètres système globaux (singleton logique)
+    """
+    queryset = ParametreSysteme.objects.all().order_by("-id")
+    serializer_class = ParametreSystemeSerializer
+    permission_classes = [IsAuthenticated]  # par défaut
 
     def get_queryset(self):
-        """
-        Limite le queryset aux paramètres du user authentifié.
-        """
-        user = self.request.user
-        return ParametreSysteme.objects.filter(user=user)
+        return ParametreSysteme.objects.all().order_by("-id")
 
-    def list(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         """
-        Méthode list pour gérer la pagination et améliorer les performances
+        Bloque la création multiple via la route standard
         """
-        queryset = self.get_queryset()
-        # Optimisation avec select_related pour éviter les requêtes N+1
-        queryset = queryset.select_related('user')
+        if ParametreSysteme.objects.exists():
+            return Response(
+                {"detail": "Un jeu de paramètres existe déjà."},
+                status=status.HTTP_409_CONFLICT
+            )
+        return super().create(request, *args, **kwargs)
 
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+    @action(
+        detail=False,
+        methods=["get", "put", "patch"],  # ✅ GET, PUT, PATCH
+        url_path="effective",
+        permission_classes=[AllowAny],    # Public si souhaité
+    )
+    def effective(self, request, *args, **kwargs):
+        """
+        GET    -> renvoie l'objet unique
+        PUT    -> mise à jour complète
+        PATCH  -> mise à jour partielle
+        """
+        obj = get_or_create_global_params()
 
-        serializer = self.get_serializer(queryset, many=True)
+        if request.method.lower() == "get":
+            serializer = self.get_serializer(obj)
+            return Response(serializer.data)
+
+        partial_update = request.method.lower() == "patch"
+        serializer = self.get_serializer(
+            obj,
+            data=request.data,
+            partial=partial_update
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        """
-        Lorsque tu crées un nouvel objet ParametreSysteme, on associe directement l'utilisateur connecté.
-        """
-        serializer.save(user=self.request.user)

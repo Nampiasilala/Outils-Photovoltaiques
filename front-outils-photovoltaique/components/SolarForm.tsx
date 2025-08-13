@@ -1,8 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/AuthContext';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { dimensionnementAPI } from '@/lib/api'; // ✅ Import de l'utilitaire API
 import {
   Sun,
   Zap,
@@ -15,6 +14,7 @@ import {
   PanelTop,
   ClipboardCheck,
   Search,
+  Cable,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useDebounce } from 'use-debounce';
@@ -28,15 +28,22 @@ interface FormData {
   localisation: string;
 }
 
+// ✅ Interface corrigée selon le backend
 interface EquipmentDetail {
   id: number;
+  reference: string;
   modele: string;
-  puissance?: number;
-  capacite?: number;
-  tension?: number;
+  marque: string;
+  nom_commercial: string;
+  puissance_W?: number | null;        // ✅ Corrigé
+  capacite_Ah?: number | null;        // ✅ Corrigé
+  tension_nominale_V?: number | null; // ✅ Corrigé
   prix_unitaire: number;
+  devise: string;
+  categorie: string;
 }
 
+// ✅ Interface ResultData corrigée
 interface ResultData {
   id: number;
   date_calcul: string;
@@ -57,28 +64,94 @@ interface ResultData {
   };
 }
 
-/* ---------- Helpers & UI atoms ---------- */
-const price = (n?: number) => (typeof n === 'number' ? `${n} €` : '—');
-const num = (n?: number) => (typeof n === 'number' ? n : '—');
 
+// ✅ Nouvelle fonction pour formater l'énergie avec unité adaptée
+const formatEnergy = (wh?: number | null) => {
+  if (typeof wh !== 'number') return '—';
+  
+  // Si >= 1000 Wh, convertir en kWh pour plus de lisibilité
+  if (wh >= 1000) {
+    return `${(wh / 1000).toLocaleString('fr-FR', { 
+      minimumFractionDigits: 1, 
+      maximumFractionDigits: 1 
+    })} kWh`;
+  }
+  
+  // Sinon garder en Wh
+  return `${wh.toLocaleString('fr-FR')} Wh`;
+};
+
+/* ---------- Helpers & UI atoms ---------- */
+// ✅ Fonction de formatage améliorée avec Ariary
+const formatPrice = (n?: number | null, currency?: string) => {
+  if (typeof n !== 'number') return '—';
+  
+  // Déterminer la devise à utiliser
+  const devise = currency === 'MGA' ? 'Ar' : (currency || 'Ar');
+  
+  return `${n.toLocaleString('fr-FR')} ${devise}`;
+};
+
+const formatNumber = (n?: number | null) => 
+  typeof n === 'number' ? n.toLocaleString('fr-FR') : '—';
+
+const formatDecimal = (n?: number | null, decimals: number = 1) => 
+  typeof n === 'number' ? n.toLocaleString('fr-FR', { 
+    minimumFractionDigits: decimals, 
+    maximumFractionDigits: decimals 
+  }) : '—';
+
+// ✅ Composant EquipCard corrigé
 const EquipCard = ({
   title,
   c,
   extra,
+  icon: Icon,
 }: {
   title: string;
   c: EquipmentDetail | null | undefined;
   extra?: React.ReactNode;
+  icon: any;
 }) => (
-  <div className="p-4 bg-gray-50 border rounded">
-    <h4 className="font-semibold">{title}</h4>
+  <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg shadow-sm">
+    <div className="flex items-center gap-2 mb-3">
+      <Icon className="w-5 h-5 text-gray-600" />
+      <h4 className="font-semibold text-gray-700">{title}</h4>
+    </div>
     {c ? (
-      <ul className="mt-2 text-sm space-y-1">
-        <li>Modèle : <strong>{c.modele}</strong></li>
-        {c.puissance !== undefined && <li>Puissance : <strong>{c.puissance} W</strong></li>}
-        {c.capacite !== undefined && <li>Capacité : <strong>{c.capacite} Ah</strong></li>}
-        {c.tension !== undefined && <li>Tension : <strong>{c.tension} V</strong></li>}
-        <li>Prix unitaire : <strong>{price(c.prix_unitaire)}</strong></li>
+      <ul className="mt-2 text-sm space-y-2">
+        <li className="flex justify-between">
+          <span>Modèle :</span>
+          <strong>{c.modele}</strong>
+        </li>
+        {c.reference && (
+          <li className="flex justify-between">
+            <span>Référence :</span>
+            <strong className="text-xs font-mono">{c.reference}</strong>
+          </li>
+        )}
+        {c.puissance_W && (
+          <li className="flex justify-between">
+            <span>Puissance :</span>
+            <strong>{formatDecimal(c.puissance_W, 0)} W</strong>
+          </li>
+        )}
+        {c.capacite_Ah && (
+          <li className="flex justify-between">
+            <span>Capacité :</span>
+            <strong>{formatDecimal(c.capacite_Ah, 0)} Ah</strong>
+          </li>
+        )}
+        {c.tension_nominale_V && (
+          <li className="flex justify-between">
+            <span>Tension :</span>
+            <strong>{formatDecimal(c.tension_nominale_V, 0)} V</strong>
+          </li>
+        )}
+        <li className="flex justify-between border-t pt-2 mt-2">
+          <span>Prix unitaire :</span>
+          <strong className="text-green-600">{formatPrice(c.prix_unitaire, c.devise)}</strong>
+        </li>
         {extra}
       </ul>
     ) : (
@@ -89,16 +162,7 @@ const EquipCard = ({
 
 /* ---------- Page ---------- */
 export default function SolarForm() {
-  const { user, loading } = useAuth();
   const router = useRouter();
-
-  // Redirige si non connecté
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
-  if (loading || !user) return null;
 
   const [formData, setFormData] = useState<FormData>({
     E_jour: 0,
@@ -111,6 +175,7 @@ export default function SolarForm() {
 
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<ResultData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // 🌍 États pour les APIs de géocodage et d'irradiation
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -186,8 +251,8 @@ export default function SolarForm() {
     const errs: string[] = [];
     if (formData.E_jour <= 0) errs.push('La consommation journalière doit être > 0.');
     if (formData.P_max <= 0) errs.push('La puissance max doit être > 0.');
-    if (formData.N_autonomie <= 0) errs.push('Le nombre de jours d’autonomie doit être > 0.');
-    if (formData.H_solaire <= 0) errs.push('L’irradiation doit être > 0.');
+    if (formData.N_autonomie <= 0) errs.push("Le nombre de jours d'autonomie doit être > 0.");
+    if (formData.H_solaire <= 0) errs.push("L'irradiation doit être > 0.");
     if (![12, 24, 48].includes(formData.V_battery))
       errs.push('La tension doit être 12 V, 24 V ou 48 V.');
     if (!formData.localisation.trim()) errs.push('La localisation est requise.');
@@ -197,6 +262,8 @@ export default function SolarForm() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    
+    setIsLoading(true);
     try {
       const payload = {
         E_jour: formData.E_jour,
@@ -208,84 +275,88 @@ export default function SolarForm() {
       };
       console.log('SolarForm payload:', payload);
 
-      const res = await fetchWithAuth('/dimensionnements/calculate/', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      if (res.status === 400) {
-        const err = await res.json();
-        toast.error(`Champs invalides : ${JSON.stringify(err)}`);
-        return;
-      }
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Erreur ${res.status} : ${txt}`);
-      }
-      const data: ResultData = await res.json();
+      // ✅ Utilisation de l'utilitaire API
+      const data: ResultData = await dimensionnementAPI.calculate(payload);
       setResult(data);
       setErrors([]);
+      toast.success('Calcul effectué avec succès !');
     } catch (err: any) {
-      setResult(null);
-      setErrors([err.message || 'Erreur inattendue']);
+      console.error('Erreur lors du calcul:', err);
+      
+      // Gestion spécifique des erreurs de validation (400)
+      if (err.message.includes('400')) {
+        toast.error('Données invalides. Vérifiez vos saisies.');
+        setErrors(['Veuillez vérifier les données saisies']);
+      } else {
+        setResult(null);
+        setErrors([err.message || 'Erreur inattendue']);
+        toast.error(err.message || 'Erreur lors du calcul');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <header className="mb-6">
         <div className="flex items-center space-x-3 mb-2">
           <Sun className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-bold">Calculateur Solaire</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Calculateur Solaire</h1>
         </div>
-        <p className="text-gray-600">Renseignez vos besoins :</p>
+        <p className="text-gray-600">Dimensionnez votre installation photovoltaïque :</p>
       </header>
 
       <div className="max-w-6xl mx-auto space-y-6">
         {/* FORM */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Consommation */}
-          <section className="bg-white p-6 rounded-xl shadow-sm">
-            <h3 className="flex items-center gap-2 font-semibold mb-4">
-              <Zap /> Consommation
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
+              <Zap className="text-yellow-500" /> Consommation
             </h3>
-            <label className="block text-sm mb-1">Consommation journalière (Wh)</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Consommation journalière (Wh)</label>
             <input
               type="number"
-              className="w-full mb-4 p-2 border rounded"
+              className="w-full mb-4 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={formData.E_jour}
               onChange={e => updateField('E_jour', +e.target.value)}
+              placeholder="Ex: 1520"
             />
-            <label className="block text-sm mb-1">Puissance max (W)</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Puissance max (W)</label>
             <input
               type="number"
-              className="w-full p-2 border rounded"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={formData.P_max}
               onChange={e => updateField('P_max', +e.target.value)}
+              placeholder="Ex: 400"
             />
           </section>
 
           {/* Configuration */}
-          <section className="bg-white p-6 rounded-xl shadow-sm">
-            <h3 className="flex items-center gap-2 font-semibold mb-4">
-              <Settings /> Configuration
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
+              <Settings className="text-purple-500" /> Configuration
             </h3>
-            <label className="block text-sm mb-1">Jours d'autonomie</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Jours d'autonomie</label>
             <input
               type="number"
-              className="w-full mb-4 p-2 border rounded"
+              className="w-full mb-4 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={formData.N_autonomie}
               onChange={e => updateField('N_autonomie', +e.target.value)}
+              min="1"
             />
-            <label className="block text-sm mb-1">Tension batterie</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Tension batterie</label>
             <div className="flex space-x-2">
               {[12, 24, 48].map(v => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => updateField('V_battery', v)}
-                  className={`px-3 py-1 rounded ${
-                    formData.V_battery === v ? 'bg-blue-600 text-white' : 'bg-gray-100'
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    formData.V_battery === v 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {v}V
@@ -295,75 +366,89 @@ export default function SolarForm() {
           </section>
 
           {/* Environnement */}
-          <section className="bg-white p-6 rounded-xl shadow-sm">
-            <h3 className="flex items-center gap-2 font-semibold mb-4">
-              <Globe /> Environnement
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
+              <Globe className="text-green-500" /> Environnement
             </h3>
-            <label className="block text-sm mb-1">
+            <label className="block text-sm font-medium mb-2 text-gray-700">
               Localisation <span className="text-gray-500 text-xs">(Tapez pour rechercher)</span>
             </label>
             <div className="relative mb-4">
               <div className="relative">
                 <input
                   type="text"
-                  className="w-full p-2 border rounded pr-10"
+                  className="w-full p-3 border border-gray-300 rounded-lg pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   value={formData.localisation}
                   onChange={e => {
                     updateField('localisation', e.target.value);
                     setSelectedLocation(null);
                   }}
+                  placeholder="Ex: Antananarivo"
                 />
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               </div>
               {loadingIrradiation && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg p-2 text-center text-gray-500">
+                <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-center text-gray-500">
                   Chargement...
                 </div>
               )}
               {suggestions.length > 0 && (
-                <ul className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto">
+                <ul className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {suggestions.map((loc, i) => (
                     <li
                       key={i}
-                      className="p-2 hover:bg-blue-100 cursor-pointer"
+                      className="p-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors"
                       onClick={() => handleSelectLocation(loc)}
                     >
-                      {loc.display_name}
+                      <div className="font-medium text-sm">{loc.display_name}</div>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-            <label className="block text-sm mb-1">Irradiation (kWh/m²/j)</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Irradiation (kWh/m²/j)</label>
             <input
               type="number"
               step="0.1"
-              className="w-full mb-6 p-2 border rounded bg-gray-100"
+              className={`w-full mb-6 p-3 border border-gray-300 rounded-lg transition-all ${
+                selectedLocation ? 'bg-gray-100 cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+              }`}
               value={formData.H_solaire}
               onChange={e => updateField('H_solaire', +e.target.value)}
               disabled={!!selectedLocation}
+              placeholder="Ex: 4.5"
             />
             {selectedLocation && (
-              <p className="text-xs text-green-600 -mt-4 mb-4">
-                Irradiation calculée pour {selectedLocation.display_name}. Vous pouvez effacer la localisation pour modifier la valeur.
+              <p className="text-xs text-green-600 -mt-4 mb-4 p-2 bg-green-50 rounded border border-green-200">
+                ✓ Irradiation calculée pour {selectedLocation.display_name}. Effacez la localisation pour modifier.
               </p>
             )}
             <button
               onClick={handleSubmit}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Calculator /> Calculer
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Calcul en cours...
+                </>
+              ) : (
+                <>
+                  <Calculator className="w-5 h-5" /> Calculer
+                </>
+              )}
             </button>
           </section>
         </div>
 
         {/* Erreurs */}
         {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded">
-            <h4 className="flex items-center gap-2 text-red-800 mb-2">
-              <AlertCircle /> Erreurs
+          <div className="bg-red-50 border border-red-200 p-6 rounded-xl shadow-sm">
+            <h4 className="flex items-center gap-2 text-red-800 mb-3 font-semibold">
+              <AlertCircle className="w-5 h-5" /> Erreurs de validation
             </h4>
-            <ul className="list-disc pl-5 text-red-700">
+            <ul className="list-disc pl-5 text-red-700 space-y-1">
               {errors.map((e, i) => (
                 <li key={i}>{e}</li>
               ))}
@@ -373,34 +458,40 @@ export default function SolarForm() {
 
         {/* Résumé */}
         {result && (
-          <div className="bg-white p-6 rounded-xl shadow mt-6">
-            <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
-              <Calculator /> Résumé du Dimensionnement
+          <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+            <h3 className="flex items-center gap-2 text-xl font-semibold mb-6 text-gray-800">
+              <Calculator className="text-blue-600" /> Résumé du Dimensionnement
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
-                <PanelTop className="text-blue-500" />
-                <span>Puissance totale (Onduleur) : <strong>{result.puissance_totale} W</strong></span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg text-center">
+                <PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-600 mb-1">Puissance totale</p>
+                <p className="text-lg font-bold text-gray-800">{formatDecimal(result.puissance_totale)} W</p>
               </div>
-              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
-                <BatteryCharging className="text-green-500" />
-                <span>Capacité batterie totale : <strong>{result.capacite_batterie} Wh</strong></span>
+              <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
+                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-600 mb-1">Capacité batterie</p>
+                <p className="text-lg font-bold text-gray-800">{formatDecimal(result.capacite_batterie)} Wh</p>
               </div>
-              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
-                <ClipboardCheck className="text-purple-500" />
-                <span>Bilan énergétique annuel : <strong>{result.bilan_energetique_annuel} Wh</strong></span>
+              <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg text-center">
+                <ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-600 mb-1">Bilan énergétique annuel</p>
+                <p className="text-lg font-bold text-gray-800">{formatEnergy(result.bilan_energetique_annuel)}</p>
               </div>
-              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
-                <DollarSign className="text-yellow-600" />
-                <span>Coût total estimé : <strong>{result.cout_total} €</strong></span>
+              <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg text-center">
+                <DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-600 mb-1">Coût total estimé</p>
+                <p className="text-lg font-bold text-gray-800">{formatPrice(result.cout_total, 'MGA')}</p>
               </div>
-              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
-                <Sun className="text-orange-500" />
-                <span>Nombre de panneaux : <strong>{result.nombre_panneaux}</strong></span>
+              <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg text-center">
+                <Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-600 mb-1">Nombre de panneaux</p>
+                <p className="text-lg font-bold text-gray-800">{result.nombre_panneaux}</p>
               </div>
-              <div className="p-3 bg-gray-50 border rounded flex items-center gap-2">
-                <BatteryCharging className="text-green-500" />
-                <span>Nombre de batteries : <strong>{result.nombre_batteries}</strong></span>
+              <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
+                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-600 mb-1">Nombre de batteries</p>
+                <p className="text-lg font-bold text-gray-800">{result.nombre_batteries}</p>
               </div>
             </div>
           </div>
@@ -408,44 +499,84 @@ export default function SolarForm() {
 
         {/* Équipements recommandés */}
         {result?.equipements_recommandes && (
-          <div className="bg-white p-6 rounded-xl shadow mt-6">
-            <h3 className="flex items-center gap-2 text-xl font-semibold mb-4">
-              <Zap /> Équipements recommandés
+          <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+            <h3 className="flex items-center gap-2 text-xl font-semibold mb-6 text-gray-800">
+              <Zap className="text-indigo-600" /> Équipements recommandés
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               <EquipCard
                 title="Panneau solaire"
+                icon={Sun}
                 c={result.equipements_recommandes.panneau}
-                extra={<li>Quantité : <strong>{num(result?.nombre_panneaux)}</strong></li>}
+                extra={
+                  <li className="flex justify-between border-t pt-2 mt-2">
+                    <span>Quantité :</span>
+                    <strong className="text-blue-600">{result?.nombre_panneaux}</strong>
+                  </li>
+                }
               />
 
               <EquipCard
                 title="Batterie"
+                icon={BatteryCharging}
                 c={result.equipements_recommandes.batterie}
-                extra={<li>Quantité : <strong>{num(result?.nombre_batteries)}</strong></li>}
+                extra={
+                  <li className="flex justify-between border-t pt-2 mt-2">
+                    <span>Quantité :</span>
+                    <strong className="text-green-600">{result?.nombre_batteries}</strong>
+                  </li>
+                }
               />
 
               <EquipCard
                 title="Régulateur"
+                icon={Settings}
                 c={result.equipements_recommandes.regulateur}
-                extra={<li>Quantité : <strong>1</strong></li>}
+                extra={
+                  <li className="flex justify-between border-t pt-2 mt-2">
+                    <span>Quantité :</span>
+                    <strong className="text-purple-600">1</strong>
+                  </li>
+                }
               />
 
-              {/* 👇 Nouveau : Onduleur */}
               <EquipCard
                 title="Onduleur"
+                icon={Zap}
                 c={result.equipements_recommandes.onduleur}
-                extra={<li>Quantité : <strong>1</strong></li>}
+                extra={
+                  <li className="flex justify-between border-t pt-2 mt-2">
+                    <span>Quantité :</span>
+                    <strong className="text-orange-600">1</strong>
+                  </li>
+                }
               />
 
-              {/* 👇 Nouveau : Câble */}
               <EquipCard
                 title="Câble"
+                icon={Cable}
                 c={result.equipements_recommandes.cable}
-                extra={<li>Quantité : <strong>À calculer selon installation</strong></li>}
+                extra={
+                  <li className="flex justify-between border-t pt-2 mt-2">
+                    <span>Quantité :</span>
+                    <strong className="text-gray-600 text-xs">Selon installation</strong>
+                  </li>
+                }
               />
             </div>
+          </div>
+        )}
+
+        {/* Bouton vers historique */}
+        {result && (
+          <div className="text-center">
+            <button
+              onClick={() => router.push('/history')}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              Voir l'historique
+            </button>
           </div>
         )}
       </div>

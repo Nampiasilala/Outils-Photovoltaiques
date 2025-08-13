@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/AuthContext";
 import { useEffect, useState } from "react";
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { dimensionnementAPI } from "@/lib/api"; // ✅ Import de l'utilitaire API
 import { toast } from "react-toastify";
 import {
   History as HistoryIcon,
@@ -29,6 +28,22 @@ import {
 } from "lucide-react";
 import DeleteAlert from "@/components/DeleteAlert";
 
+// ✅ Interface corrigée selon le backend
+interface EquipmentDetail {
+  id: number;
+  reference: string;
+  modele: string;
+  marque: string;
+  nom_commercial: string;
+  puissance_W?: number | null;        // ✅ Corrigé
+  capacite_Ah?: number | null;        // ✅ Corrigé
+  tension_nominale_V?: number | null; // ✅ Corrigé
+  prix_unitaire: number;
+  devise: string;
+  categorie: string;
+}
+
+// ✅ Interface ResultData corrigée
 interface ResultData {
   id: number;
   date_calcul: string;
@@ -41,38 +56,11 @@ interface ResultData {
   entree: number;
   parametre: number;
   equipements_recommandes: {
-    panneau: {
-      id: number;
-      modele: string;
-      puissance?: number | null;
-      prix_unitaire: number;
-      tension?: number | null;
-    } | null;
-    batterie: {
-      id: number;
-      modele: string;
-      capacite?: number | null;
-      prix_unitaire: number;
-      tension?: number | null;
-    } | null;
-    regulateur: {
-      id: number;
-      modele: string;
-      tension?: number | null;
-      prix_unitaire: number;
-    } | null;
-    onduleur: {
-      id: number;
-      modele: string;
-      puissance?: number | null;
-      prix_unitaire: number;
-      tension?: number | null;
-    } | null;
-    cable: {
-      id: number;
-      modele: string;
-      prix_unitaire: number;
-    } | null;
+    panneau: EquipmentDetail | null;
+    batterie: EquipmentDetail | null;
+    regulateur: EquipmentDetail | null;
+    onduleur: EquipmentDetail | null;
+    cable: EquipmentDetail | null;
   };
   entree_details: {
     e_jour: number;
@@ -83,9 +71,43 @@ interface ResultData {
   };
 }
 
+// ✅ Fonctions de formatage améliorées avec Ariary et kWh
+const formatPrice = (n?: number | null, currency?: string) => {
+  if (typeof n !== 'number') return '—';
+  
+  // Déterminer la devise à utiliser
+  const devise = currency === 'MGA' ? 'Ar' : (currency || 'Ar');
+  
+  return `${n.toLocaleString('fr-FR')} ${devise}`;
+};
+
+const formatNumber = (n?: number | null) => 
+  typeof n === 'number' ? n.toLocaleString('fr-FR') : '—';
+
+const formatDecimal = (n?: number | null, decimals: number = 1) => 
+  typeof n === 'number' ? n.toLocaleString('fr-FR', { 
+    minimumFractionDigits: decimals, 
+    maximumFractionDigits: decimals 
+  }) : '—';
+
+// ✅ Nouvelle fonction pour formater l'énergie avec unité adaptée
+const formatEnergy = (wh?: number | null) => {
+  if (typeof wh !== 'number') return '—';
+  
+  // Si >= 1000 Wh, convertir en kWh pour plus de lisibilité
+  if (wh >= 1000) {
+    return `${(wh / 1000).toLocaleString('fr-FR', { 
+      minimumFractionDigits: 1, 
+      maximumFractionDigits: 1 
+    })} kWh`;
+  }
+  
+  // Sinon garder en Wh
+  return `${wh.toLocaleString('fr-FR')} Wh`;
+};
+
 export default function History() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [history, setHistory] = useState<ResultData[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -94,72 +116,45 @@ export default function History() {
   const [showInputs, setShowInputs] = useState<Set<number>>(new Set());
   const [showEquipments, setShowEquipments] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
-
   const fetchHistory = async () => {
-    if (user) {
-      try {
-        setLoadingHistory(true);
-        setError(null);
-        const res = await fetchWithAuth(
-          "/dimensionnements/",
-          { method: "GET" },
-          true
-        );
+    try {
+      setLoadingHistory(true);
+      setError(null);
+      
+      // ✅ Utilisation de l'utilitaire API
+      const data: ResultData[] = await dimensionnementAPI.getAll();
 
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`Erreur ${res.status}: ${errText}`);
-        }
+      const parsed = data.map((item) => ({
+        ...item,
+        _timestamp: item.date_calcul
+          ? new Date(item.date_calcul).getTime() || 0
+          : 0,
+      }));
 
-        const data: ResultData[] = await res.json();
-
-        const parsed = data.map((item) => ({
-          ...item,
-          _timestamp: item.date_calcul
-            ? new Date(item.date_calcul).getTime() || 0
-            : 0,
-        }));
-
-        const sortedData = parsed.sort((a, b) => b._timestamp - a._timestamp);
-        setHistory(sortedData);
-      } catch (err: any) {
-        console.error("Échec du chargement de l'historique :", err);
-        setError(
-          err.message || "Impossible de charger l'historique des calculs."
-        );
-        toast.error(
-          err.message || "Erreur lors du chargement de l'historique."
-        );
-      } finally {
-        setLoadingHistory(false);
-      }
+      const sortedData = parsed.sort((a, b) => b._timestamp - a._timestamp);
+      setHistory(sortedData);
+    } catch (err: any) {
+      console.error("Échec du chargement de l'historique :", err);
+      setError(
+        err.message || "Impossible de charger l'historique des calculs."
+      );
+      toast.error(
+        err.message || "Erreur lors du chargement de l'historique."
+      );
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
   useEffect(() => {
-    if (!authLoading && user) {
-      fetchHistory();
-    }
-  }, [user, authLoading]);
+    fetchHistory();
+  }, []);
 
   const handleDelete = async (id: number) => {
     setDeletingId(id);
     try {
-      const res = await fetchWithAuth(
-        `/dimensionnements/${id}/`,
-        { method: "DELETE" },
-        true
-      );
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Erreur ${res.status}: ${errText}`);
-      }
+      // ✅ Utilisation de l'utilitaire API
+      await dimensionnementAPI.delete(id);
 
       setHistory((prev) => prev.filter((calc) => calc.id !== id));
       toast.success("Calcul supprimé avec succès !");
@@ -220,21 +215,8 @@ export default function History() {
     setShowEquipments(new Set());
   };
 
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-700 font-medium">
-            Chargement de l'authentification...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 ">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <main className="pt-2 pb-2">
         <div className="mx-auto max-w-7xl px-2">
           <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
@@ -336,7 +318,7 @@ export default function History() {
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">
                                   {calc.entree_details.localisation} •{" "}
-                                  {calc.cout_total}€
+                                  {formatPrice(calc.cout_total, 'MGA')}
                                 </p>
                               </div>
                             </div>
@@ -355,7 +337,7 @@ export default function History() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <DollarSign className="w-4 h-4 text-yellow-600" />
-                                <span>{calc.cout_total}€</span>
+                                <span>{formatPrice(calc.cout_total, 'MGA')}</span>
                               </div>
                             </div>
 
@@ -388,7 +370,7 @@ export default function History() {
                                   Puissance totale
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {calc.puissance_totale} W
+                                  {formatDecimal(calc.puissance_totale)} W
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
@@ -397,7 +379,7 @@ export default function History() {
                                   Capacité batterie
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {calc.capacite_batterie} Wh
+                                  {formatDecimal(calc.capacite_batterie)} Wh
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
@@ -424,7 +406,7 @@ export default function History() {
                                   Bilan annuel
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {calc.bilan_energetique_annuel} Wh
+                                  {formatEnergy(calc.bilan_energetique_annuel)}
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg text-center">
@@ -433,7 +415,7 @@ export default function History() {
                                   Coût total
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {calc.cout_total} €
+                                  {formatPrice(calc.cout_total, 'MGA')}
                                 </p>
                               </div>
                             </div>
@@ -469,7 +451,7 @@ export default function History() {
                                           Énergie journalière
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {calc.entree_details.e_jour}{" "}
+                                          {formatNumber(calc.entree_details.e_jour)}{" "}
                                           <span className="text-sm font-normal text-gray-500">
                                             Wh
                                           </span>
@@ -486,7 +468,7 @@ export default function History() {
                                           Puissance max
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {calc.entree_details.p_max}{" "}
+                                          {formatNumber(calc.entree_details.p_max)}{" "}
                                           <span className="text-sm font-normal text-gray-500">
                                             W
                                           </span>
@@ -580,41 +562,41 @@ export default function History() {
                                           <span className="font-medium">
                                             Modèle:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes.panneau
-                                              .modele
-                                          }
+                                          {calc.equipements_recommandes.panneau.modele}
                                         </p>
                                         <p>
                                           <span className="font-medium">
-                                            Puissance:
+                                            Référence:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes.panneau
-                                              .puissance
-                                          }{" "}
-                                          W
+                                          <span className="font-mono text-xs">
+                                            {calc.equipements_recommandes.panneau.reference}
+                                          </span>
                                         </p>
-                                        <p>
-                                          <span className="font-medium">
-                                            Tension:
-                                          </span>{" "}
-                                          {
-                                            calc.equipements_recommandes.panneau
-                                              .tension
-                                          }{" "}
-                                          V
-                                        </p>
+                                        {calc.equipements_recommandes.panneau.puissance_W && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Puissance:
+                                            </span>{" "}
+                                            {formatDecimal(calc.equipements_recommandes.panneau.puissance_W)} W
+                                          </p>
+                                        )}
+                                        {calc.equipements_recommandes.panneau.tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatDecimal(calc.equipements_recommandes.panneau.tension_nominale_V)} V
+                                          </p>
+                                        )}
                                         <p>
                                           <span className="font-medium">
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-blue-700">
-                                            {
-                                              calc.equipements_recommandes
-                                                .panneau.prix_unitaire
-                                            }{" "}
-                                            €
+                                            {formatPrice(
+                                              calc.equipements_recommandes.panneau.prix_unitaire,
+                                              calc.equipements_recommandes.panneau.devise
+                                            )}
                                           </span>
                                         </p>
                                       </div>
@@ -634,41 +616,41 @@ export default function History() {
                                           <span className="font-medium">
                                             Modèle:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .batterie.modele
-                                          }
+                                          {calc.equipements_recommandes.batterie.modele}
                                         </p>
                                         <p>
                                           <span className="font-medium">
-                                            Capacité:
+                                            Référence:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .batterie.capacite
-                                          }{" "}
-                                          Ah
+                                          <span className="font-mono text-xs">
+                                            {calc.equipements_recommandes.batterie.reference}
+                                          </span>
                                         </p>
-                                        <p>
-                                          <span className="font-medium">
-                                            Tension:
-                                          </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .batterie.tension
-                                          }{" "}
-                                          V
-                                        </p>
+                                        {calc.equipements_recommandes.batterie.capacite_Ah && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Capacité:
+                                            </span>{" "}
+                                            {formatDecimal(calc.equipements_recommandes.batterie.capacite_Ah)} Ah
+                                          </p>
+                                        )}
+                                        {calc.equipements_recommandes.batterie.tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatDecimal(calc.equipements_recommandes.batterie.tension_nominale_V)} V
+                                          </p>
+                                        )}
                                         <p>
                                           <span className="font-medium">
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-green-700">
-                                            {
-                                              calc.equipements_recommandes
-                                                .batterie.prix_unitaire
-                                            }{" "}
-                                            €
+                                            {formatPrice(
+                                              calc.equipements_recommandes.batterie.prix_unitaire,
+                                              calc.equipements_recommandes.batterie.devise
+                                            )}
                                           </span>
                                         </p>
                                       </div>
@@ -688,31 +670,33 @@ export default function History() {
                                           <span className="font-medium">
                                             Modèle:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .regulateur.modele
-                                          }
+                                          {calc.equipements_recommandes.regulateur.modele}
                                         </p>
                                         <p>
                                           <span className="font-medium">
-                                            Tension:
+                                            Référence:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .regulateur.tension
-                                          }{" "}
-                                          V
+                                          <span className="font-mono text-xs">
+                                            {calc.equipements_recommandes.regulateur.reference}
+                                          </span>
                                         </p>
+                                        {calc.equipements_recommandes.regulateur.tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatDecimal(calc.equipements_recommandes.regulateur.tension_nominale_V)} V
+                                          </p>
+                                        )}
                                         <p>
                                           <span className="font-medium">
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-purple-700">
-                                            {
-                                              calc.equipements_recommandes
-                                                .regulateur.prix_unitaire
-                                            }{" "}
-                                            €
+                                            {formatPrice(
+                                              calc.equipements_recommandes.regulateur.prix_unitaire,
+                                              calc.equipements_recommandes.regulateur.devise
+                                            )}
                                           </span>
                                         </p>
                                       </div>
@@ -732,48 +716,48 @@ export default function History() {
                                           <span className="font-medium">
                                             Modèle:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .onduleur.modele
-                                          }
+                                          {calc.equipements_recommandes.onduleur.modele}
                                         </p>
                                         <p>
                                           <span className="font-medium">
-                                            Puissance:
+                                            Référence:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .onduleur.puissance
-                                          }{" "}
-                                          W
+                                          <span className="font-mono text-xs">
+                                            {calc.equipements_recommandes.onduleur.reference}
+                                          </span>
                                         </p>
-                                        <p>
-                                          <span className="font-medium">
-                                            Tension:
-                                          </span>{" "}
-                                          {
-                                            calc.equipements_recommandes
-                                              .onduleur.tension
-                                          }{" "}
-                                          V
-                                        </p>
+                                        {calc.equipements_recommandes.onduleur.puissance_W && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Puissance:
+                                            </span>{" "}
+                                            {formatDecimal(calc.equipements_recommandes.onduleur.puissance_W)} W
+                                          </p>
+                                        )}
+                                        {calc.equipements_recommandes.onduleur.tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatDecimal(calc.equipements_recommandes.onduleur.tension_nominale_V)} V
+                                          </p>
+                                        )}
                                         <p>
                                           <span className="font-medium">
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-orange-700">
-                                            {
-                                              calc.equipements_recommandes
-                                                .onduleur.prix_unitaire
-                                            }{" "}
-                                            €
+                                            {formatPrice(
+                                              calc.equipements_recommandes.onduleur.prix_unitaire,
+                                              calc.equipements_recommandes.onduleur.devise
+                                            )}
                                           </span>
                                         </p>
                                       </div>
                                     </div>
                                   )}
 
-                                  {/* ✅ NOUVEAU : Câble */}
+                                  {/* ✅ Câble */}
                                   {calc.equipements_recommandes.cable && (
                                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
                                       <div className="flex items-center gap-2 mb-3">
@@ -787,21 +771,25 @@ export default function History() {
                                           <span className="font-medium">
                                             Modèle:
                                           </span>{" "}
-                                          {
-                                            calc.equipements_recommandes.cable
-                                              .modele
-                                          }
+                                          {calc.equipements_recommandes.cable.modele}
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Référence:
+                                          </span>{" "}
+                                          <span className="font-mono text-xs">
+                                            {calc.equipements_recommandes.cable.reference}
+                                          </span>
                                         </p>
                                         <p>
                                           <span className="font-medium">
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-gray-700">
-                                            {
-                                              calc.equipements_recommandes.cable
-                                                .prix_unitaire
-                                            }{" "}
-                                            € / m
+                                            {formatPrice(
+                                              calc.equipements_recommandes.cable.prix_unitaire,
+                                              calc.equipements_recommandes.cable.devise
+                                            )} / m
                                           </span>
                                         </p>
                                         <p>

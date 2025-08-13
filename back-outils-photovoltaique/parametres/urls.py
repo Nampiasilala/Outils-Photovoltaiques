@@ -3,7 +3,7 @@ from .views import ParametreSystemeViewSet
 from django.urls import path, include
 
 router = DefaultRouter()
-router.register(r'', ParametreSystemeViewSet)
+router.register(r'', ParametreSystemeViewSet, basename='parametres')
 
 urlpatterns = [
     path('', include(router.urls)),
