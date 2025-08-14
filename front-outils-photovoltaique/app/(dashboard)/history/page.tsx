@@ -4,6 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { dimensionnementAPI } from "@/lib/api"; // ✅ Import de l'utilitaire API
 import { toast } from "react-toastify";
+// ✅ Import des formatters centralisés
+import { 
+  formatPrice, 
+  formatEnergyLocale, 
+  formatNumber, 
+  formatPower,
+  formatters 
+} from '@/utils/formatters';
 import {
   History as HistoryIcon,
   Calculator,
@@ -70,41 +78,6 @@ interface ResultData {
     localisation: string;
   };
 }
-
-// ✅ Fonctions de formatage améliorées avec Ariary et kWh
-const formatPrice = (n?: number | null, currency?: string) => {
-  if (typeof n !== 'number') return '—';
-  
-  // Déterminer la devise à utiliser
-  const devise = currency === 'MGA' ? 'Ar' : (currency || 'Ar');
-  
-  return `${n.toLocaleString('fr-FR')} ${devise}`;
-};
-
-const formatNumber = (n?: number | null) => 
-  typeof n === 'number' ? n.toLocaleString('fr-FR') : '—';
-
-const formatDecimal = (n?: number | null, decimals: number = 1) => 
-  typeof n === 'number' ? n.toLocaleString('fr-FR', { 
-    minimumFractionDigits: decimals, 
-    maximumFractionDigits: decimals 
-  }) : '—';
-
-// ✅ Nouvelle fonction pour formater l'énergie avec unité adaptée
-const formatEnergy = (wh?: number | null) => {
-  if (typeof wh !== 'number') return '—';
-  
-  // Si >= 1000 Wh, convertir en kWh pour plus de lisibilité
-  if (wh >= 1000) {
-    return `${(wh / 1000).toLocaleString('fr-FR', { 
-      minimumFractionDigits: 1, 
-      maximumFractionDigits: 1 
-    })} kWh`;
-  }
-  
-  // Sinon garder en Wh
-  return `${wh.toLocaleString('fr-FR')} Wh`;
-};
 
 export default function History() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -318,7 +291,7 @@ export default function History() {
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">
                                   {calc.entree_details.localisation} •{" "}
-                                  {formatPrice(calc.cout_total, 'MGA')}
+                                  {formatPrice(calc.cout_total)}
                                 </p>
                               </div>
                             </div>
@@ -337,7 +310,7 @@ export default function History() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <DollarSign className="w-4 h-4 text-yellow-600" />
-                                <span>{formatPrice(calc.cout_total, 'MGA')}</span>
+                                <span>{formatPrice(calc.cout_total)}</span>
                               </div>
                             </div>
 
@@ -370,7 +343,7 @@ export default function History() {
                                   Puissance totale
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {formatDecimal(calc.puissance_totale)} W
+                                  {formatPower(calc.puissance_totale)}
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
@@ -379,7 +352,7 @@ export default function History() {
                                   Capacité batterie
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {formatDecimal(calc.capacite_batterie)} Wh
+                                  {formatEnergyLocale(calc.capacite_batterie)}
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
@@ -388,7 +361,7 @@ export default function History() {
                                   Panneaux
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {calc.nombre_panneaux}
+                                  {formatNumber(calc.nombre_panneaux)}
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
@@ -397,7 +370,7 @@ export default function History() {
                                   Batteries
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {calc.nombre_batteries}
+                                  {formatNumber(calc.nombre_batteries)}
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center">
@@ -406,7 +379,7 @@ export default function History() {
                                   Bilan annuel
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {formatEnergy(calc.bilan_energetique_annuel)}
+                                  {formatEnergyLocale(calc.bilan_energetique_annuel)}
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg text-center">
@@ -415,7 +388,7 @@ export default function History() {
                                   Coût total
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {formatPrice(calc.cout_total, 'MGA')}
+                                  {formatPrice(calc.cout_total)}
                                 </p>
                               </div>
                             </div>
@@ -451,10 +424,7 @@ export default function History() {
                                           Énergie journalière
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {formatNumber(calc.entree_details.e_jour)}{" "}
-                                          <span className="text-sm font-normal text-gray-500">
-                                            Wh
-                                          </span>
+                                          {formatEnergyLocale(calc.entree_details.e_jour)}
                                         </p>
                                       </div>
                                     </div>
@@ -468,10 +438,7 @@ export default function History() {
                                           Puissance max
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {formatNumber(calc.entree_details.p_max)}{" "}
-                                          <span className="text-sm font-normal text-gray-500">
-                                            W
-                                          </span>
+                                          {formatPower(calc.entree_details.p_max)}
                                         </p>
                                       </div>
                                     </div>
@@ -485,10 +452,7 @@ export default function History() {
                                           Autonomie
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {calc.entree_details.n_autonomie}{" "}
-                                          <span className="text-sm font-normal text-gray-500">
-                                            jours
-                                          </span>
+                                          {formatNumber(calc.entree_details.n_autonomie)} jours
                                         </p>
                                       </div>
                                     </div>
@@ -502,10 +466,7 @@ export default function History() {
                                           Tension batterie
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {calc.entree_details.v_batterie}{" "}
-                                          <span className="text-sm font-normal text-gray-500">
-                                            V
-                                          </span>
+                                          {formatters.voltage(calc.entree_details.v_batterie)}
                                         </p>
                                       </div>
                                     </div>
@@ -577,7 +538,7 @@ export default function History() {
                                             <span className="font-medium">
                                               Puissance:
                                             </span>{" "}
-                                            {formatDecimal(calc.equipements_recommandes.panneau.puissance_W)} W
+                                            {formatPower(calc.equipements_recommandes.panneau.puissance_W)}
                                           </p>
                                         )}
                                         {calc.equipements_recommandes.panneau.tension_nominale_V && (
@@ -585,7 +546,7 @@ export default function History() {
                                             <span className="font-medium">
                                               Tension:
                                             </span>{" "}
-                                            {formatDecimal(calc.equipements_recommandes.panneau.tension_nominale_V)} V
+                                            {formatters.voltage(calc.equipements_recommandes.panneau.tension_nominale_V)}
                                           </p>
                                         )}
                                         <p>
@@ -593,10 +554,7 @@ export default function History() {
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-blue-700">
-                                            {formatPrice(
-                                              calc.equipements_recommandes.panneau.prix_unitaire,
-                                              calc.equipements_recommandes.panneau.devise
-                                            )}
+                                            {formatPrice(calc.equipements_recommandes.panneau.prix_unitaire)}
                                           </span>
                                         </p>
                                       </div>
@@ -631,7 +589,7 @@ export default function History() {
                                             <span className="font-medium">
                                               Capacité:
                                             </span>{" "}
-                                            {formatDecimal(calc.equipements_recommandes.batterie.capacite_Ah)} Ah
+                                            {formatters.capacity(calc.equipements_recommandes.batterie.capacite_Ah)}
                                           </p>
                                         )}
                                         {calc.equipements_recommandes.batterie.tension_nominale_V && (
@@ -639,7 +597,7 @@ export default function History() {
                                             <span className="font-medium">
                                               Tension:
                                             </span>{" "}
-                                            {formatDecimal(calc.equipements_recommandes.batterie.tension_nominale_V)} V
+                                            {formatters.voltage(calc.equipements_recommandes.batterie.tension_nominale_V)}
                                           </p>
                                         )}
                                         <p>
@@ -647,10 +605,7 @@ export default function History() {
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-green-700">
-                                            {formatPrice(
-                                              calc.equipements_recommandes.batterie.prix_unitaire,
-                                              calc.equipements_recommandes.batterie.devise
-                                            )}
+                                            {formatPrice(calc.equipements_recommandes.batterie.prix_unitaire)}
                                           </span>
                                         </p>
                                       </div>
@@ -685,7 +640,7 @@ export default function History() {
                                             <span className="font-medium">
                                               Tension:
                                             </span>{" "}
-                                            {formatDecimal(calc.equipements_recommandes.regulateur.tension_nominale_V)} V
+                                            {formatters.voltage(calc.equipements_recommandes.regulateur.tension_nominale_V)}
                                           </p>
                                         )}
                                         <p>
@@ -693,10 +648,7 @@ export default function History() {
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-purple-700">
-                                            {formatPrice(
-                                              calc.equipements_recommandes.regulateur.prix_unitaire,
-                                              calc.equipements_recommandes.regulateur.devise
-                                            )}
+                                            {formatPrice(calc.equipements_recommandes.regulateur.prix_unitaire)}
                                           </span>
                                         </p>
                                       </div>
@@ -731,7 +683,7 @@ export default function History() {
                                             <span className="font-medium">
                                               Puissance:
                                             </span>{" "}
-                                            {formatDecimal(calc.equipements_recommandes.onduleur.puissance_W)} W
+                                            {formatPower(calc.equipements_recommandes.onduleur.puissance_W)}
                                           </p>
                                         )}
                                         {calc.equipements_recommandes.onduleur.tension_nominale_V && (
@@ -739,7 +691,7 @@ export default function History() {
                                             <span className="font-medium">
                                               Tension:
                                             </span>{" "}
-                                            {formatDecimal(calc.equipements_recommandes.onduleur.tension_nominale_V)} V
+                                            {formatters.voltage(calc.equipements_recommandes.onduleur.tension_nominale_V)}
                                           </p>
                                         )}
                                         <p>
@@ -747,10 +699,7 @@ export default function History() {
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-orange-700">
-                                            {formatPrice(
-                                              calc.equipements_recommandes.onduleur.prix_unitaire,
-                                              calc.equipements_recommandes.onduleur.devise
-                                            )}
+                                            {formatPrice(calc.equipements_recommandes.onduleur.prix_unitaire)}
                                           </span>
                                         </p>
                                       </div>
@@ -786,10 +735,7 @@ export default function History() {
                                             Prix:
                                           </span>{" "}
                                           <span className="font-bold text-gray-700">
-                                            {formatPrice(
-                                              calc.equipements_recommandes.cable.prix_unitaire,
-                                              calc.equipements_recommandes.cable.devise
-                                            )} / m
+                                            {formatPrice(calc.equipements_recommandes.cable.prix_unitaire)} / m
                                           </span>
                                         </p>
                                         <p>
