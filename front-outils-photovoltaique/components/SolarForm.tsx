@@ -1,7 +1,8 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { dimensionnementAPI } from '@/lib/api'; // ✅ Import de l'utilitaire API
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { dimensionnementAPI } from "@/lib/api";
+import { usePDFGenerator } from "@/hooks/usePDFGenerator";
 import {
   Sun,
   Zap,
@@ -15,9 +16,10 @@ import {
   ClipboardCheck,
   Search,
   Cable,
-} from 'lucide-react';
-import { toast } from 'react-toastify';
-import { useDebounce } from 'use-debounce';
+  Download,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import { useDebounce } from "use-debounce";
 
 interface FormData {
   E_jour: number;
@@ -35,8 +37,8 @@ interface EquipmentDetail {
   modele: string;
   marque: string;
   nom_commercial: string;
-  puissance_W?: number | null;        // ✅ Corrigé
-  capacite_Ah?: number | null;        // ✅ Corrigé
+  puissance_W?: number | null; // ✅ Corrigé
+  capacite_Ah?: number | null; // ✅ Corrigé
   tension_nominale_V?: number | null; // ✅ Corrigé
   prix_unitaire: number;
   devise: string;
@@ -64,42 +66,43 @@ interface ResultData {
   };
 }
 
-
-// ✅ Nouvelle fonction pour formater l'énergie avec unité adaptée
-const formatEnergy = (wh?: number | null) => {
-  if (typeof wh !== 'number') return '—';
-  
-  // Si >= 1000 Wh, convertir en kWh pour plus de lisibilité
-  if (wh >= 1000) {
-    return `${(wh / 1000).toLocaleString('fr-FR', { 
-      minimumFractionDigits: 1, 
-      maximumFractionDigits: 1 
-    })} kWh`;
-  }
-  
-  // Sinon garder en Wh
-  return `${wh.toLocaleString('fr-FR')} Wh`;
-};
-
 /* ---------- Helpers & UI atoms ---------- */
 // ✅ Fonction de formatage améliorée avec Ariary
 const formatPrice = (n?: number | null, currency?: string) => {
-  if (typeof n !== 'number') return '—';
-  
+  if (typeof n !== "number") return "—";
+
   // Déterminer la devise à utiliser
-  const devise = currency === 'MGA' ? 'Ar' : (currency || 'Ar');
-  
-  return `${n.toLocaleString('fr-FR')} ${devise}`;
+  const devise = currency === "MGA" ? "Ar" : currency || "Ar";
+
+  return `${n.toLocaleString("fr-FR")} ${devise}`;
 };
 
-const formatNumber = (n?: number | null) => 
-  typeof n === 'number' ? n.toLocaleString('fr-FR') : '—';
+const formatNumber = (n?: number | null) =>
+  typeof n === "number" ? n.toLocaleString("fr-FR") : "—";
 
-const formatDecimal = (n?: number | null, decimals: number = 1) => 
-  typeof n === 'number' ? n.toLocaleString('fr-FR', { 
-    minimumFractionDigits: decimals, 
-    maximumFractionDigits: decimals 
-  }) : '—';
+const formatDecimal = (n?: number | null, decimals: number = 1) =>
+  typeof n === "number"
+    ? n.toLocaleString("fr-FR", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })
+    : "—";
+
+// ✅ Nouvelle fonction pour formater l'énergie avec unité adaptée
+const formatEnergy = (wh?: number | null) => {
+  if (typeof wh !== "number") return "—";
+
+  // Si >= 1000 Wh, convertir en kWh pour plus de lisibilité
+  if (wh >= 1000) {
+    return `${(wh / 1000).toLocaleString("fr-FR", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} kWh`;
+  }
+
+  // Sinon garder en Wh
+  return `${wh.toLocaleString("fr-FR")} Wh`;
+};
 
 // ✅ Composant EquipCard corrigé
 const EquipCard = ({
@@ -150,7 +153,9 @@ const EquipCard = ({
         )}
         <li className="flex justify-between border-t pt-2 mt-2">
           <span>Prix unitaire :</span>
-          <strong className="text-green-600">{formatPrice(c.prix_unitaire, c.devise)}</strong>
+          <strong className="text-green-600">
+            {formatPrice(c.prix_unitaire, c.devise)}
+          </strong>
         </li>
         {extra}
       </ul>
@@ -163,6 +168,7 @@ const EquipCard = ({
 /* ---------- Page ---------- */
 export default function SolarForm() {
   const router = useRouter();
+  const { generatePDF, isGenerating } = usePDFGenerator(); // ✅ Hook PDF
 
   const [formData, setFormData] = useState<FormData>({
     E_jour: 0,
@@ -170,7 +176,7 @@ export default function SolarForm() {
     N_autonomie: 1,
     H_solaire: 4.5,
     V_battery: 24,
-    localisation: '',
+    localisation: "",
   });
 
   const [errors, setErrors] = useState<string[]>([]);
@@ -181,7 +187,10 @@ export default function SolarForm() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loadingIrradiation, setLoadingIrradiation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any | null>(null);
-  const [latLon, setLatLon] = useState<{ lat: number | null; lon: number | null }>({
+  const [latLon, setLatLon] = useState<{
+    lat: number | null;
+    lon: number | null;
+  }>({
     lat: null,
     lon: null,
   });
@@ -200,7 +209,10 @@ export default function SolarForm() {
           const data = await res.json();
           setSuggestions(data);
         } catch (error) {
-          console.error('Erreur lors de la recherche de la localisation', error);
+          console.error(
+            "Erreur lors de la recherche de la localisation",
+            error
+          );
         } finally {
           setLoadingIrradiation(false);
         }
@@ -222,25 +234,33 @@ export default function SolarForm() {
       const data = await res.json();
 
       const annualData = data.properties.parameter.ALLSKY_SFC_SW_DWN;
-      const values = Object.values(annualData).map(val => val as number).filter(val => val !== -999);
-      const avgIrradiation = values.reduce((sum, current) => sum + current, 0) / values.length;
+      const values = Object.values(annualData)
+        .map((val) => val as number)
+        .filter((val) => val !== -999);
+      const avgIrradiation =
+        values.reduce((sum, current) => sum + current, 0) / values.length;
 
-      updateField('H_solaire', parseFloat(avgIrradiation.toFixed(2)));
+      updateField("H_solaire", parseFloat(avgIrradiation.toFixed(2)));
     } catch (error) {
-      console.error('Erreur lors de la récupération de l\'irradiation', error);
-      toast.error("Impossible de récupérer l'irradiation pour cette localisation.");
-      updateField('H_solaire', 0);
+      console.error("Erreur lors de la récupération de l'irradiation", error);
+      toast.error(
+        "Impossible de récupérer l'irradiation pour cette localisation."
+      );
+      updateField("H_solaire", 0);
     } finally {
       setLoadingIrradiation(false);
     }
   };
 
-  const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const updateField = <K extends keyof FormData>(
+    field: K,
+    value: FormData[K]
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSelectLocation = (location: any) => {
-    updateField('localisation', location.display_name);
+    updateField("localisation", location.display_name);
     setSelectedLocation(location);
     setLatLon({ lat: parseFloat(location.lat), lon: parseFloat(location.lon) });
     setSuggestions([]);
@@ -249,20 +269,42 @@ export default function SolarForm() {
 
   const validate = () => {
     const errs: string[] = [];
-    if (formData.E_jour <= 0) errs.push('La consommation journalière doit être > 0.');
-    if (formData.P_max <= 0) errs.push('La puissance max doit être > 0.');
-    if (formData.N_autonomie <= 0) errs.push("Le nombre de jours d'autonomie doit être > 0.");
+    if (formData.E_jour <= 0)
+      errs.push("La consommation journalière doit être > 0.");
+    if (formData.P_max <= 0) errs.push("La puissance max doit être > 0.");
+    if (formData.N_autonomie <= 0)
+      errs.push("Le nombre de jours d'autonomie doit être > 0.");
     if (formData.H_solaire <= 0) errs.push("L'irradiation doit être > 0.");
     if (![12, 24, 48].includes(formData.V_battery))
-      errs.push('La tension doit être 12 V, 24 V ou 48 V.');
-    if (!formData.localisation.trim()) errs.push('La localisation est requise.');
+      errs.push("La tension doit être 12 V, 24 V ou 48 V.");
+    if (!formData.localisation.trim())
+      errs.push("La localisation est requise.");
     setErrors(errs);
     return errs.length === 0;
   };
 
+  const handleDownloadPDF = async () => {
+    if (!result) return;
+
+    const pdfData = {
+      result,
+      inputData: {
+        E_jour: formData.E_jour,
+        P_max: formData.P_max,
+        N_autonomie: formData.N_autonomie,
+        H_solaire: formData.H_solaire,
+        V_batterie: formData.V_battery,
+        localisation: formData.localisation,
+      },
+    };
+
+    // ✅ Plus besoin de gérer les toasts ici, c'est fait dans le hook
+    await generatePDF(pdfData);
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
-    
+
     setIsLoading(true);
     try {
       const payload = {
@@ -273,24 +315,24 @@ export default function SolarForm() {
         V_batterie: formData.V_battery,
         localisation: formData.localisation,
       };
-      console.log('SolarForm payload:', payload);
+      console.log("SolarForm payload:", payload);
 
       // ✅ Utilisation de l'utilitaire API
       const data: ResultData = await dimensionnementAPI.calculate(payload);
       setResult(data);
       setErrors([]);
-      toast.success('Calcul effectué avec succès !');
+      toast.success("Calcul effectué avec succès !");
     } catch (err: any) {
-      console.error('Erreur lors du calcul:', err);
-      
+      console.error("Erreur lors du calcul:", err);
+
       // Gestion spécifique des erreurs de validation (400)
-      if (err.message.includes('400')) {
-        toast.error('Données invalides. Vérifiez vos saisies.');
-        setErrors(['Veuillez vérifier les données saisies']);
+      if (err.message.includes("400")) {
+        toast.error("Données invalides. Vérifiez vos saisies.");
+        setErrors(["Veuillez vérifier les données saisies"]);
       } else {
         setResult(null);
-        setErrors([err.message || 'Erreur inattendue']);
-        toast.error(err.message || 'Erreur lors du calcul');
+        setErrors([err.message || "Erreur inattendue"]);
+        toast.error(err.message || "Erreur lors du calcul");
       }
     } finally {
       setIsLoading(false);
@@ -302,9 +344,13 @@ export default function SolarForm() {
       <header className="mb-6">
         <div className="flex items-center space-x-3 mb-2">
           <Sun className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-800">Calculateur Solaire</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Calculateur Solaire
+          </h1>
         </div>
-        <p className="text-gray-600">Dimensionnez votre installation photovoltaïque :</p>
+        <p className="text-gray-600">
+          Dimensionnez votre installation photovoltaïque :
+        </p>
       </header>
 
       <div className="max-w-6xl mx-auto space-y-6">
@@ -315,20 +361,24 @@ export default function SolarForm() {
             <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
               <Zap className="text-yellow-500" /> Consommation
             </h3>
-            <label className="block text-sm font-medium mb-2 text-gray-700">Consommation journalière (Wh)</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Consommation journalière (Wh)
+            </label>
             <input
               type="number"
               className="w-full mb-4 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={formData.E_jour}
-              onChange={e => updateField('E_jour', +e.target.value)}
+              onChange={(e) => updateField("E_jour", +e.target.value)}
               placeholder="Ex: 1520"
             />
-            <label className="block text-sm font-medium mb-2 text-gray-700">Puissance max (W)</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Puissance max (W)
+            </label>
             <input
               type="number"
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={formData.P_max}
-              onChange={e => updateField('P_max', +e.target.value)}
+              onChange={(e) => updateField("P_max", +e.target.value)}
               placeholder="Ex: 400"
             />
           </section>
@@ -338,25 +388,29 @@ export default function SolarForm() {
             <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
               <Settings className="text-purple-500" /> Configuration
             </h3>
-            <label className="block text-sm font-medium mb-2 text-gray-700">Jours d'autonomie</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Jours d'autonomie
+            </label>
             <input
               type="number"
               className="w-full mb-4 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               value={formData.N_autonomie}
-              onChange={e => updateField('N_autonomie', +e.target.value)}
+              onChange={(e) => updateField("N_autonomie", +e.target.value)}
               min="1"
             />
-            <label className="block text-sm font-medium mb-2 text-gray-700">Tension batterie</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Tension batterie
+            </label>
             <div className="flex space-x-2">
-              {[12, 24, 48].map(v => (
+              {[12, 24, 48].map((v) => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => updateField('V_battery', v)}
+                  onClick={() => updateField("V_battery", v)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    formData.V_battery === v 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    formData.V_battery === v
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   {v}V
@@ -371,7 +425,10 @@ export default function SolarForm() {
               <Globe className="text-green-500" /> Environnement
             </h3>
             <label className="block text-sm font-medium mb-2 text-gray-700">
-              Localisation <span className="text-gray-500 text-xs">(Tapez pour rechercher)</span>
+              Localisation{" "}
+              <span className="text-gray-500 text-xs">
+                (Tapez pour rechercher)
+              </span>
             </label>
             <div className="relative mb-4">
               <div className="relative">
@@ -379,13 +436,16 @@ export default function SolarForm() {
                   type="text"
                   className="w-full p-3 border border-gray-300 rounded-lg pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   value={formData.localisation}
-                  onChange={e => {
-                    updateField('localisation', e.target.value);
+                  onChange={(e) => {
+                    updateField("localisation", e.target.value);
                     setSelectedLocation(null);
                   }}
                   placeholder="Ex: Antananarivo"
                 />
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Search
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={20}
+                />
               </div>
               {loadingIrradiation && (
                 <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-center text-gray-500">
@@ -400,27 +460,34 @@ export default function SolarForm() {
                       className="p-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors"
                       onClick={() => handleSelectLocation(loc)}
                     >
-                      <div className="font-medium text-sm">{loc.display_name}</div>
+                      <div className="font-medium text-sm">
+                        {loc.display_name}
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-            <label className="block text-sm font-medium mb-2 text-gray-700">Irradiation (kWh/m²/j)</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Irradiation (kWh/m²/j)
+            </label>
             <input
               type="number"
               step="0.1"
               className={`w-full mb-6 p-3 border border-gray-300 rounded-lg transition-all ${
-                selectedLocation ? 'bg-gray-100 cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                selectedLocation
+                  ? "bg-gray-100 cursor-not-allowed"
+                  : "focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               }`}
               value={formData.H_solaire}
-              onChange={e => updateField('H_solaire', +e.target.value)}
+              onChange={(e) => updateField("H_solaire", +e.target.value)}
               disabled={!!selectedLocation}
               placeholder="Ex: 4.5"
             />
             {selectedLocation && (
               <p className="text-xs text-green-600 -mt-4 mb-4 p-2 bg-green-50 rounded border border-green-200">
-                ✓ Irradiation calculée pour {selectedLocation.display_name}. Effacez la localisation pour modifier.
+                ✓ Irradiation calculée pour {selectedLocation.display_name}.
+                Effacez la localisation pour modifier.
               </p>
             )}
             <button
@@ -459,39 +526,83 @@ export default function SolarForm() {
         {/* Résumé */}
         {result && (
           <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-            <h3 className="flex items-center gap-2 text-xl font-semibold mb-6 text-gray-800">
-              <Calculator className="text-blue-600" /> Résumé du Dimensionnement
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="flex items-center gap-2 text-xl font-semibold text-gray-800">
+                <Calculator className="text-blue-600" /> Résumé du
+                Dimensionnement
+              </h3>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isGenerating}
+                className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Télécharger PDF
+                  </>
+                )}
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg text-center">
                 <PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Puissance totale</p>
-                <p className="text-lg font-bold text-gray-800">{formatDecimal(result.puissance_totale)} W</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Puissance totale
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatDecimal(result.puissance_totale)} W
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
                 <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Capacité batterie</p>
-                <p className="text-lg font-bold text-gray-800">{formatDecimal(result.capacite_batterie)} Wh</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Capacité batterie
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatDecimal(result.capacite_batterie)} Wh
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg text-center">
                 <ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Bilan énergétique annuel</p>
-                <p className="text-lg font-bold text-gray-800">{formatEnergy(result.bilan_energetique_annuel)}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Bilan énergétique annuel
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatEnergy(result.bilan_energetique_annuel)}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg text-center">
                 <DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Coût total estimé</p>
-                <p className="text-lg font-bold text-gray-800">{formatPrice(result.cout_total, 'MGA')}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Coût total estimé
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatPrice(result.cout_total, "MGA")}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg text-center">
                 <Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Nombre de panneaux</p>
-                <p className="text-lg font-bold text-gray-800">{result.nombre_panneaux}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Nombre de panneaux
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {result.nombre_panneaux}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
                 <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Nombre de batteries</p>
-                <p className="text-lg font-bold text-gray-800">{result.nombre_batteries}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Nombre de batteries
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {result.nombre_batteries}
+                </p>
               </div>
             </div>
           </div>
@@ -512,7 +623,9 @@ export default function SolarForm() {
                 extra={
                   <li className="flex justify-between border-t pt-2 mt-2">
                     <span>Quantité :</span>
-                    <strong className="text-blue-600">{result?.nombre_panneaux}</strong>
+                    <strong className="text-blue-600">
+                      {result?.nombre_panneaux}
+                    </strong>
                   </li>
                 }
               />
@@ -524,7 +637,9 @@ export default function SolarForm() {
                 extra={
                   <li className="flex justify-between border-t pt-2 mt-2">
                     <span>Quantité :</span>
-                    <strong className="text-green-600">{result?.nombre_batteries}</strong>
+                    <strong className="text-green-600">
+                      {result?.nombre_batteries}
+                    </strong>
                   </li>
                 }
               />
@@ -560,7 +675,9 @@ export default function SolarForm() {
                 extra={
                   <li className="flex justify-between border-t pt-2 mt-2">
                     <span>Quantité :</span>
-                    <strong className="text-gray-600 text-xs">Selon installation</strong>
+                    <strong className="text-gray-600 text-xs">
+                      Selon installation
+                    </strong>
                   </li>
                 }
               />
@@ -568,14 +685,32 @@ export default function SolarForm() {
           </div>
         )}
 
-        {/* Bouton vers historique */}
+        {/* Boutons d'action */}
         {result && (
-          <div className="text-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => router.push('/history')}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+              onClick={() => router.push("/history")}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 justify-center"
             >
+              <Calculator className="w-5 h-5" />
               Voir l'historique
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isGenerating}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
+            >
+              {isGenerating ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Génération PDF...
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" />
+                  Télécharger rapport PDF
+                </>
+              )}
             </button>
           </div>
         )}

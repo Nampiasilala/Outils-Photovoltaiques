@@ -1,6 +1,7 @@
 // tsconfig.json
 {
   "compilerOptions": {
+    
     "target": "es2020",
     "lib": [
       "dom",
@@ -40,7 +41,7 @@
     "app/**/*",
     "next-env.d.ts",
     ".next/types/**/*.ts"
-  ],
+, "hooks"  ],
   "exclude": [
     "node_modules"
   ]
