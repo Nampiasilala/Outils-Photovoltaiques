@@ -28,7 +28,6 @@ interface Profile {
   id: number;
   username: string;
   email: string;
-  department: string | null;
   role: string;
   status: string;
   date_joined: string;
@@ -85,7 +84,6 @@ export default function InfoProfile() {
           id: d.id,
           username: d.username,
           email: d.email,
-          department: d.department,
           role: d.role,
           status: d.status,
           date_joined: d.date_joined,
@@ -111,7 +109,6 @@ export default function InfoProfile() {
         body: JSON.stringify({
           username: form.username,
           email: form.email,
-          department: form.department,
         }),
       });
       if (res.status === 401) {
@@ -334,30 +331,6 @@ export default function InfoProfile() {
                 ) : (
                   <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
                     <p className="text-gray-900 font-medium">{profile.email}</p>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
-                  <Briefcase className="w-5 h-5 text-green-500" />
-                  Département
-                </label>
-                {editing ? (
-                  <input
-                    type="text"
-                    value={form.department || ""}
-                    onChange={(e) =>
-                      setForm({ ...form, department: e.target.value })
-                    }
-                    className="w-full border-2 border-gray-200 rounded-lg p-2 focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Nom du département"
-                  />
-                ) : (
-                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                    <p className="text-gray-900 font-medium">
-                      {profile.department || "Non spécifié"}
-                    </p>
                   </div>
                 )}
               </div>

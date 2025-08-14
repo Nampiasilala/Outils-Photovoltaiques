@@ -50,28 +50,36 @@ def ceil_decimal(x: Decimal) -> int:
     """Arrondi supérieur pour Decimal -> int."""
     return int(x.to_integral_value(rounding=ROUND_UP))
 
+def _prix_decimal(e):
+    try:
+        v = getattr(e, "prix_unitaire", 0)
+        return Decimal(str(v)) if v is not None else Decimal("0")
+    except Exception:
+        return Decimal("0")
+
 # =====================================================
 #  Sélection « premier modèle ≥ valeur cible »
 # =====================================================
 def choisir_equipement(type_eq: str, valeur_cible, attribut_logique: str):
-    """
-    Sélectionne le 1er équipement dont l'attribut réel (mappé) est >= valeur_cible.
-    Si aucun, retourne le plus grand (dernier).
-    """
     if not isinstance(valeur_cible, Decimal):
         valeur_cible = Decimal(str(valeur_cible))
 
     champ = f(type_eq, attribut_logique, attribut_logique)
-    qs = Equipement.objects.filter(categorie=type_eq).order_by(champ)
+    # ⬇️ exclure les None/0 pour éviter les surprises
+    qs = (Equipement.objects
+          .filter(categorie=type_eq)
+          .exclude(**{f"{champ}__isnull": True})
+          .exclude(**{f"{champ}": 0})
+          .order_by(champ))
     if not qs.exists():
-        raise ValueError(f"Aucun équipement de type '{type_eq}' trouvé dans la base.")
+        raise ValueError(f"Aucun équipement de type '{type_eq}' avec champ '{champ}' exploitable.")
 
     for equip in qs:
-        attr_value = getattr(equip, champ)
-        attr_value = Decimal(str(attr_value))
+        attr_value = Decimal(str(getattr(equip, champ)))
         if attr_value >= valeur_cible:
             return equip
     return qs.last()
+
 
 # ===========================================================
 #  Sélection « modulaires » (PV/batteries) optimisée
@@ -82,7 +90,7 @@ def choisir_equipement(type_eq: str, valeur_cible, attribut_logique: str):
 def choisir_modulaire_par_cout(
     categorie: str,
     besoin: Decimal,
-    attr_valeur_logique: str,  # 'value' => map vers puissance_W / capacite_Ah
+    attr_valeur_logique: str,
     attr_prix: str = "prix_unitaire",
     surdim_max: Decimal = Decimal("0.25"),
     filtre_qs: Q | None = None,
@@ -92,31 +100,33 @@ def choisir_modulaire_par_cout(
     qs = Equipement.objects.filter(categorie=categorie)
     if filtre_qs is not None:
         qs = qs.filter(filtre_qs)
-    qs = qs.order_by(attr_valeur)
+    qs = (qs.exclude(**{f"{attr_valeur}__isnull": True})
+            .exclude(**{f"{attr_valeur}": 0})
+            .exclude(**{f"{attr_prix}__isnull": True})
+            .order_by(attr_valeur))
 
     if not qs.exists():
-        raise ValueError(f"Aucun équipement de type '{categorie}' trouvé.")
+        raise ValueError(f"Aucun équipement de type '{categorie}' exploitable.")
 
     candidats_ok, candidats_relax = [], []
-
     for e in qs:
-        val = Decimal(str(getattr(e, attr_valeur, 0)))
-        if val <= 0:
+        val = Decimal(str(getattr(e, attr_valeur)))
+        prix = Decimal(str(getattr(e, attr_prix)))
+        if prix <= 0:
             continue
-        prix = Decimal(str(getattr(e, attr_prix, 0)))
         n_units = ceil_decimal(besoin / val)
         installe = val * n_units
-        surdim = (installe - besoin) / besoin  # >= 0
+        surdim = (installe - besoin) / besoin if besoin > 0 else Decimal("0")
         total_cost = prix * n_units
 
-        data = dict(equip=e, n=n_units, installe=installe, surdim=surdim, cout=total_cost, val=val)
-        (candidats_ok if surdim <= surdim_max else candidats_relax).append(data)
+        d = dict(equip=e, n=n_units, installe=installe, surdim=surdim, cout=total_cost, val=val)
+        (candidats_ok if surdim <= surdim_max else candidats_relax).append(d)
 
     def key_ok(d):    return (d["cout"], d["n"], -d["val"])
     def key_relax(d): return (d["surdim"], d["cout"], d["n"])
 
     best = sorted(candidats_ok, key=key_ok)[0] if candidats_ok else sorted(candidats_relax, key=key_relax)[0]
-    return best  # dict: equip, n, installe, surdim, cout, val
+    return best
 
 # ===========================================================
 #  Contrôles techniques simplifiés (si les champs existent)
@@ -254,13 +264,19 @@ def compute_dimensionnement(data, param):
 
     # === 6) Coûts & bilan ===
     bilan_energetique_annuel = E_jour * Decimal('365')
+# ...
+    prix_pv   = _prix_decimal(panneau_choisi)
+    prix_batt = _prix_decimal(batterie_choisie)
+    prix_reg  = _prix_decimal(regulateur_choisi)
+    prix_ondu = _prix_decimal(onduleur_choisi)
+    prix_cabl = _prix_decimal(cable_choisi)
+
     cout_total = (
-        nombre_panneaux * Decimal(str(panneau_choisi.prix_unitaire)) +
-        nombre_batteries * Decimal(str(batterie_choisie.prix_unitaire)) +
-        Decimal(str(regulateur_choisi.prix_unitaire)) +
-        Decimal(str(onduleur_choisi.prix_unitaire)) +
-        Decimal(str(cable_choisi.prix_unitaire))
+        nombre_panneaux * prix_pv +
+        nombre_batteries * prix_batt +
+        prix_reg + prix_ondu + prix_cabl
     )
+
 
     # === 7) Résultat (clés attendues par la vue) ===
     return {

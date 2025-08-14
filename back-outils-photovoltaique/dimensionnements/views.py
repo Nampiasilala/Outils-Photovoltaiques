@@ -1,32 +1,34 @@
 # dimensionnements/views.py
 import logging
 from decimal import Decimal
-
-from rest_framework import viewsets, status
-from rest_framework.decorators import action, permission_classes as api_permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework import viewsets, status, permissions
 from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.throttling import ScopedRateThrottle
 
+from users.permissions import IsAdminUserApp, ReadOnlyOrAdmin
 from .models import Dimensionnement
 from .serializers import DimensionnementSerializer, CalculationInputSerializer
 from .utils import compute_dimensionnement
-
 from donnees_entree.models import DonneesEntree
 from parametres.services import get_or_create_global_params
 
 logger = logging.getLogger(__name__)
 
+# 👇 petite classe throttle dédiée au scope "dimension_create"
+class DimensionCreateThrottle(ScopedRateThrottle):
+    scope = "dimension_create"
+
 class DimensionnementViewSet(viewsets.ModelViewSet):
     """
-    ViewSet principal.
-    - CRUD standard (public)
-    - Action custom: POST /api/dimensionnements/calculate/ (publique)
+    - CRUD : admin (ou lecture publique si tu préfères ReadOnlyOrAdmin)
+    - POST /api/dimensionnements/calculate/ : public (sans auth, throttlé)
     """
     serializer_class = DimensionnementSerializer
-    permission_classes = [AllowAny]  # ✅ Public pour tous
+    permission_classes = [IsAdminUserApp]       # CRUD admin only
+    # permission_classes = [ReadOnlyOrAdmin]    # (option) GET public, écritures admin
 
     def get_queryset(self):
-        # ✅ Retourne tous les dimensionnements (plus de filtre par user)
         return (
             Dimensionnement.objects
             .select_related(
@@ -37,21 +39,15 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             .order_by('-date_calcul')
         )
 
-    @action(detail=False, methods=['post'])
-    @api_permission_classes([AllowAny])  # public
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='calculate',
+        permission_classes=[permissions.AllowAny],  # ✅ public
+        authentication_classes=[],                  # ✅ aucune auth → pas de CSRF
+        throttle_classes=[DimensionCreateThrottle], # ✅ 10/min (cf settings)
+    )
     def calculate(self, request):
-        """
-        POST /api/dimensionnements/calculate/
-        Body JSON:
-        {
-          "E_jour": 1520,
-          "P_max": 400,
-          "N_autonomie": 1,
-          "H_solaire": 5.0,
-          "V_batterie": 12,
-          "localisation": "Antananarivo"  // optionnel
-        }
-        """
         # 1) Validation
         input_ser = CalculationInputSerializer(data=request.data)
         input_ser.is_valid(raise_exception=True)
@@ -75,21 +71,20 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             logger.error(f"Erreur de calcul/équipement: {e}")
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except Exception:
             logger.exception("Erreur inattendue lors du calcul.")
-            return Response({"detail": f"Erreur interne: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail": "Erreur interne."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 4) Historisation de l'entrée (SANS user)
+        # 4) Sauvegarde entrée (anonyme)
         entree = DonneesEntree.objects.create(
             e_jour=data["E_jour"],
             p_max=data["P_max"],
             n_autonomie=data["N_autonomie"],
             localisation=data.get("localisation", ""),
             v_batterie=data["V_batterie"],
-            # user=user,  # ❌ SUPPRIMÉ
         )
 
-        # 5) Persist du résultat (SANS user)
+        # 5) Sauvegarde résultat
         dim = Dimensionnement.objects.create(
             entree=entree,
             parametre=param,
@@ -104,8 +99,6 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             regulateur_recommande=calculated["regulateur_recommande"],
             onduleur_recommande=calculated.get("onduleur_recommande"),
             cable_recommande=calculated.get("cable_recommande"),
-            # user=user,  # ❌ SUPPRIMÉ
         )
 
-        # 6) Réponse
         return Response(DimensionnementSerializer(dim).data, status=status.HTTP_201_CREATED)

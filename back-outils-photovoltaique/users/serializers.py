@@ -1,86 +1,89 @@
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
+
 class RegisterSerializer(serializers.ModelSerializer):
-    # On marque le mot de passe comme write_only pour ne pas l'exposer dans les réponses
+    password = serializers.CharField(write_only=True, min_length=8)
+
     class Meta:
         model = User
-        fields = [
-            'id', 'username', 'email', 'password',
-            'role', 'status', 'department',
-            'first_name', 'last_name', 'date_joined', 'last_login'
-        ]
+        # On ne garde que les champs utiles. PAS de first_name / last_name / last_login.
+        fields = ("id", "username", "email", "password", "role", "date_joined")
+        read_only_fields = ("id", "date_joined")
         extra_kwargs = {
-            'password': {'write_only': True, 'required': False, 'min_length': 6}
+            "email": {"required": True},
+            "username": {"required": True},
+            # Si tu veux empêcher l’escalade de privilèges, mets role en read_only côté API
+            # "role": {"read_only": True},
         }
 
     def create(self, validated_data):
-        # Utiliser create_user pour garantir un mot de passe haché
+        # Assure un mot de passe hashé
+        password = validated_data.pop("password")
+        # Utilise le manager pour créer proprement l’utilisateur
         user = User.objects.create_user(**validated_data)
+        user.set_password(password)
+        user.save()
         return user
-    
-    def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
 
-        if password:
-            instance.set_password(password)
-
-        instance.save()
-        return instance
-
-        
 class LoginSerializer(serializers.Serializer):
+    # Si tu as USERNAME_FIELD = 'email', on authentifie avec l’email
     email = serializers.EmailField()
-    password = serializers.CharField()
+    password = serializers.CharField(write_only=True)
 
-    def validate(self, data):
-        email = data.get('email')
-        password = data.get('password')
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
 
-        # Vérifier que l'utilisateur existe avant de vérifier le mot de passe
-        user = User.objects.filter(email=email).first()
-        if not user:
-            raise serializers.ValidationError({'email': 'Utilisateur non trouvé.'})
+        if email is None or password is None:
+            raise serializers.ValidationError("Email et mot de passe sont requis.")
 
-        if not user.check_password(password):
-            raise serializers.ValidationError({'password': 'Mot de passe incorrect.'})
+        # Utilise authenticate() pour respecter la config d’auth (backends, is_active, etc.)
+        user = authenticate(request=self.context.get("request"), email=email, password=password)
 
-        return data
+        # Si authenticate() ne gère pas l'email chez toi, tu peux fallback :
+        if user is None:
+            u = User.objects.filter(email=email).first()
+            if not u or not u.check_password(password):
+                raise serializers.ValidationError({"detail": "Identifiants invalides."})
+            if not u.is_active:
+                raise serializers.ValidationError({"detail": "Compte désactivé."})
+            user = u
+
+        attrs["user"] = user
+        return attrs
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        user = self.context['request'].user
+        user = self.context["request"].user
 
-        # Vérification de l'ancien mot de passe
-        if not user.check_password(data['old_password']):
-            raise serializers.ValidationError({'old_password': 'Mot de passe actuel incorrect.'})
+        if not user.check_password(data["old_password"]):
+            raise serializers.ValidationError({"old_password": "Mot de passe actuel incorrect."})
 
-        # Vérification que les nouveaux mots de passe correspondent
-        if data['new_password'] != data['confirm_password']:
-            raise serializers.ValidationError({'confirm_password': 'Les mots de passe ne correspondent pas.'})
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Les mots de passe ne correspondent pas."})
 
-        # Vérification de la longueur du nouveau mot de passe
-        if len(data['new_password']) < 6:
-            raise serializers.ValidationError({'new_password': 'Le mot de passe doit contenir au moins 6 caractères.'})
-
-        # Optionnel : ajouter des règles de complexité pour le mot de passe
-        if not any(char.isdigit() for char in data['new_password']):
-            raise serializers.ValidationError({'new_password': 'Le mot de passe doit contenir au moins un chiffre.'})
-
-        if not any(char.isupper() for char in data['new_password']):
-            raise serializers.ValidationError({'new_password': 'Le mot de passe doit contenir au moins une lettre majuscule.'})
-
-        if not any(char.islower() for char in data['new_password']):
-            raise serializers.ValidationError({'new_password': 'Le mot de passe doit contenir au moins une lettre minuscule.'})
+        # Règles simples de complexité (exemple)
+        pwd = data["new_password"]
+        if not any(c.isdigit() for c in pwd):
+            raise serializers.ValidationError({"new_password": "Doit contenir au moins un chiffre."})
+        if not any(c.isupper() for c in pwd):
+            raise serializers.ValidationError({"new_password": "Doit contenir au moins une majuscule."})
+        if not any(c.islower() for c in pwd):
+            raise serializers.ValidationError({"new_password": "Doit contenir au moins une minuscule."})
 
         return data
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
+        user.save()
+        return user

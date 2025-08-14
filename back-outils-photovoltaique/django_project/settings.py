@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import environ
+from datetime import timedelta
 
 # Initialiser environ pour charger les variables d'environnement
 env = environ.Env()
@@ -125,7 +126,6 @@ AUTH_USER_MODEL = 'users.User'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
@@ -178,3 +178,24 @@ AUTHENTICATION_BACKENDS = [
     'users.backends.EmailBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+REST_FRAMEWORK.update({
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/minute",
+        "user": "120/minute",
+        "dimension_create": "10/minute",
+    },
+})
