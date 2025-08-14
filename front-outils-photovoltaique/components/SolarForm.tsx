@@ -3,6 +3,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { dimensionnementAPI } from "@/lib/api";
 import { usePDFGenerator } from "@/hooks/usePDFGenerator";
+import { 
+  formatPrice, 
+  formatEnergyLocale, 
+  formatNumber, 
+  formatPower,
+  formatCapacity,
+  formatVoltage 
+} from "@/utils/formatters";
 import {
   Sun,
   Zap,
@@ -37,9 +45,9 @@ interface EquipmentDetail {
   modele: string;
   marque: string;
   nom_commercial: string;
-  puissance_W?: number | null; // ✅ Corrigé
-  capacite_Ah?: number | null; // ✅ Corrigé
-  tension_nominale_V?: number | null; // ✅ Corrigé
+  puissance_W?: number | null;
+  capacite_Ah?: number | null;
+  tension_nominale_V?: number | null;
   prix_unitaire: number;
   devise: string;
   categorie: string;
@@ -67,44 +75,28 @@ interface ResultData {
 }
 
 /* ---------- Helpers & UI atoms ---------- */
-// ✅ Fonction de formatage améliorée avec Ariary
-const formatPrice = (n?: number | null, currency?: string) => {
+
+// ✅ Fonction de formatage pour les prix avec devise personnalisée
+const formatPriceWithCurrency = (n?: number | null, currency?: string) => {
   if (typeof n !== "number") return "—";
-
-  // Déterminer la devise à utiliser
-  const devise = currency === "MGA" ? "Ar" : currency || "Ar";
-
-  return `${n.toLocaleString("fr-FR")} ${devise}`;
-};
-
-const formatNumber = (n?: number | null) =>
-  typeof n === "number" ? n.toLocaleString("fr-FR") : "—";
-
-const formatDecimal = (n?: number | null, decimals: number = 1) =>
-  typeof n === "number"
-    ? n.toLocaleString("fr-FR", {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-      })
-    : "—";
-
-// ✅ Nouvelle fonction pour formater l'énergie avec unité adaptée
-const formatEnergy = (wh?: number | null) => {
-  if (typeof wh !== "number") return "—";
-
-  // Si >= 1000 Wh, convertir en kWh pour plus de lisibilité
-  if (wh >= 1000) {
-    return `${(wh / 1000).toLocaleString("fr-FR", {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    })} kWh`;
+  
+  // Utiliser la devise spécifiée ou "Ar" par défaut
+  if (currency === "MGA") {
+    return formatPrice(n); // Utilise la fonction centralisée qui retourne déjà "Ar"
   }
-
-  // Sinon garder en Wh
-  return `${wh.toLocaleString("fr-FR")} Wh`;
+  
+  // Pour autres devises, formater manuellement
+  const formatted = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${formatted} ${currency || 'Ar'}`;
 };
 
-// ✅ Composant EquipCard corrigé
+// ✅ Fonction pour formater les décimales (pour compatibilité)
+const formatDecimal = (n?: number | null, decimals: number = 1) => {
+  if (typeof n !== "number") return "—";
+  return n.toFixed(decimals);
+};
+
+// ✅ Composant EquipCard avec formatters centralisés
 const EquipCard = ({
   title,
   c,
@@ -136,25 +128,25 @@ const EquipCard = ({
         {c.puissance_W && (
           <li className="flex justify-between">
             <span>Puissance :</span>
-            <strong>{formatDecimal(c.puissance_W, 0)} W</strong>
+            <strong>{formatPower(c.puissance_W)}</strong>
           </li>
         )}
         {c.capacite_Ah && (
           <li className="flex justify-between">
             <span>Capacité :</span>
-            <strong>{formatDecimal(c.capacite_Ah, 0)} Ah</strong>
+            <strong>{formatCapacity(c.capacite_Ah)}</strong>
           </li>
         )}
         {c.tension_nominale_V && (
           <li className="flex justify-between">
             <span>Tension :</span>
-            <strong>{formatDecimal(c.tension_nominale_V, 0)} V</strong>
+            <strong>{formatVoltage(c.tension_nominale_V)}</strong>
           </li>
         )}
         <li className="flex justify-between border-t pt-2 mt-2">
           <span>Prix unitaire :</span>
           <strong className="text-green-600">
-            {formatPrice(c.prix_unitaire, c.devise)}
+            {formatPriceWithCurrency(c.prix_unitaire, c.devise)}
           </strong>
         </li>
         {extra}
@@ -168,7 +160,7 @@ const EquipCard = ({
 /* ---------- Page ---------- */
 export default function SolarForm() {
   const router = useRouter();
-  const { generatePDF, isGenerating } = usePDFGenerator(); // ✅ Hook PDF
+  const { generatePDF, isGenerating } = usePDFGenerator();
 
   const [formData, setFormData] = useState<FormData>({
     E_jour: 0,
@@ -298,7 +290,6 @@ export default function SolarForm() {
       },
     };
 
-    // ✅ Plus besoin de gérer les toasts ici, c'est fait dans le hook
     await generatePDF(pdfData);
   };
 
@@ -317,7 +308,6 @@ export default function SolarForm() {
       };
       console.log("SolarForm payload:", payload);
 
-      // ✅ Utilisation de l'utilitaire API
       const data: ResultData = await dimensionnementAPI.calculate(payload);
       setResult(data);
       setErrors([]);
@@ -325,7 +315,6 @@ export default function SolarForm() {
     } catch (err: any) {
       console.error("Erreur lors du calcul:", err);
 
-      // Gestion spécifique des erreurs de validation (400)
       if (err.message.includes("400")) {
         toast.error("Données invalides. Vérifiez vos saisies.");
         setErrors(["Veuillez vérifier les données saisies"]);
@@ -556,7 +545,7 @@ export default function SolarForm() {
                   Puissance totale
                 </p>
                 <p className="text-lg font-bold text-gray-800">
-                  {formatDecimal(result.puissance_totale)} W
+                  {formatPower(result.puissance_totale)}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
@@ -565,7 +554,7 @@ export default function SolarForm() {
                   Capacité batterie
                 </p>
                 <p className="text-lg font-bold text-gray-800">
-                  {formatDecimal(result.capacite_batterie)} Wh
+                  {formatEnergyLocale(result.capacite_batterie)}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg text-center">
@@ -574,7 +563,7 @@ export default function SolarForm() {
                   Bilan énergétique annuel
                 </p>
                 <p className="text-lg font-bold text-gray-800">
-                  {formatEnergy(result.bilan_energetique_annuel)}
+                  {formatEnergyLocale(result.bilan_energetique_annuel)}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg text-center">
@@ -583,7 +572,7 @@ export default function SolarForm() {
                   Coût total estimé
                 </p>
                 <p className="text-lg font-bold text-gray-800">
-                  {formatPrice(result.cout_total, "MGA")}
+                  {formatPrice(result.cout_total)}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg text-center">
@@ -592,7 +581,7 @@ export default function SolarForm() {
                   Nombre de panneaux
                 </p>
                 <p className="text-lg font-bold text-gray-800">
-                  {result.nombre_panneaux}
+                  {formatNumber(result.nombre_panneaux)}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
@@ -601,7 +590,7 @@ export default function SolarForm() {
                   Nombre de batteries
                 </p>
                 <p className="text-lg font-bold text-gray-800">
-                  {result.nombre_batteries}
+                  {formatNumber(result.nombre_batteries)}
                 </p>
               </div>
             </div>
@@ -624,7 +613,7 @@ export default function SolarForm() {
                   <li className="flex justify-between border-t pt-2 mt-2">
                     <span>Quantité :</span>
                     <strong className="text-blue-600">
-                      {result?.nombre_panneaux}
+                      {formatNumber(result?.nombre_panneaux)}
                     </strong>
                   </li>
                 }
@@ -638,7 +627,7 @@ export default function SolarForm() {
                   <li className="flex justify-between border-t pt-2 mt-2">
                     <span>Quantité :</span>
                     <strong className="text-green-600">
-                      {result?.nombre_batteries}
+                      {formatNumber(result?.nombre_batteries)}
                     </strong>
                   </li>
                 }
