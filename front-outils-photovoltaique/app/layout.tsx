@@ -1,11 +1,11 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
-import Providers from "./Providers";           // ← nouveau
+import Providers from "./Providers";
 
 export const metadata: Metadata = {
   title: "Calculateur Solaire",
-  description:
-    "Application pour dimensionner une installation solaire autonome",
+  description: "Application pour dimensionner une installation solaire autonome",
 };
 
 export default function RootLayout({
@@ -22,7 +22,6 @@ export default function RootLayout({
         />
       </head>
       <body className="font-inter">
-        {/* Tous les providers côté client */}
         <Providers>{children}</Providers>
       </body>
     </html>
