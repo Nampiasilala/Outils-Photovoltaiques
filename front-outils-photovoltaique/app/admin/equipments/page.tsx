@@ -22,7 +22,7 @@ import {
 const DeleteAlert = dynamic(() => import("@/components/DeleteAlert"), { ssr: false });
 // On place la modale d’ajout dans ce dossier :
 const AddEquipmentModal = dynamic(
-  () => import("./AddEquipmentModal"),
+  () => import("../../components/admin/AddEquipmentModal"),
   { ssr: false }
 );
 

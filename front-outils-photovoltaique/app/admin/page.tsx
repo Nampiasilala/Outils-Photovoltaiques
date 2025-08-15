@@ -1,4 +1,3 @@
-// app/admin/page.tsx
 "use client";
 
 import Link from "next/link";
@@ -10,11 +9,12 @@ import {
   History,
   LogOut,
   ArrowRight,
-  User,        // ⬅️ nouvel import
+  User,
+  FileText, // ⬅️ nouvel import
 } from "lucide-react";
 
 export default function AdminHomePage() {
-  const { admin, loading, logout } = useAdminAuth(); // protège et redirige vers /admin/login si non connecté
+  const { admin, loading, logout } = useAdminAuth();
 
   if (loading) {
     return (
@@ -27,7 +27,6 @@ export default function AdminHomePage() {
     );
   }
 
-  // useAdminAuth redirige déjà si pas admin ; on retourne null pour éviter un flash
   if (!admin) return null;
 
   const cards = [
@@ -60,6 +59,12 @@ export default function AdminHomePage() {
       title: "Historique",
       desc: "Voir l’historique des calculs",
       icon: <History className="w-5 h-5" />,
+    },
+    {
+      href: "/admin/content",                   // ⬅️ nouvelle carte
+      title: "Contenu",
+      desc: "Éditer les pages de contenu",
+      icon: <FileText className="w-5 h-5" />,
     },
   ];
 
