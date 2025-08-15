@@ -142,7 +142,7 @@ export default function AdminProfilePage() {
     setIsSaving(true);
     try {
       const res = await fetchWithAdminAuth(`${API}/users/${form.id}/`, {
-        method: "PUT",
+        method: "PATCH",
         body: JSON.stringify({
           username: form.username,
           email: form.email,
