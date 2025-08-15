@@ -1,9 +1,6 @@
-// app/admin/parameters/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAdminAuth } from "@/components/AuthContext";
-import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import {
   RefreshCw,
   AlertTriangle,
@@ -12,81 +9,84 @@ import {
   XCircle,
   CheckCircle,
 } from "lucide-react";
+import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-type Parameters = {
-  n_global: number;          // 0..1
-  k_securite: number;        // >=1
-  dod: number;               // 0..1
-  k_dimensionnement: number; // >=1
-  s_max: number;             // 0..1
-  i_sec: number;             // >=1
-};
+interface Parameters {
+  n_global: number;            // 0..1
+  k_securite: number;          // >=1
+  dod: number;                 // 0..1 (ex: 0.50 = 50%)
+  k_dimensionnement: number;   // >=1
+  s_max: number;               // 0..1 (ex: 0.25 = 25%)
+  i_sec: number;               // >=1 (ex: 1.25)
+}
 
-type ParameterKey = keyof Parameters;
-
-const parameterInfo: Record<ParameterKey, {
+interface ParameterInfo {
   name: string;
   description: string;
   unit?: string;
   range: string;
   step?: string;
-}> = {
-  n_global: {
-    name: "Rendement global",
-    description: "Rendement global PV→régulateur→batterie→onduleur (typ. 0,70–0,80).",
-    range: "0.60–0.90",
-    step: "0.01",
-  },
-  k_securite: {
-    name: "Coefficient de sécurité",
-    description: "Marge pour pertes & aléas (typ. 1,20–1,40).",
-    range: "1.10–1.50",
-    step: "0.01",
-  },
-  dod: {
-    name: "Profondeur de décharge (DoD)",
-    description: "Fraction max de décharge (0,50 = 50%).",
-    range: "0.30–0.80",
-    step: "0.01",
-  },
-  k_dimensionnement: {
-    name: "Coeff. dimensionnement onduleur",
-    description: "Marge sur la puissance onduleur (typ. 1,20–1,40).",
-    range: "1.10–1.50",
-    step: "0.01",
-  },
-  s_max: {
-    name: "Seuil de surdimensionnement (Smax)",
-    description: "Surdimensionnement max autorisé PV/batteries (0,25 = 25%).",
-    range: "0.00–0.50",
-    step: "0.01",
-  },
-  i_sec: {
-    name: "Marge courant régulateur (Isec)",
-    description: "Facteur de sécurité sur le courant régulateur (ex. 1,25).",
-    range: "1.00–1.50",
-    step: "0.01",
-  },
-};
+}
 
-export default function AdminParametersPage() {
-  const { admin, loading } = useAdminAuth();
+type ParameterKey = keyof Parameters;
+
+export default function ParametersPanel() {
   const [parameters, setParameters] = useState<Parameters | null>(null);
   const [editing, setEditing] = useState<ParameterKey | null>(null);
   const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // GET public → pas besoin d’auth (AllowAny côté DRF). Ça évite tout 401 parasite.
+  const parameterInfo: Record<ParameterKey, ParameterInfo> = {
+    n_global: {
+      name: "Rendement global",
+      description: "Rendement global PV→régulateur→batterie→onduleur (typ. 0,70–0,80).",
+      range: "0.60–0.90",
+      step: "0.01",
+    },
+    k_securite: {
+      name: "Coefficient de sécurité",
+      description: "Marge pour pertes & aléas (typ. 1,20–1,40).",
+      range: "1.10–1.50",
+      step: "0.01",
+    },
+    dod: {
+      name: "Profondeur de décharge (DoD)",
+      description: "Fraction max de décharge (0,50 = 50%).",
+      range: "0.30–0.80",
+      step: "0.01",
+    },
+    k_dimensionnement: {
+      name: "Coeff. dimensionnement onduleur",
+      description: "Marge sur la puissance onduleur (typ. 1,20–1,40).",
+      range: "1.10–1.50",
+      step: "0.01",
+    },
+    s_max: {
+      name: "Seuil de surdimensionnement (Smax)",
+      description: "Surdimensionnement max autorisé pour PV et batteries (0,25 = 25%).",
+      range: "0.00–0.50",
+      step: "0.01",
+    },
+    i_sec: {
+      name: "Marge courant régulateur (Isec)",
+      description: "Facteur de sécurité sur le courant régulateur (ex. 1,25).",
+      range: "1.00–1.50",
+      step: "0.01",
+    },
+  };
+
   const fetchParameters = async () => {
-    setBusy(true);
+    setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithAdminAuth("/parametres/effective/", {}, /*requiresAuth*/ false);
+      // ✅ Relatif + wrapper admin: gère token, refresh sur 401, redirection au besoin
+      const res = await fetchWithAdminAuth("/parametres/effective/");
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status}: ${txt}`);
+        throw new Error(`HTTP ${res.status}: ${txt || res.statusText}`);
       }
       const obj = await res.json();
       setParameters({
@@ -98,84 +98,69 @@ export default function AdminParametersPage() {
         i_sec: obj.i_sec,
       });
     } catch (err: any) {
+      console.error(err);
       const msg = err?.message || "Erreur de chargement";
       setError(msg);
       toast.error("Erreur de chargement : " + msg);
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
-  // PUT protégé → nécessite adminAccessToken (géré par fetchWithAdminAuth)
   const saveParameters = async () => {
     if (!parameters) return;
-    setBusy(true);
+    setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithAdminAuth(
-        "/parametres/effective/",
-        { method: "PUT", body: JSON.stringify(parameters) },
-        /*requiresAuth*/ true
-      );
+      const res = await fetchWithAdminAuth("/parametres/effective/", {
+        method: "PUT",
+        body: JSON.stringify(parameters),
+      });
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status}: ${txt}`);
+        throw new Error(`HTTP ${res.status}: ${txt || res.statusText}`);
       }
-      await fetchParameters(); // re-sync
+      await fetchParameters(); // relit l’état serveur
       setSaved(true);
       toast.success("Paramètres sauvegardés avec succès.");
-      setTimeout(() => setSaved(false), 1800);
+      setTimeout(() => setSaved(false), 2000);
       setEditing(null);
     } catch (err: any) {
+      console.error(err);
       const msg = err?.message || "Erreur lors de la sauvegarde";
       setError(msg);
       toast.error("Erreur lors de la sauvegarde : " + msg);
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!loading && admin) {
-      fetchParameters();
-    }
-  }, [loading, admin]);
+    fetchParameters();
+  }, []);
 
-  if (loading || busy && !parameters) {
+  if (loading || !parameters) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[200px]">
         <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
       </div>
     );
   }
-  if (!admin) return null;
-  if (!parameters) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
-          <AlertTriangle />
-          <span>{error || "Impossible de charger les paramètres."}</span>
-        </div>
-      </div>
-    );
-  }
 
-  const formatValue = (key: ParameterKey, value: number) =>
-    key === "dod" || key === "s_max" ? value.toFixed(2) : String(value);
+  const formatValue = (key: ParameterKey, value: number) => {
+    return key === "dod" || key === "s_max" ? value.toFixed(2) : value.toString();
+  };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900 mb-2">Paramètres</h1>
-      <p className="text-slate-600 mb-6">Configurez les paramètres du système.</p>
-
+    <div className="max-w-7xl mx-auto space-y-6">
       {error && (
-        <div className="mb-4 flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
+        <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
           <AlertTriangle />
           <span>{error}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 rounded-xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {(Object.entries(parameters) as [ParameterKey, number][]).map(([key, value]) => {
           const info = parameterInfo[key];
           const isEditing = editing === key;
@@ -183,6 +168,7 @@ export default function AdminParametersPage() {
             <div key={key} className="bg-white border rounded-lg shadow p-4 flex flex-col text-sm">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-sm">{info.name}</h3>
+                <span title={info.description} className="inline-flex" />
               </div>
 
               {isEditing ? (
@@ -209,19 +195,17 @@ export default function AdminParametersPage() {
                   <>
                     <button
                       onClick={saveParameters}
-                      disabled={busy}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm"
                       title="Enregistrer"
                     >
                       <Save size={16} />
                     </button>
                     <button
                       onClick={() => {
-                        fetchParameters();
+                        fetchParameters(); // revert depuis serveur
                         setEditing(null);
                       }}
-                      disabled={busy}
-                      className="bg-gray-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                      className="bg-gray-500 text-white px-3 py-1 rounded text-sm"
                       title="Annuler"
                     >
                       <XCircle size={16} />
@@ -246,7 +230,7 @@ export default function AdminParametersPage() {
       </div>
 
       {saved && (
-        <div className="mt-4 flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded text-sm">
+        <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded text-sm">
           <CheckCircle />
           <span>Paramètres sauvegardés !</span>
         </div>

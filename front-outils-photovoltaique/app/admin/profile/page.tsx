@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { useAuth } from "@/components/AuthContext";
 import {
   Mail,
@@ -99,9 +99,9 @@ export default function AdminProfilePage() {
       setLoading(true);
       try {
         // GET /users/:id/
-        const res = await fetchWithAuth(`${API}/users/${admin.id}/`);
+        const res = await fetchWithAdminAuth(`${API}/users/${admin.id}/`);
         if (!res.ok) {
-          // fetchWithAuth tente déjà un refresh ; s'il reste 401, on déconnecte
+          // fetchWithAdminAuth tente déjà un refresh ; s'il reste 401, on déconnecte
           if (res.status === 401) {
             logout();
             return;
@@ -141,7 +141,7 @@ export default function AdminProfilePage() {
     if (!form) return;
     setIsSaving(true);
     try {
-      const res = await fetchWithAuth(`${API}/users/${form.id}/`, {
+      const res = await fetchWithAdminAuth(`${API}/users/${form.id}/`, {
         method: "PUT",
         body: JSON.stringify({
           username: form.username,
@@ -183,7 +183,7 @@ export default function AdminProfilePage() {
 
     setIsChangingPassword(true);
     try {
-      const res = await fetchWithAuth(`${API}/users/${admin.id}/change-password/`, {
+      const res = await fetchWithAdminAuth(`${API}/users/${admin.id}/change-password/`, {
         method: "POST",
         body: JSON.stringify({
           old_password: oldPassword,

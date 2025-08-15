@@ -1,5 +1,5 @@
 // app/lib/api.ts
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth"; // <-- via shim ou remplace par fetchWithAdminAuth direct
 import type { CalculationInput, CalculationResult, ApiError } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8001/api";
@@ -9,8 +9,8 @@ export async function apiCall<T = any>(
   options: RequestInit = {},
   requiresAuth = true
 ): Promise<T> {
-  // endpoint est relatif, ex: "/dimensionnements/"
-  const res = await fetchWithAuth(endpoint, options, requiresAuth);
+  // endpoint relatif, ex: "/dimensionnements/"
+  const res = await fetchWithAdminAuth(endpoint, options, requiresAuth);
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");

@@ -1,9 +1,34 @@
 // app/lib/fetchWithAdminAuth.ts
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
-/** Rafraîchit le token admin et retourne le nouvel access token. */
+/** Helpers: lis n'importe quelle paire de clés (nouvelles ou anciennes) */
+function getAccessToken(): string | null {
+  return (
+    localStorage.getItem("adminAccessToken") ||
+    localStorage.getItem("accessToken") ||
+    null
+  );
+}
+function getRefreshToken(): string | null {
+  return (
+    localStorage.getItem("adminRefreshToken") ||
+    localStorage.getItem("refreshToken") ||
+    null
+  );
+}
+/** Écris sous les deux jeux de clés pour rester compatible partout */
+function setAccessToken(value: string) {
+  localStorage.setItem("adminAccessToken", value);
+  localStorage.setItem("accessToken", value);
+}
+function setRefreshToken(value: string) {
+  localStorage.setItem("adminRefreshToken", value);
+  localStorage.setItem("refreshToken", value);
+}
+
+/** Rafraîchit le token et réplique sur les 2 noms de clés */
 async function refreshAdmin(): Promise<string> {
-  const refresh = localStorage.getItem("adminRefreshToken");
+  const refresh = getRefreshToken();
   if (!refresh) throw new Error("Pas de refresh token");
 
   const res = await fetch(`${API_BASE}/token/refresh/`, {
@@ -15,16 +40,16 @@ async function refreshAdmin(): Promise<string> {
   if (!res.ok) throw new Error("Refresh échoué");
 
   const { access } = await res.json();
-  localStorage.setItem("adminAccessToken", access);
+  setAccessToken(access);
   return access;
 }
 
 /**
  * fetchWithAdminAuth:
- *  - Préfixe automatiquement l’URL relative avec API_BASE
- *  - Ajoute Authorization: Bearer <adminAccessToken> si requiresAuth=true
- *  - Si 401 → tente refreshAdmin() puis réessaie une fois
- *  - Si encore 401 / refresh ko → purge et redirige /admin/login
+ *  - Préfixe URL relative avec API_BASE
+ *  - Ajoute Authorization: Bearer <token> si requiresAuth
+ *  - 401 => tente refresh() puis réessaie une fois
+ *  - Échec => purge les 2 paires de clés + redirige /admin/login
  */
 export async function fetchWithAdminAuth(
   input: RequestInfo,
@@ -36,7 +61,7 @@ export async function fetchWithAdminAuth(
       ? `${API_BASE}${input}`
       : input;
 
-  let access = requiresAuth ? localStorage.getItem("adminAccessToken") : null;
+  let access = requiresAuth ? getAccessToken() : null;
 
   const headers = {
     "Content-Type": "application/json",
@@ -50,8 +75,11 @@ export async function fetchWithAdminAuth(
     try {
       access = await refreshAdmin();
     } catch {
+      // purge toutes les variantes
       localStorage.removeItem("adminAccessToken");
       localStorage.removeItem("adminRefreshToken");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       window.location.href = "/admin/login";
       throw new Error("Session expirée");
     }
@@ -66,6 +94,8 @@ export async function fetchWithAdminAuth(
     if (res.status === 401) {
       localStorage.removeItem("adminAccessToken");
       localStorage.removeItem("adminRefreshToken");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       window.location.href = "/admin/login";
       throw new Error("Non autorisé");
     }
@@ -74,9 +104,9 @@ export async function fetchWithAdminAuth(
   return res;
 }
 
-/** Pratique: header d’auth admin à utiliser pour tes requêtes JSON. */
+/** Header pratique (réplique sur les 2 clés) */
 export function adminAuthHeader(): Record<string, string> {
-  const t = localStorage.getItem("adminAccessToken");
+  const t = getAccessToken();
   return t
     ? { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }
     : { "Content-Type": "application/json" };
