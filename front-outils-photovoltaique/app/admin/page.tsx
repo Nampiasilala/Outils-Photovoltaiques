@@ -10,6 +10,7 @@ import {
   History,
   LogOut,
   ArrowRight,
+  User,        // ⬅️ nouvel import
 } from "lucide-react";
 
 export default function AdminHomePage() {
@@ -30,6 +31,12 @@ export default function AdminHomePage() {
   if (!admin) return null;
 
   const cards = [
+    {
+      href: "/admin/profile",
+      title: "Mon profil",
+      desc: "Voir et modifier mes informations",
+      icon: <User className="w-5 h-5" />,
+    },
     {
       href: "/admin/equipments",
       title: "Équipements",
@@ -71,12 +78,22 @@ export default function AdminHomePage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Raccourci Profil */}
+            <Link
+              href="/admin/profile"
+              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md bg-white border shadow-sm hover:bg-slate-50"
+            >
+              <User className="w-4 h-4" />
+              Profil
+            </Link>
+
             <Link
               href="/"
               className="text-sm px-3 py-2 rounded-md bg-white border shadow-sm hover:bg-slate-50"
             >
               Accueil public
             </Link>
+
             <button
               onClick={logout}
               className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
