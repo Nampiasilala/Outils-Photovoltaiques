@@ -1,6 +1,3 @@
-// app/page.tsx - Page d'accueil publique simplifiée (remplace l'ancienne)
-"use client";
-
 import Link from "next/link";
 import {
   Sun,
@@ -15,29 +12,30 @@ import {
   TrendingUp,
   CheckCircle,
 } from "lucide-react";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 export default function HomePage() {
   const features = [
     {
       icon: Zap,
       title: "Calcul précis",
-      description: "Algorithme professionnel prenant en compte tous les paramètres : consommation, autonomie, irradiation solaire locale.",
+      description:
+        "Algorithme professionnel prenant en compte tous les paramètres : consommation, autonomie, irradiation solaire locale.",
       color: "from-blue-50 to-blue-100 border-blue-200",
       iconColor: "text-blue-600",
     },
     {
       icon: Globe,
       title: "Données locales",
-      description: "Irradiation solaire automatique basée sur votre localisation grâce aux données satellite NASA.",
+      description:
+        "Irradiation solaire automatique basée sur votre localisation grâce aux données satellite NASA.",
       color: "from-green-50 to-green-100 border-green-200",
       iconColor: "text-green-600",
     },
     {
       icon: Download,
       title: "Rapport PDF",
-      description: "Téléchargez un rapport détaillé avec tous les calculs, équipements recommandés et coûts estimés.",
+      description:
+        "Téléchargez un rapport détaillé avec tous les calculs, équipements recommandés et coûts estimés.",
       color: "from-purple-50 to-purple-100 border-purple-200",
       iconColor: "text-purple-600",
     },
@@ -53,22 +51,26 @@ export default function HomePage() {
     {
       step: "1",
       title: "Renseignez vos besoins",
-      description: "Indiquez votre consommation journalière et vos contraintes d'installation",
+      description:
+        "Indiquez votre consommation journalière et vos contraintes d'installation",
     },
     {
       step: "2",
       title: "Précisez votre localisation",
-      description: "L'irradiation solaire sera calculée automatiquement pour votre région",
+      description:
+        "L'irradiation solaire sera calculée automatiquement pour votre région",
     },
     {
       step: "3",
       title: "Obtenez vos résultats",
-      description: "Dimensions, équipements recommandés et coûts estimés instantanément",
+      description:
+        "Dimensions, équipements recommandés et coûts estimés instantanément",
     },
     {
       step: "4",
       title: "Téléchargez le rapport",
-      description: "Rapport PDF complet pour votre installateur ou votre projet",
+      description:
+        "Rapport PDF complet pour votre installateur ou votre projet",
     },
   ];
 
@@ -83,11 +85,15 @@ export default function HomePage() {
                 <Sun className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Calculateur Solaire</h1>
-                <p className="text-xs text-gray-600 hidden sm:block">Dimensionnement photovoltaïque</p>
+                <h1 className="text-xl font-bold text-gray-900">
+                  Calculateur Solaire
+                </h1>
+                <p className="text-xs text-gray-600 hidden sm:block">
+                  Dimensionnement photovoltaïque
+                </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <Link
                 href="/calculate"
@@ -114,20 +120,22 @@ export default function HomePage() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-8 shadow-2xl">
             <Sun className="w-10 h-10 text-white" />
           </div>
-          
+
           <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
             Dimensionnez votre
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
               installation solaire
             </span>
           </h2>
-          
+
           <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-            Calculez facilement la puissance, le nombre de panneaux et batteries nécessaires 
-            pour votre installation photovoltaïque autonome. 
-            <strong className="text-gray-900">Gratuit et sans inscription.</strong>
+            Calculez facilement la puissance, le nombre de panneaux et batteries
+            nécessaires pour votre installation photovoltaïque autonome.{" "}
+            <strong className="text-gray-900">
+              Gratuit et sans inscription.
+            </strong>
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <Link
               href="/calculate"
@@ -137,7 +145,7 @@ export default function HomePage() {
               Commencer le calcul
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            
+
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircle className="w-4 h-4 text-green-600" />
               <span>Aucune inscription requise</span>
@@ -151,7 +159,9 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-md mb-4">
                   <stat.icon className="w-6 h-6 text-blue-600" />
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {stat.value}
+                </div>
                 <div className="text-gray-600">{stat.label}</div>
               </div>
             ))}
@@ -165,7 +175,8 @@ export default function HomePage() {
               Pourquoi choisir notre calculateur ?
             </h3>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Une solution complète et professionnelle pour dimensionner votre installation solaire
+              Une solution complète et professionnelle pour dimensionner votre
+              installation solaire
             </p>
           </div>
 
@@ -224,8 +235,9 @@ export default function HomePage() {
               Prêt à calculer votre installation ?
             </h3>
             <p className="text-xl text-blue-100 mb-10 max-w-3xl mx-auto leading-relaxed">
-              Notre calculateur vous donnera une estimation complète en quelques minutes.
-              Commencez dès maintenant, c'est gratuit et sans engagement.
+              Notre calculateur vous donnera une estimation complète en quelques
+              minutes. Commencez dès maintenant, c&apos;est gratuit et sans
+              engagement.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
@@ -236,7 +248,7 @@ export default function HomePage() {
                 Lancer le calculateur
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              
+
               <div className="flex items-center gap-2 text-blue-100">
                 <CheckCircle className="w-5 h-5" />
                 <span>Résultats instantanés</span>
@@ -253,10 +265,11 @@ export default function HomePage() {
                 <Sun className="w-4 h-4 text-white" />
               </div>
               <span className="text-gray-600">
-                © 2024 Calculateur Solaire. Tous droits réservés.
+                © {new Date().getFullYear()} Calculateur Solaire. Tous droits
+                réservés.
               </span>
             </div>
-            
+
             <div className="flex items-center space-x-6">
               <Link
                 href="/calculate"
@@ -275,20 +288,6 @@ export default function HomePage() {
           </div>
         </footer>
       </main>
-      
-      {/* Toast container pour les notifications */}
-      <ToastContainer 
-        position="top-right" 
-        pauseOnFocusLoss={false} 
-        className="text-sm"
-        theme="light"
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnHover
-        draggable
-      />
     </div>
   );
 }

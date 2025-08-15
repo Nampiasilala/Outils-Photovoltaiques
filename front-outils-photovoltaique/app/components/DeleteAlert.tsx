@@ -8,10 +8,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogFooter,
-  AlertDialogCancel,
+  AlertDialogCancel,  
   AlertDialogAction,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from "@/ui/alert-dialog"; // Adjust the import path as necessary
+import { Button } from "@/ui/button";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react"; // Import Loader2 for loading animation
 
 interface DeleteAlertProps {

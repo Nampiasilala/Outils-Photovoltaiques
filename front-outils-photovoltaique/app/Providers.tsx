@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthProvider } from "@/components/AuthContext";   // adapte le chemin si besoin
+import { AuthProvider } from "@/components/AuthContext"; // ajuste si besoin
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -9,7 +9,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       {children}
       {/* conteneur unique de React-Toastify */}
-      <ToastContainer position="top-right" pauseOnFocusLoss={false} className="text-sm" />
+      <ToastContainer
+        position="top-right"
+        pauseOnFocusLoss={false}
+        className="text-sm"
+      />
     </AuthProvider>
   );
 }

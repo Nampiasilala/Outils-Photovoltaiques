@@ -8,10 +8,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import axios from "axios";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
-import { toast } from "react-toastify";
 
 interface JwtPayload {
   user_id: number;
@@ -37,71 +35,126 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/** Helpers */
+/* -------------------- Helpers -------------------- */
+
 function toBool(v: unknown): boolean {
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return v !== 0;
   if (typeof v === "string") {
-    const s = v.toLowerCase().trim();
-    return s === "true" || s === "1" || s === "yes";
+    const s = v.trim().toLowerCase();
+    return s === "true" || s === "1" || s === "yes" || s === "y";
   }
-  return false;
+  return !!v;
+}
+
+function pick<T = any>(...vals: T[]): T | undefined {
+  for (const v of vals) if (v !== undefined && v !== null) return v;
+  return undefined;
+}
+
+function extractAdminFlagsDeep(raw: any) {
+  const out = { is_staff: false, is_superuser: false, is_adminRole: false };
+
+  const visit = (node: any) => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      for (const it of node) visit(it);
+      return;
+    }
+    if (typeof node !== "object") return;
+
+    if ("is_staff" in node) out.is_staff ||= toBool(node.is_staff);
+    if ("isStaff" in node) out.is_staff ||= toBool(node.isStaff);
+    if ("staff" in node) out.is_staff ||= toBool(node.staff);
+    if ("is_superuser" in node) out.is_superuser ||= toBool(node.is_superuser);
+    if ("isSuperuser" in node) out.is_superuser ||= toBool(node.isSuperuser);
+    if ("superuser" in node) out.is_superuser ||= toBool(node.superuser);
+
+    if ("is_admin" in node) {
+      const v = node.is_admin;
+      out.is_staff ||= toBool(v);
+      out.is_superuser ||= toBool(v);
+    }
+    if ("isAdmin" in node) {
+      const v = node.isAdmin;
+      out.is_staff ||= toBool(v);
+      out.is_superuser ||= toBool(v);
+    }
+
+    const roles = pick<any>(node.roles, node.role, node.groups);
+    if (typeof roles === "string") {
+      const s = roles.toLowerCase();
+      if (s.includes("admin") || s.includes("super")) out.is_adminRole = true;
+      if (s.includes("staff") || s.includes("moderator") || s.includes("mod"))
+        out.is_staff = true;
+    } else if (Array.isArray(roles)) {
+      for (const r of roles) {
+        const name = typeof r === "string" ? r : (r?.name ?? r?.role ?? "");
+        if (typeof name === "string") {
+          const s = name.toLowerCase();
+          if (["admin", "superuser", "super"].some((k) => s.includes(k)))
+            out.is_adminRole = true;
+          if (["staff", "moderator", "mod"].some((k) => s.includes(k)))
+            out.is_staff = true;
+        }
+      }
+    }
+
+    for (const k of Object.keys(node)) visit(node[k]);
+  };
+
+  visit(raw);
+  return out;
 }
 
 function normalizeUser(raw: any): AdminUser | null {
-  const r =
-    raw?.data ?? (Array.isArray(raw?.results) ? raw.results[0] : raw) ?? raw;
+  const r = raw?.data ?? (Array.isArray(raw?.results) ? raw.results[0] : raw) ?? raw;
   if (!r || typeof r !== "object") return null;
 
-  const id = r.id ?? r.user_id ?? r.pk;
-  const email =
-    r.email ?? r.user?.email ?? r.profile?.email ?? r.email_address ?? r.mail;
-  const username = r.username ?? r.user?.username ?? r.name ?? r.login;
+  const u = r.user && typeof r.user === "object" ? r.user : {};
+  const p = r.profile && typeof r.profile === "object" ? r.profile : {};
 
-  const isStaff =
-    r.is_staff ??
-    r.isStaff ??
-    r.staff ??
-    (Array.isArray(r.roles) && r.roles.includes("staff")) ??
-    (typeof r.role === "string" && r.role.toLowerCase() === "staff") ??
-    r.is_admin;
+  const idRaw = pick(r.id, r.user_id, r.pk, u.id, u.user_id, p.id);
+  const email = pick(r.email, u.email, p.email, r.email_address, r.mail);
+  const username = pick(r.username, u.username, p.username, r.name, r.login);
 
-  const isSuperuser =
-    r.is_superuser ??
-    r.isSuperuser ??
-    r.superuser ??
-    (Array.isArray(r.roles) && r.roles.includes("admin")) ??
-    (typeof r.role === "string" &&
-      ["admin", "superuser", "super"].includes(r.role.toLowerCase())) ??
-    r.is_admin;
+  const is_staff_top = pick(
+    r.is_staff, r.isStaff, r.staff,
+    u.is_staff, u.isStaff, u.staff,
+    p.is_staff, p.isStaff, p.staff,
+    r.is_admin, u.is_admin
+  );
+  const is_superuser_top = pick(
+    r.is_superuser, r.isSuperuser, r.superuser,
+    u.is_superuser, u.isSuperuser, u.superuser,
+    r.is_admin, u.is_admin
+  );
+  const deep = extractAdminFlagsDeep(r);
 
-  const parsed: AdminUser = {
-    id: typeof id === "string" ? Number(id) : id,
-    email,
-    username,
-    is_staff: toBool(isStaff),
-    is_superuser: toBool(isSuperuser),
-  };
+  const id = typeof idRaw === "string" ? Number(idRaw) : idRaw;
+  if (typeof id !== "number" || !Number.isFinite(id)) return null;
 
-  if (typeof parsed.id !== "number" || !Number.isFinite(parsed.id)) return null;
-  if (typeof parsed.email !== "string" || parsed.email.length === 0)
-    return null;
+  const emailStr = typeof email === "string" ? email : "";
+  if (emailStr.length === 0) return null;
 
-  return parsed;
+  const is_staff = toBool(is_staff_top) || deep.is_staff;
+  const is_superuser = toBool(is_superuser_top) || deep.is_superuser || deep.is_adminRole;
+
+  return { id, email: emailStr, username, is_staff, is_superuser };
 }
+
+/* -------------------- Provider -------------------- */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
   const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const clearAuthState = () => {
-    delete axios.defaults.headers.common["Authorization"];
     if (typeof window !== "undefined") {
-      localStorage.removeItem("adminAccessToken");
-      localStorage.removeItem("adminRefreshToken");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
     }
     setAdmin(null);
   };
@@ -113,36 +166,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    axios.defaults.baseURL = API;
-
     const initAuth = async () => {
       const access =
-        typeof window !== "undefined"
-          ? localStorage.getItem("adminAccessToken")
-          : null;
+        typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
       const refresh =
-        typeof window !== "undefined"
-          ? localStorage.getItem("adminRefreshToken")
-          : null;
+        typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
 
       if (access && refresh) {
         try {
           const { user_id } = jwtDecode<JwtPayload>(access);
-          const resp = await axios.get(`/users/${user_id}/`, {
+          const res = await fetch(`${API}/users/${user_id}/`, {
             headers: { Authorization: `Bearer ${access}` },
           });
 
-          const userData = normalizeUser(resp.data);
-          if (!userData) {
-            console.debug("Réponse brute inattendue (initAuth):", resp.data);
-            throw new Error("Réponse utilisateur invalide");
-          }
+          if (!res.ok) throw new Error(String(res.status));
+          const data = await res.json();
 
-          if (userData.is_staff || userData.is_superuser) {
-            axios.defaults.headers.common["Authorization"] = `Bearer ${access}`;
+          const userData = normalizeUser(data);
+          if (userData && (userData.is_superuser || userData.is_staff)) {
             setAdmin(userData);
           } else {
-            clearAuthState(); // pas de toast ici pour éviter le spam au chargement
+            clearAuthState();
           }
         } catch (err) {
           console.error("Token invalide ou utilisateur non autorisé:", err);
@@ -159,48 +203,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     if (!API) throw new Error("API non configurée");
 
-    try {
-      const { data } = await axios.post<{ access: string; refresh: string }>(
-        "/token/",
-        { email, password },
-        { headers: { "Content-Type": "application/json" } }
-      );
+    // 1) Récupérer les tokens
+    const tokenRes = await fetch(`${API}/token/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!tokenRes.ok) throw new Error("INVALID_CREDENTIALS");
+    const { access, refresh } = await tokenRes.json();
 
-      const { user_id } = jwtDecode<JwtPayload>(data.access);
+    // 2) Charger le profil avec l’access reçu
+    const { user_id } = jwtDecode<JwtPayload>(access);
+    const meRes = await fetch(`${API}/users/${user_id}/`, {
+      headers: { Authorization: `Bearer ${access}` },
+    });
+    if (!meRes.ok) throw new Error("PROFILE_ERROR");
+    const me = normalizeUser(await meRes.json());
+    if (!me) throw new Error("PROFILE_PARSE_ERROR");
 
-      const resp = await axios.get(`/users/${user_id}/`, {
-        headers: { Authorization: `Bearer ${data.access}` },
-      });
-
-      const userData = normalizeUser(resp.data);
-      if (!userData) {
-        console.debug("Réponse brute inattendue (login):", resp.data);
-        throw new Error("Réponse utilisateur invalide");
-      }
-
-      // ❌ cas non-admin : on nettoie, on TOASTE, et on REJETTE
-      // cas NON-ADMIN
-      if (!userData.is_staff && !userData.is_superuser) {
-        // Nettoyage mais PAS de navigation
-        delete axios.defaults.headers.common["Authorization"];
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("adminAccessToken");
-          localStorage.removeItem("adminRefreshToken");
-        }
-        // Rejette un code stable, la page gère l’affichage
-        throw new Error("ADMIN_ONLY");
-      }
-
-      // ✅ cas admin : on persiste et on route
-      localStorage.setItem("adminAccessToken", data.access);
-      localStorage.setItem("adminRefreshToken", data.refresh);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${data.access}`;
-
-      setAdmin(userData);
-      router.push("/admin");
-    } catch (err) {
-      throw err; // pas de redirection ici
+    // 3) Vérifier admin
+    if (!me.is_staff && !me.is_superuser) {
+      // Ne pas stocker les tokens si non-admin
+      throw new Error("ADMIN_ONLY");
     }
+
+    // 4) OK → stocker tokens (clés unifiées) et setAdmin
+    localStorage.setItem("accessToken", access);
+    localStorage.setItem("refreshToken", refresh);
+    setAdmin(me);
+
+    // 5) Route
+    router.push("/admin");
   };
 
   const logout = () => {
@@ -231,15 +264,13 @@ export function useAuth(): AuthContextType {
   return ctx;
 }
 
-// Hook pratique pour l'espace admin (redirection si non connecté)
+/** Hook pratique pour l’espace admin */
 export function useAdminAuth() {
   const { admin, loading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !admin) {
-      router.push("/(public)/login");
-    }
+    if (!loading && !admin) router.push("/admin/login");
   }, [admin, loading, router]);
 
   return {
