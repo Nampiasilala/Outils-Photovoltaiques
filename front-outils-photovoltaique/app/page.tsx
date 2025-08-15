@@ -1,3 +1,4 @@
+// app/page.tsx - Page d'accueil publique simplifiée (remplace l'ancienne)
 "use client";
 
 import Link from "next/link";
@@ -10,8 +11,12 @@ import {
   Shield,
   ArrowRight,
   Star,
+  Users,
+  TrendingUp,
   CheckCircle,
 } from "lucide-react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function HomePage() {
   const features = [
@@ -270,6 +275,20 @@ export default function HomePage() {
           </div>
         </footer>
       </main>
+      
+      {/* Toast container pour les notifications */}
+      <ToastContainer 
+        position="top-right" 
+        pauseOnFocusLoss={false} 
+        className="text-sm"
+        theme="light"
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnHover
+        draggable
+      />
     </div>
   );
 }
