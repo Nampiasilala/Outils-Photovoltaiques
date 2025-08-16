@@ -7,6 +7,7 @@ import { useAdminAuth } from "@/components/AuthContext";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { toast } from "react-toastify";
 import {
+  Wrench,
   Plus,
   Save,
   Edit,
@@ -17,7 +18,9 @@ import {
 } from "lucide-react";
 import { Spinner, useLoading } from "@/LoadingProvider";
 
-const DeleteAlert = dynamic(() => import("@/components/DeleteAlert"), { ssr: false });
+const DeleteAlert = dynamic(() => import("@/components/DeleteAlert"), {
+  ssr: false,
+});
 const AddEquipmentModal = dynamic(
   () => import("../../components/admin/AddEquipmentModal"),
   { ssr: false }
@@ -26,9 +29,18 @@ const AddEquipmentModal = dynamic(
 const API = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 type Categorie =
-  | "panneau_solaire" | "batterie" | "regulateur" | "onduleur" | "cable"
-  | "disjoncteur" | "parafoudre" | "support" | "boitier_jonction"
-  | "connecteur" | "monitoring" | "autre";
+  | "panneau_solaire"
+  | "batterie"
+  | "regulateur"
+  | "onduleur"
+  | "cable"
+  | "disjoncteur"
+  | "parafoudre"
+  | "support"
+  | "boitier_jonction"
+  | "connecteur"
+  | "monitoring"
+  | "autre";
 
 interface Equipment {
   id: number;
@@ -71,7 +83,13 @@ const CATEGORY_LABEL: Record<Categorie, string> = {
 };
 
 const FILTER_CATEGORIES: Array<"Tous" | Categorie> = [
-  "Tous", "panneau_solaire", "batterie", "regulateur", "onduleur", "cable", "autre",
+  "Tous",
+  "panneau_solaire",
+  "batterie",
+  "regulateur",
+  "onduleur",
+  "cable",
+  "autre",
 ];
 
 export default function AdminEquipmentsPage() {
@@ -82,7 +100,9 @@ export default function AdminEquipmentsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState<"Tous" | Categorie>("Tous");
+  const [filterCategory, setFilterCategory] = useState<"Tous" | Categorie>(
+    "Tous"
+  );
   const [saving, setSaving] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -95,7 +115,10 @@ export default function AdminEquipmentsPage() {
       logout();
       throw new Error("Token manquant");
     }
-    return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    return {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
   };
 
   useEffect(() => {
@@ -108,8 +131,13 @@ export default function AdminEquipmentsPage() {
     wrap(async () => {
       setPageLoading(true);
       try {
-        const res = await fetchWithAdminAuth(`${API}/equipements/`, { headers: authHeader() });
-        if (res.status === 401) { logout(); return; }
+        const res = await fetchWithAdminAuth(`${API}/equipements/`, {
+          headers: authHeader(),
+        });
+        if (res.status === 401) {
+          logout();
+          return;
+        }
         if (!res.ok) throw new Error(`Erreur ${res.status}`);
         const data: Equipment[] = await res.json();
         setEquipments(data);
@@ -142,7 +170,9 @@ export default function AdminEquipmentsPage() {
       marque: e.marque?.trim() || undefined,
       modele: e.modele?.trim() || undefined,
       nom_commercial: e.nom_commercial?.trim() || undefined,
-      prix_unitaire: Number.isFinite(e.prix_unitaire) ? Number(e.prix_unitaire) : 0,
+      prix_unitaire: Number.isFinite(e.prix_unitaire)
+        ? Number(e.prix_unitaire)
+        : 0,
       devise: e.devise || "MGA",
     };
     if (e.categorie === "panneau_solaire") {
@@ -183,15 +213,23 @@ export default function AdminEquipmentsPage() {
     await wrap(async () => {
       try {
         const payload = buildPatchPayload(equip);
-        const res = await fetchWithAdminAuth(`${API}/equipements/${equip.id}/`, {
-          method: "PATCH",
-          headers: authHeader(),
-          body: JSON.stringify(payload),
-        });
-        if (res.status === 401) { logout(); return; }
+        const res = await fetchWithAdminAuth(
+          `${API}/equipements/${equip.id}/`,
+          {
+            method: "PATCH",
+            headers: authHeader(),
+            body: JSON.stringify(payload),
+          }
+        );
+        if (res.status === 401) {
+          logout();
+          return;
+        }
         if (!res.ok) throw new Error(`Erreur ${res.status}`);
         const updated: Equipment = await res.json();
-        setEquipments((arr) => arr.map((x) => (x.id === equip.id ? updated : x)));
+        setEquipments((arr) =>
+          arr.map((x) => (x.id === equip.id ? updated : x))
+        );
         setEditingId(null);
         toast.success("Équipement mis à jour avec succès");
       } catch (err: any) {
@@ -210,7 +248,10 @@ export default function AdminEquipmentsPage() {
           method: "DELETE",
           headers: authHeader(),
         });
-        if (res.status === 401) { logout(); return; }
+        if (res.status === 401) {
+          logout();
+          return;
+        }
         if (!res.ok) throw new Error(`Erreur ${res.status}`);
         setEquipments((e) => e.filter((x) => x.id !== id));
         toast.success("Équipement supprimé avec succès");
@@ -231,7 +272,8 @@ export default function AdminEquipmentsPage() {
         e.modele?.toLowerCase().includes(term) ||
         e.nom_commercial?.toLowerCase().includes(term) ||
         CATEGORY_LABEL[e.categorie].toLowerCase().includes(term);
-      const matchCat = filterCategory === "Tous" ? true : e.categorie === filterCategory;
+      const matchCat =
+        filterCategory === "Tous" ? true : e.categorie === filterCategory;
       return matchSearch && matchCat;
     });
   }, [equipments, searchTerm, filterCategory]);
@@ -250,8 +292,15 @@ export default function AdminEquipmentsPage() {
 
   return (
     <div className="py-6 max-w-screen-xl mx-auto overflow-x-auto text-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
+          <Wrench className="w-7 h-7 text-blue-600" />
+          Gestion des équipements
+        </h1>
+      </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
         <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6"></div>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -266,7 +315,9 @@ export default function AdminEquipmentsPage() {
             <select
               className="pl-7 pr-2 py-1 border rounded text-sm w-full sm:w-52"
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value as "Tous" | Categorie)}
+              onChange={(e) =>
+                setFilterCategory(e.target.value as "Tous" | Categorie)
+              }
             >
               {FILTER_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -283,7 +334,15 @@ export default function AdminEquipmentsPage() {
           className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 text-sm w-1/3 sm:w-auto justify-center"
         >
           {/* ⬇️ pas de double spinner pendant overlay */}
-          {saving ? (!isBusy ? <Spinner size={16} /> : <Plus className="w-4 h-4" />) : <Plus className="w-4 h-4" />}
+          {saving ? (
+            !isBusy ? (
+              <Spinner size={16} />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
           <span>Ajouter</span>
         </button>
       </div>
@@ -309,7 +368,9 @@ export default function AdminEquipmentsPage() {
               const editing = isEditing(equip.id);
               const set = (field: keyof Equipment, value: any) =>
                 setEquipments((prev) =>
-                  prev.map((x) => (x.id === equip.id ? { ...x, [field]: value } : x))
+                  prev.map((x) =>
+                    x.id === equip.id ? { ...x, [field]: value } : x
+                  )
                 );
 
               return (
@@ -318,14 +379,18 @@ export default function AdminEquipmentsPage() {
                     {editing ? (
                       <select
                         value={equip.categorie}
-                        onChange={(e) => set("categorie", e.target.value as Categorie)}
+                        onChange={(e) =>
+                          set("categorie", e.target.value as Categorie)
+                        }
                         className="border rounded p-1"
                       >
-                        {FILTER_CATEGORIES.filter((c) => c !== "Tous").map((c) => (
-                          <option key={c} value={c}>
-                            {CATEGORY_LABEL[c]}
-                          </option>
-                        ))}
+                        {FILTER_CATEGORIES.filter((c) => c !== "Tous").map(
+                          (c) => (
+                            <option key={c} value={c}>
+                              {CATEGORY_LABEL[c]}
+                            </option>
+                          )
+                        )}
                       </select>
                     ) : (
                       CATEGORY_LABEL[equip.categorie]
@@ -355,7 +420,9 @@ export default function AdminEquipmentsPage() {
                         />
                         <input
                           value={equip.nom_commercial || ""}
-                          onChange={(ev) => set("nom_commercial", ev.target.value)}
+                          onChange={(ev) =>
+                            set("nom_commercial", ev.target.value)
+                          }
                           className="w-40 border rounded p-1"
                           placeholder="Nom"
                         />
@@ -370,12 +437,16 @@ export default function AdminEquipmentsPage() {
                       <input
                         type="number"
                         value={equip.puissance_W ?? ""}
-                        onChange={(ev) => set("puissance_W", sanitizeNumber(ev.target.value))}
+                        onChange={(ev) =>
+                          set("puissance_W", sanitizeNumber(ev.target.value))
+                        }
                         className="w-24 border rounded p-1"
-                        disabled={!(
-                          equip.categorie === "panneau_solaire" ||
-                          equip.categorie === "onduleur"
-                        )}
+                        disabled={
+                          !(
+                            equip.categorie === "panneau_solaire" ||
+                            equip.categorie === "onduleur"
+                          )
+                        }
                       />
                     ) : (
                       equip.puissance_W ?? "—"
@@ -387,7 +458,9 @@ export default function AdminEquipmentsPage() {
                       <input
                         type="number"
                         value={equip.capacite_Ah ?? ""}
-                        onChange={(ev) => set("capacite_Ah", sanitizeNumber(ev.target.value))}
+                        onChange={(ev) =>
+                          set("capacite_Ah", sanitizeNumber(ev.target.value))
+                        }
                         className="w-24 border rounded p-1"
                         disabled={equip.categorie !== "batterie"}
                       />
@@ -401,12 +474,19 @@ export default function AdminEquipmentsPage() {
                       <input
                         type="number"
                         value={equip.tension_nominale_V ?? ""}
-                        onChange={(ev) => set("tension_nominale_V", sanitizeNumber(ev.target.value))}
+                        onChange={(ev) =>
+                          set(
+                            "tension_nominale_V",
+                            sanitizeNumber(ev.target.value)
+                          )
+                        }
                         className="w-24 border rounded p-1"
-                        disabled={!(
-                          equip.categorie === "batterie" ||
-                          equip.categorie === "panneau_solaire"
-                        )}
+                        disabled={
+                          !(
+                            equip.categorie === "batterie" ||
+                            equip.categorie === "panneau_solaire"
+                          )
+                        }
                       />
                     ) : (
                       equip.tension_nominale_V ?? "—"
@@ -418,7 +498,9 @@ export default function AdminEquipmentsPage() {
                       <input
                         type="number"
                         value={equip.courant_A ?? ""}
-                        onChange={(ev) => set("courant_A", sanitizeNumber(ev.target.value))}
+                        onChange={(ev) =>
+                          set("courant_A", sanitizeNumber(ev.target.value))
+                        }
                         className="w-24 border rounded p-1"
                         disabled={equip.categorie !== "regulateur"}
                       />
@@ -432,7 +514,9 @@ export default function AdminEquipmentsPage() {
                       <input
                         type="number"
                         value={equip.ampacite_A ?? ""}
-                        onChange={(ev) => set("ampacite_A", sanitizeNumber(ev.target.value))}
+                        onChange={(ev) =>
+                          set("ampacite_A", sanitizeNumber(ev.target.value))
+                        }
                         className="w-24 border rounded p-1"
                         disabled={equip.categorie !== "cable"}
                       />
@@ -446,7 +530,9 @@ export default function AdminEquipmentsPage() {
                       <input
                         type="number"
                         value={equip.prix_unitaire}
-                        onChange={(ev) => set("prix_unitaire", Number(ev.target.value) || 0)}
+                        onChange={(ev) =>
+                          set("prix_unitaire", Number(ev.target.value) || 0)
+                        }
                         className="w-28 border rounded p-1"
                       />
                     ) : (
@@ -464,7 +550,15 @@ export default function AdminEquipmentsPage() {
                           title="Enregistrer"
                         >
                           {/* ⬇️ cache le spinner local si overlay actif */}
-                          {saving ? (!isBusy ? <Spinner size={14} /> : <Save size={14} />) : <Save size={14} />}
+                          {saving ? (
+                            !isBusy ? (
+                              <Spinner size={14} />
+                            ) : (
+                              <Save size={14} />
+                            )
+                          ) : (
+                            <Save size={14} />
+                          )}
                         </button>
                         <button
                           onClick={() => setEditingId(null)}

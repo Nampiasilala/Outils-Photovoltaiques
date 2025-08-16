@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/components/AuthContext";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
-import { AlertTriangle, Save, Edit, XCircle, CheckCircle } from "lucide-react";
+import {
+  Settings,
+  AlertTriangle,
+  Save,
+  Edit,
+  XCircle,
+  CheckCircle,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { useLoading, Spinner } from "@/LoadingProvider"; // loader centralisé
 
@@ -19,11 +26,18 @@ type ParameterKey = keyof Parameters;
 
 const parameterInfo: Record<
   ParameterKey,
-  { name: string; description: string; unit?: string; range: string; step?: string }
+  {
+    name: string;
+    description: string;
+    unit?: string;
+    range: string;
+    step?: string;
+  }
 > = {
   n_global: {
     name: "Rendement global",
-    description: "Rendement global PV→régulateur→batterie→onduleur (typ. 0,70–0,80).",
+    description:
+      "Rendement global PV→régulateur→batterie→onduleur (typ. 0,70–0,80).",
     range: "0.60–0.90",
     step: "0.01",
   },
@@ -72,7 +86,11 @@ export default function AdminParametersPage() {
   const fetchParameters = async (withOverlay = true) => {
     setError(null);
     const doFetch = async () => {
-      const res = await fetchWithAdminAuth("/parametres/effective/", {}, /*requiresAuth*/ false);
+      const res = await fetchWithAdminAuth(
+        "/parametres/effective/",
+        {},
+        /*requiresAuth*/ false
+      );
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
         throw new Error(`HTTP ${res.status}: ${txt}`);
@@ -169,8 +187,17 @@ export default function AdminParametersPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
+          <Settings className="w-7 h-7 text-blue-600" />
+          Gestion des paramètres
+        </h1>
+      </div>
+
       <h1 className="text-2xl font-bold text-slate-900 mb-2">Paramètres</h1>
-      <p className="text-slate-600 mb-6">Configurez les paramètres du système.</p>
+      <p className="text-slate-600 mb-6">
+        Configurez les paramètres du système.
+      </p>
 
       {error && (
         <div className="mb-4 flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
@@ -180,74 +207,83 @@ export default function AdminParametersPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 rounded-xl">
-        {(Object.entries(parameters) as [ParameterKey, number][]).map(([key, value]) => {
-          const info = parameterInfo[key];
-          const isEditing = editing === key;
-          return (
-            <div key={key} className="bg-white border rounded-lg shadow p-4 flex flex-col text-sm">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-sm">{info.name}</h3>
-              </div>
-
-              {isEditing ? (
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    value={Number.isFinite(value) ? value : 0}
-                    step={info.step ?? "0.01"}
-                    onChange={(e) =>
-                      setParameters((p) => (p ? { ...p, [key]: Number(e.target.value) } : p))
-                    }
-                    className="border rounded px-2 py-1 w-28 text-sm"
-                  />
-                  {info.unit && <span className="text-sm">{info.unit}</span>}
+        {(Object.entries(parameters) as [ParameterKey, number][]).map(
+          ([key, value]) => {
+            const info = parameterInfo[key];
+            const isEditing = editing === key;
+            return (
+              <div
+                key={key}
+                className="bg-white border rounded-lg shadow p-4 flex flex-col text-sm"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-sm">{info.name}</h3>
                 </div>
-              ) : (
-                <div className="text-xl">{formatValue(key, value)}</div>
-              )}
 
-              <div className="text-xs text-gray-500 mt-1">Plage conseillée : {info.range}</div>
-
-              <div className="mt-auto pt-3 flex space-x-2">
                 {isEditing ? (
-                  <>
-                    <button
-                      onClick={saveParameters}
-                      disabled={isBusy}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 flex items-center gap-2"
-                      title="Enregistrer"
-                    >
-                      {isBusy ? <Spinner size={14} /> : <Save size={16} />}
-                      <span>Enregistrer</span>
-                    </button>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      value={Number.isFinite(value) ? value : 0}
+                      step={info.step ?? "0.01"}
+                      onChange={(e) =>
+                        setParameters((p) =>
+                          p ? { ...p, [key]: Number(e.target.value) } : p
+                        )
+                      }
+                      className="border rounded px-2 py-1 w-28 text-sm"
+                    />
+                    {info.unit && <span className="text-sm">{info.unit}</span>}
+                  </div>
+                ) : (
+                  <div className="text-xl">{formatValue(key, value)}</div>
+                )}
+
+                <div className="text-xs text-gray-500 mt-1">
+                  Plage conseillée : {info.range}
+                </div>
+
+                <div className="mt-auto pt-3 flex space-x-2">
+                  {isEditing ? (
+                    <>
+                      <button
+                        onClick={saveParameters}
+                        disabled={isBusy}
+                        className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 flex items-center gap-2"
+                        title="Enregistrer"
+                      >
+                        {isBusy ? <Spinner size={14} /> : <Save size={16} />}
+                        <span>Enregistrer</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          void fetchParameters(true);
+                          setEditing(null);
+                        }}
+                        disabled={isBusy}
+                        className="bg-gray-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                        title="Annuler"
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </>
+                  ) : (
                     <button
                       onClick={() => {
-                        void fetchParameters(true);
-                        setEditing(null);
+                        setEditing(key);
+                        setSaved(false);
                       }}
-                      disabled={isBusy}
-                      className="bg-gray-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                      title="Annuler"
+                      className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                      title="Modifier"
                     >
-                      <XCircle size={16} />
+                      <Edit size={16} />
                     </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setEditing(key);
-                      setSaved(false);
-                    }}
-                    className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
-                    title="Modifier"
-                  >
-                    <Edit size={16} />
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          }
+        )}
       </div>
 
       {saved && (

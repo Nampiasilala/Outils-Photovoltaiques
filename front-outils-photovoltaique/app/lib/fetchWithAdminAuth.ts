@@ -80,7 +80,7 @@ export async function fetchWithAdminAuth(
       localStorage.removeItem("adminRefreshToken");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
-      window.location.href = "/admin/login";
+      window.location.href = "/admin-login";
       throw new Error("Session expirée");
     }
 
@@ -96,7 +96,7 @@ export async function fetchWithAdminAuth(
       localStorage.removeItem("adminRefreshToken");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
-      window.location.href = "/admin/login";
+      window.location.href = "/admin-login";
       throw new Error("Non autorisé");
     }
   }

@@ -7,7 +7,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Navbar client */}
       <AdminNavbar />
       {/* Décale le contenu sous la navbar fixe */}
-      <main className="pt-14">{children}</main>
+      <main>{children}</main>
     </div>
   );
 }

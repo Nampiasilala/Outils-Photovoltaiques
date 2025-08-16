@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { useAuth } from "@/components/AuthContext";
 import {
+  User,
   Mail,
   Calendar,
   Edit3,
@@ -89,7 +90,7 @@ export default function AdminProfilePage() {
   useEffect(() => {
     if (authLoading) return;
     if (!admin) {
-      router.replace("/admin/login");
+      router.replace("/admin-login");
       return;
     }
 
@@ -254,6 +255,13 @@ export default function AdminProfilePage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header Card */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
+          <User className="w-7 h-7 text-blue-600" />
+          Gestion de profile
+        </h1>
+      </div>
+      
       <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 text-white">
           <div className="flex flex-col px-2 sm:flex-row sm:items-center sm:justify-between gap-4">

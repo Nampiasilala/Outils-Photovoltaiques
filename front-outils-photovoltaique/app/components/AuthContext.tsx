@@ -270,7 +270,7 @@ export function useAdminAuth() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !admin) router.push("/admin/login");
+    if (!loading && !admin) router.push("/admin-login");
   }, [admin, loading, router]);
 
   return {

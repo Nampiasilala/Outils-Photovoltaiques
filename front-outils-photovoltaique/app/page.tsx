@@ -103,7 +103,7 @@ export default function HomePage() {
                 Calculer
               </Link>
               <Link
-                href="/admin/login"
+                href="/admin-login"
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
               >
                 <Shield className="w-4 h-4" />
@@ -278,7 +278,7 @@ export default function HomePage() {
                 Calculateur
               </Link>
               <Link
-                href="/admin/login"
+                href="/admin-login"
                 className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors"
               >
                 <Shield className="w-4 h-4" />

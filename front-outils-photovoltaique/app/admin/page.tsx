@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { useAdminAuth } from "@/components/AuthContext";
 import {
+  Crown,
   Settings,
   Users,
   Wrench,
   History,
-  LogOut,
   ArrowRight,
   User,
   FileText,
 } from "lucide-react";
-import { Spinner, useLoading } from "@/LoadingProvider";
+import { Spinner } from "@/LoadingProvider";
 
 export default function AdminHomePage() {
-  const { admin, loading, logout } = useAdminAuth();
-  const { wrap } = useLoading();
+  const { admin, loading } = useAdminAuth();
 
   if (loading) {
     return (
@@ -47,7 +46,7 @@ export default function AdminHomePage() {
     {
       href: "/admin/users",
       title: "Utilisateurs",
-      desc: "Créer, éditer, supprimer des comptes",
+      desc: "Editer, supprimer des comptes",
       icon: <Users className="w-5 h-5" />,
     },
     {
@@ -63,7 +62,7 @@ export default function AdminHomePage() {
       icon: <History className="w-5 h-5" />,
     },
     {
-      href: "/admin/content", // ← route corrigée (plural)
+      href: "/admin/contents", // ← route corrigée (plural)
       title: "Contenus",
       desc: "Éditer les pages de contenu",
       icon: <FileText className="w-5 h-5" />,
@@ -80,19 +79,11 @@ export default function AdminHomePage() {
               Tableau de bord administrateur
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              Connecté en tant que <span className="font-medium">{admin.email}</span>
+              Connecté en tant que <span className="font-medium text-violet-700">{admin.email}</span>
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/admin/profile"
-              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md bg-white border shadow-sm hover:bg-slate-50"
-            >
-              <User className="w-4 h-4" />
-              Profil
-            </Link>
-
             <Link
               href="/"
               className="text-sm px-3 py-2 rounded-md bg-white border shadow-sm hover:bg-slate-50"
@@ -100,17 +91,10 @@ export default function AdminHomePage() {
               Accueil public
             </Link>
 
-            <button
-              onClick={() =>
-                wrap(async () => {
-                  await Promise.resolve(logout());
-                }, "Déconnexion…")
-              }
-              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-            >
-              <LogOut className="w-4 h-4" />
-              Déconnexion
-            </button>
+          <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium bg-purple-100 text-purple-700 rounded-full">
+          <Crown className="w-4 h-4" />
+          Admin
+        </span>
           </div>
         </header>
 

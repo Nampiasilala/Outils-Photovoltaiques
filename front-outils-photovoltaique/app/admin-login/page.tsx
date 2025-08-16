@@ -27,13 +27,14 @@ type ValidationErrors = Partial<Record<keyof LoginFormData, string>>;
 export default function AdminLoginPage() {
   const router = useRouter();
   const { admin, login, loading: authLoading } = useAuth();
-  const { wrap, isBusy } = useLoading(); // ⬅️ récupère isBusy
+  const { wrap, isBusy } = useLoading();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // spinner du bouton (local)
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
   const [errors, setErrors] = useState<ValidationErrors>({});
 
+  // 👉 Bloque l'affichage si admin déjà connecté
   useEffect(() => {
     if (admin && !authLoading) {
       router.replace("/admin");
@@ -74,7 +75,6 @@ export default function AdminLoginPage() {
 
     setIsLoading(true);
     try {
-      // ⬇️ L’overlay global s’affiche ici
       await wrap(() => login(formData.email, formData.password), "Connexion…");
 
       toast.success(
@@ -90,36 +90,28 @@ export default function AdminLoginPage() {
       console.error("Erreur de connexion:", err);
       const msg = err instanceof Error ? err.message : "";
 
-      if (msg === "ADMIN_ONLY") {
-        toast.error(
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <span className="text-sm text-red-700">
-              Accès refusé. Seuls les administrateurs peuvent se connecter.
-            </span>
-          </div>,
-          { className: "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
-        );
-      } else {
-        toast.error(
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <span className="text-sm text-red-700">Identifiants incorrects. Veuillez réessayer.</span>
-          </div>,
-          { className: "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
-        );
-      }
+      toast.error(
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <span className="text-sm text-red-700">
+            {msg === "ADMIN_ONLY"
+              ? "Accès refusé. Seuls les administrateurs peuvent se connecter."
+              : "Identifiants incorrects. Veuillez réessayer."}
+          </span>
+        </div>,
+        { className: "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ⬇️ Si l’overlay (isBusy) est actif pendant authLoading, on masque le spinner local pour éviter le doublon
-  if (authLoading) {
+  // 👉 Masque tout si admin déjà connecté
+  if (authLoading || admin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          {!isBusy && <Spinner size={48} />} {/* ⬅️ évite double spinner avec l’overlay */}
+          {!isBusy && <Spinner size={48} />}
           <p className="text-gray-600">Vérification de l'authentification...</p>
         </div>
       </div>
@@ -157,7 +149,7 @@ export default function AdminLoginPage() {
                   Adresse email
                 </label>
                 <div className="relative group">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                   <input
                     type="email"
                     id="email"
@@ -183,7 +175,7 @@ export default function AdminLoginPage() {
                   Mot de passe
                 </label>
                 <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                   <input
                     type={showPassword ? "text" : "password"}
                     id="password"
@@ -198,8 +190,7 @@ export default function AdminLoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
@@ -218,23 +209,10 @@ export default function AdminLoginPage() {
                 aria-busy={isLoading}
                 className="w-full flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-base"
               >
-                {/* ⬇️ si l’overlay tourne (isBusy), on évite d’afficher le spinner local du bouton */}
                 {isLoading && !isBusy ? <Spinner size={20} /> : <LogIn className="w-5 h-5" />}
                 {isLoading || isBusy ? "Connexion en cours..." : "Se connecter"}
               </button>
             </form>
-
-            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-between items-center text-xs sm:text-sm gap-2 sm:gap-0">
-              <Link href="/forgot-password" className="text-indigo-600 hover:text-cyan-600 transition-colors whitespace-nowrap">
-                Mot de passe oublié ?
-              </Link>
-              <Link
-                href="/register"
-                className="font-semibold text-indigo-600 hover:text-blue-700 transition-colors hover:underline whitespace-nowrap"
-              >
-                Créer un compte
-              </Link>
-            </div>
           </div>
         </div>
       </main>

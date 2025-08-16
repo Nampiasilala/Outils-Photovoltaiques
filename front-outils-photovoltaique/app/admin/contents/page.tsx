@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
+  FileText,
   Save,
   Edit,
   CheckCircle,
@@ -15,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
-import { toast } from "react-toastify";           // ✅ on garde toast direct
+import { toast } from "react-toastify"; // ✅ on garde toast direct
 // ❌ ne PAS réimporter le CSS ici (le Toaster global le fait déjà)
 import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ overlay + icône
 
@@ -106,7 +107,7 @@ const PREDEFINED_FIELDS = [
   },
 ] as const;
 
-type Predef = typeof PREDEFINED_FIELDS[number];
+type Predef = (typeof PREDEFINED_FIELDS)[number];
 
 // ------------------------ Utils ------------------------
 function textToHtml(text: string): string {
@@ -149,66 +150,69 @@ function FieldCard({
   };
 
   return (
-    <div
-      className={`bg-gradient-to-br ${
-        colorClasses[field.color as keyof typeof colorClasses]
-      } border rounded-xl p-4 hover:shadow-md transition-all`}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/70 rounded-lg">
-            <IconComponent className="w-5 h-5" />
+    <div>
+      <div
+        className={`bg-gradient-to-br ${
+          colorClasses[field.color as keyof typeof colorClasses]
+        } border rounded-xl p-4 hover:shadow-md transition-all`}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/70 rounded-lg">
+              <IconComponent className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">{field.title}</h3>
+              <p className="text-sm opacity-75">{field.description}</p>
+              {field.unit && (
+                <span className="inline-block mt-1 px-2 py-1 text-xs bg-white/50 rounded">
+                  {field.unit}
+                </span>
+              )}
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{field.title}</h3>
-            <p className="text-sm opacity-75">{field.description}</p>
-            {field.unit && (
-              <span className="inline-block mt-1 px-2 py-1 text-xs bg-white/50 rounded">
-                {field.unit}
-              </span>
+          <div className="flex items-center gap-1">
+            {isConfigured ? (
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-gray-400" />
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {isConfigured ? (
-            <CheckCircle className="w-5 h-5 text-green-600" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-gray-400" />
-          )}
-        </div>
-      </div>
 
-      <div className="space-y-2">
-        <div className="text-xs font-medium opacity-75">
-          Clé du champ : <code className="bg-white/50 px-1 rounded">{field.key}</code>
-        </div>
+        <div className="space-y-2">
+          <div className="text-xs font-medium opacity-75">
+            Clé du champ :{" "}
+            <code className="bg-white/50 px-1 rounded">{field.key}</code>
+          </div>
 
-        <div className="text-xs opacity-75">
-          Statut :{" "}
-          {isConfigured ? (
-            <span className="text-green-700 font-medium">✅ Configuré</span>
-          ) : (
-            <span className="text-gray-600">⚠️ Non configuré</span>
-          )}
-        </div>
+          <div className="text-xs opacity-75">
+            Statut :{" "}
+            {isConfigured ? (
+              <span className="text-green-700 font-medium">✅ Configuré</span>
+            ) : (
+              <span className="text-gray-600">⚠️ Non configuré</span>
+            )}
+          </div>
 
-        <div className="flex gap-2 pt-2">
-          <button
-            onClick={onEdit}
-            className="flex-1 px-3 py-2 bg-white/80 hover:bg-white text-gray-800 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-          >
-            <Edit className="w-4 h-4" />
-            {isConfigured ? "Modifier" : "Configurer"}
-          </button>
-          {isConfigured && (
+          <div className="flex gap-2 pt-2">
             <button
-              onClick={onPreview}
-              className="px-3 py-2 bg-white/80 hover:bg-white text-gray-800 rounded-lg text-sm font-medium transition-colors"
-              title="Aperçu"
+              onClick={onEdit}
+              className="flex-1 px-3 py-2 bg-white/80 hover:bg-white text-gray-800 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
             >
-              <Eye className="w-4 h-4" />
+              <Edit className="w-4 h-4" />
+              {isConfigured ? "Modifier" : "Configurer"}
             </button>
-          )}
+            {isConfigured && (
+              <button
+                onClick={onPreview}
+                className="px-3 py-2 bg-white/80 hover:bg-white text-gray-800 rounded-lg text-sm font-medium transition-colors"
+                title="Aperçu"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -224,12 +228,18 @@ function EditForm({
 }: {
   field: Predef;
   existingContent: HelpContent | null;
-  onSave: (key: string, title: string, bodyText: string, isActive: boolean) => void;
+  onSave: (
+    key: string,
+    title: string,
+    bodyText: string,
+    isActive: boolean
+  ) => void;
   saving: boolean;
 }) {
   const [title, setTitle] = useState(existingContent?.title || field.title);
   const [bodyText, setBodyText] = useState(() => {
-    if (existingContent?.body_html) return htmlToText(existingContent.body_html);
+    if (existingContent?.body_html)
+      return htmlToText(existingContent.body_html);
     return field.defaultHelp;
   });
   const [isActive, setIsActive] = useState(existingContent?.is_active ?? true);
@@ -237,7 +247,9 @@ function EditForm({
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Titre affiché</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Titre affiché
+        </label>
         <input
           type="text"
           value={title}
@@ -258,7 +270,8 @@ function EditForm({
           placeholder="Tapez votre explication..."
         />
         <p className="mt-2 text-xs text-slate-500">
-          Les retours à la ligne seront convertis automatiquement au format HTML.
+          Les retours à la ligne seront convertis automatiquement au format
+          HTML.
         </p>
       </div>
 
@@ -283,7 +296,7 @@ function EditForm({
         >
           {saving ? (
             <>
-              <Spinner className="w-4 h-4" />  {/* ✅ spinner centralisé */}
+              <Spinner className="w-4 h-4" /> {/* ✅ spinner centralisé */}
               Sauvegarde...
             </>
           ) : (
@@ -303,7 +316,9 @@ export default function AdminHelpContentsPage() {
   const [helpContents, setHelpContents] = useState<HelpContent[]>([]);
   const [editingField, setEditingField] = useState<Predef | null>(null);
   const [previewField, setPreviewField] = useState<Predef | null>(null);
-  const [editingContent, setEditingContent] = useState<HelpContent | null>(null);
+  const [editingContent, setEditingContent] = useState<HelpContent | null>(
+    null
+  );
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -342,14 +357,22 @@ export default function AdminHelpContentsPage() {
 
         let res: Response;
         if (existing) {
-          res = await fetchWithAdminAuth(`/contenus/admin/${encodeURIComponent(fieldKey)}/`, {
-            method: "PATCH",
-            body: JSON.stringify({ title, body_html, is_active: isActive }),
-          });
+          res = await fetchWithAdminAuth(
+            `/contenus/admin/${encodeURIComponent(fieldKey)}/`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({ title, body_html, is_active: isActive }),
+            }
+          );
         } else {
           res = await fetchWithAdminAuth(`/contenus/admin/`, {
             method: "POST",
-            body: JSON.stringify({ key: fieldKey, title, body_html, is_active: isActive }),
+            body: JSON.stringify({
+              key: fieldKey,
+              title,
+              body_html,
+              is_active: isActive,
+            }),
           });
         }
 
@@ -360,7 +383,9 @@ export default function AdminHelpContentsPage() {
       }, "Sauvegarde…");
 
       toast.success(
-        helpContents.some((c) => c.key === fieldKey) ? "Contenu mis à jour ✔️" : "Contenu créé ✔️",
+        helpContents.some((c) => c.key === fieldKey)
+          ? "Contenu mis à jour ✔️"
+          : "Contenu créé ✔️",
         { autoClose: 2500 }
       );
 
@@ -386,18 +411,32 @@ export default function AdminHelpContentsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
+          <FileText className="w-7 h-7 text-blue-600" />
+          Gestion des notices
+        </h1>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">🎯 Aides utilisateur (admin)</h1>
-          <p className="text-gray-600 mt-1">Configurez les explications affichées via l’icône ℹ️</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            🎯 Aides utilisateur (admin)
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Configurez les explications affichées via l’icône ℹ️
+          </p>
         </div>
         <button
           onClick={loadHelpContents}
           disabled={loading}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
         >
-          {loading ? <Spinner className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
+          {loading ? (
+            <Spinner className="w-4 h-4" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
           Actualiser
         </button>
       </div>
@@ -406,15 +445,22 @@ export default function AdminHelpContentsPage() {
       {Object.entries(fieldsByCategory).map(([category, fields]) => (
         <div key={category} className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            {category === "Consommation" && <Zap className="w-5 h-5 text-yellow-500" />}
-            {category === "Configuration" && <Settings className="w-5 h-5 text-purple-500" />}
-            {category === "Environnement" && <Globe className="w-5 h-5 text-green-500" />}
+            {category === "Consommation" && (
+              <Zap className="w-5 h-5 text-yellow-500" />
+            )}
+            {category === "Configuration" && (
+              <Settings className="w-5 h-5 text-purple-500" />
+            )}
+            {category === "Environnement" && (
+              <Globe className="w-5 h-5 text-green-500" />
+            )}
             {category}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {fields.map((field) => {
-              const helpContent = helpContents.find((c) => c.key === field.key) || null;
+              const helpContent =
+                helpContents.find((c) => c.key === field.key) || null;
               return (
                 <FieldCard
                   key={field.key}
@@ -443,9 +489,12 @@ export default function AdminHelpContentsPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-semibold">
-                  {editingContent ? "✏️ Modifier" : "➕ Configurer"} : {editingField.title}
+                  {editingContent ? "✏️ Modifier" : "➕ Configurer"} :{" "}
+                  {editingField.title}
                 </h2>
-                <p className="text-gray-600 text-sm">Clé : {editingField.key}</p>
+                <p className="text-gray-600 text-sm">
+                  Clé : {editingField.key}
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -473,8 +522,13 @@ export default function AdminHelpContentsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">👁️ Aperçu : {previewField.title}</h2>
-              <button onClick={() => setPreviewField(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <h2 className="text-lg font-semibold">
+                👁️ Aperçu : {previewField.title}
+              </h2>
+              <button
+                onClick={() => setPreviewField(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -482,15 +536,19 @@ export default function AdminHelpContentsPage() {
             <div className="space-y-3">
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="text-sm font-medium text-blue-900 mb-2">
-                  {previewField.title} {previewField.unit && `(${previewField.unit})`}
+                  {previewField.title}{" "}
+                  {previewField.unit && `(${previewField.unit})`}
                 </div>
                 <div
                   className="text-sm text-blue-800 prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
                     __html:
-                      helpContents.find((c) => c.key === previewField.key)?.body_html ||
+                      helpContents.find((c) => c.key === previewField.key)
+                        ?.body_html ||
                       textToHtml(
-                        PREDEFINED_FIELDS.find((f) => f.key === previewField.key)?.defaultHelp ?? ""
+                        PREDEFINED_FIELDS.find(
+                          (f) => f.key === previewField.key
+                        )?.defaultHelp ?? ""
                       ),
                   }}
                 />

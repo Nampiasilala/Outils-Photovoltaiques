@@ -189,6 +189,12 @@ export default function AdminHistoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
+          <HistoryIcon className="w-7 h-7 text-blue-600" />
+          Gestion des historiques
+        </h1>
+      </div>
       <main className="pt-2 pb-2">
         <div className="mx-auto max-w-7xl px-2">
           <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
@@ -223,14 +229,16 @@ export default function AdminHistoryPage() {
 
             <div className="p-8">
               {loadingHistory ? (
-                  !isBusy ? (
-                <div className="flex items-center justify-center py-16 text-gray-500">
-                  <div className="text-center">
-                    <Spinner className="mx-auto mb-4" size={48} />
-                    <p className="font-medium">Chargement de l'historique...</p>
+                !isBusy ? (
+                  <div className="flex items-center justify-center py-16 text-gray-500">
+                    <div className="text-center">
+                      <Spinner className="mx-auto mb-4" size={48} />
+                      <p className="font-medium">
+                        Chargement de l'historique...
+                      </p>
+                    </div>
                   </div>
-                </div>
-                  ) : null
+                ) : null
               ) : error ? (
                 <div className="bg-red-50 border border-red-200 p-6 rounded-xl text-red-800 flex items-center gap-3">
                   <AlertCircle className="w-6 h-6 flex-shrink-0" />
@@ -381,7 +389,9 @@ export default function AdminHistoryPage() {
                                   Bilan annuel
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {formatEnergyLocale(calc.bilan_energetique_annuel)}
+                                  {formatEnergyLocale(
+                                    calc.bilan_energetique_annuel
+                                  )}
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg text-center">
@@ -426,7 +436,9 @@ export default function AdminHistoryPage() {
                                           Énergie journalière
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {formatEnergyLocale(calc.entree_details.e_jour)}
+                                          {formatEnergyLocale(
+                                            calc.entree_details.e_jour
+                                          )}
                                         </p>
                                       </div>
                                     </div>
@@ -440,7 +452,9 @@ export default function AdminHistoryPage() {
                                           Puissance max
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {formatPower(calc.entree_details.p_max)}
+                                          {formatPower(
+                                            calc.entree_details.p_max
+                                          )}
                                         </p>
                                       </div>
                                     </div>
@@ -454,7 +468,10 @@ export default function AdminHistoryPage() {
                                           Autonomie
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {formatNumber(calc.entree_details.n_autonomie)} jours
+                                          {formatNumber(
+                                            calc.entree_details.n_autonomie
+                                          )}{" "}
+                                          jours
                                         </p>
                                       </div>
                                     </div>
@@ -468,7 +485,9 @@ export default function AdminHistoryPage() {
                                           Tension batterie
                                         </p>
                                         <p className="text-lg font-semibold text-gray-800">
-                                          {formatters.voltage(calc.entree_details.v_batterie)}
+                                          {formatters.voltage(
+                                            calc.entree_details.v_batterie
+                                          )}
                                         </p>
                                       </div>
                                     </div>
@@ -517,18 +536,66 @@ export default function AdminHistoryPage() {
                                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <Sun className="w-5 h-5 text-blue-600" />
-                                        <p className="font-semibold text-blue-700">Panneau solaire</p>
+                                        <p className="font-semibold text-blue-700">
+                                          Panneau solaire
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.panneau.modele}</p>
-                                        <p><span className="font-medium">Référence:</span> <span className="font-mono text-xs">{calc.equipements_recommandes.panneau.reference}</span></p>
-                                        {calc.equipements_recommandes.panneau.puissance_W && (
-                                          <p><span className="font-medium">Puissance:</span> {formatPower(calc.equipements_recommandes.panneau.puissance_W)}</p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes.panneau
+                                              .modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Référence:
+                                          </span>{" "}
+                                          <span className="font-mono text-xs">
+                                            {
+                                              calc.equipements_recommandes
+                                                .panneau.reference
+                                            }
+                                          </span>
+                                        </p>
+                                        {calc.equipements_recommandes.panneau
+                                          .puissance_W && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Puissance:
+                                            </span>{" "}
+                                            {formatPower(
+                                              calc.equipements_recommandes
+                                                .panneau.puissance_W
+                                            )}
+                                          </p>
                                         )}
-                                        {calc.equipements_recommandes.panneau.tension_nominale_V && (
-                                          <p><span className="font-medium">Tension:</span> {formatters.voltage(calc.equipements_recommandes.panneau.tension_nominale_V)}</p>
+                                        {calc.equipements_recommandes.panneau
+                                          .tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatters.voltage(
+                                              calc.equipements_recommandes
+                                                .panneau.tension_nominale_V
+                                            )}
+                                          </p>
                                         )}
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-blue-700">{formatPrice(calc.equipements_recommandes.panneau.prix_unitaire)}</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-blue-700">
+                                            {formatPrice(
+                                              calc.equipements_recommandes
+                                                .panneau.prix_unitaire
+                                            )}
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}
@@ -538,18 +605,66 @@ export default function AdminHistoryPage() {
                                     <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <BatteryCharging className="w-5 h-5 text-green-600" />
-                                        <p className="font-semibold text-green-700">Batterie</p>
+                                        <p className="font-semibold text-green-700">
+                                          Batterie
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.batterie.modele}</p>
-                                        <p><span className="font-medium">Référence:</span> <span className="font-mono text-xs">{calc.equipements_recommandes.batterie.reference}</span></p>
-                                        {calc.equipements_recommandes.batterie.capacite_Ah && (
-                                          <p><span className="font-medium">Capacité:</span> {formatters.capacity(calc.equipements_recommandes.batterie.capacite_Ah)}</p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .batterie.modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Référence:
+                                          </span>{" "}
+                                          <span className="font-mono text-xs">
+                                            {
+                                              calc.equipements_recommandes
+                                                .batterie.reference
+                                            }
+                                          </span>
+                                        </p>
+                                        {calc.equipements_recommandes.batterie
+                                          .capacite_Ah && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Capacité:
+                                            </span>{" "}
+                                            {formatters.capacity(
+                                              calc.equipements_recommandes
+                                                .batterie.capacite_Ah
+                                            )}
+                                          </p>
                                         )}
-                                        {calc.equipements_recommandes.batterie.tension_nominale_V && (
-                                          <p><span className="font-medium">Tension:</span> {formatters.voltage(calc.equipements_recommandes.batterie.tension_nominale_V)}</p>
+                                        {calc.equipements_recommandes.batterie
+                                          .tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatters.voltage(
+                                              calc.equipements_recommandes
+                                                .batterie.tension_nominale_V
+                                            )}
+                                          </p>
                                         )}
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-green-700">{formatPrice(calc.equipements_recommandes.batterie.prix_unitaire)}</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-green-700">
+                                            {formatPrice(
+                                              calc.equipements_recommandes
+                                                .batterie.prix_unitaire
+                                            )}
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}
@@ -559,15 +674,54 @@ export default function AdminHistoryPage() {
                                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <Settings className="w-5 h-5 text-purple-600" />
-                                        <p className="font-semibold text-purple-700">Régulateur</p>
+                                        <p className="font-semibold text-purple-700">
+                                          Régulateur
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.regulateur.modele}</p>
-                                        <p><span className="font-medium">Référence:</span> <span className="font-mono text-xs">{calc.equipements_recommandes.regulateur.reference}</span></p>
-                                        {calc.equipements_recommandes.regulateur.tension_nominale_V && (
-                                          <p><span className="font-medium">Tension:</span> {formatters.voltage(calc.equipements_recommandes.regulateur.tension_nominale_V)}</p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .regulateur.modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Référence:
+                                          </span>{" "}
+                                          <span className="font-mono text-xs">
+                                            {
+                                              calc.equipements_recommandes
+                                                .regulateur.reference
+                                            }
+                                          </span>
+                                        </p>
+                                        {calc.equipements_recommandes.regulateur
+                                          .tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatters.voltage(
+                                              calc.equipements_recommandes
+                                                .regulateur.tension_nominale_V
+                                            )}
+                                          </p>
                                         )}
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-purple-700">{formatPrice(calc.equipements_recommandes.regulateur.prix_unitaire)}</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-purple-700">
+                                            {formatPrice(
+                                              calc.equipements_recommandes
+                                                .regulateur.prix_unitaire
+                                            )}
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}
@@ -577,18 +731,66 @@ export default function AdminHistoryPage() {
                                     <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <Zap className="w-5 h-5 text-orange-600" />
-                                        <p className="font-semibold text-orange-700">Onduleur</p>
+                                        <p className="font-semibold text-orange-700">
+                                          Onduleur
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.onduleur.modele}</p>
-                                        <p><span className="font-medium">Référence:</span> <span className="font-mono text-xs">{calc.equipements_recommandes.onduleur.reference}</span></p>
-                                        {calc.equipements_recommandes.onduleur.puissance_W && (
-                                          <p><span className="font-medium">Puissance:</span> {formatPower(calc.equipements_recommandes.onduleur.puissance_W)}</p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes
+                                              .onduleur.modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Référence:
+                                          </span>{" "}
+                                          <span className="font-mono text-xs">
+                                            {
+                                              calc.equipements_recommandes
+                                                .onduleur.reference
+                                            }
+                                          </span>
+                                        </p>
+                                        {calc.equipements_recommandes.onduleur
+                                          .puissance_W && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Puissance:
+                                            </span>{" "}
+                                            {formatPower(
+                                              calc.equipements_recommandes
+                                                .onduleur.puissance_W
+                                            )}
+                                          </p>
                                         )}
-                                        {calc.equipements_recommandes.onduleur.tension_nominale_V && (
-                                          <p><span className="font-medium">Tension:</span> {formatters.voltage(calc.equipements_recommandes.onduleur.tension_nominale_V)}</p>
+                                        {calc.equipements_recommandes.onduleur
+                                          .tension_nominale_V && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Tension:
+                                            </span>{" "}
+                                            {formatters.voltage(
+                                              calc.equipements_recommandes
+                                                .onduleur.tension_nominale_V
+                                            )}
+                                          </p>
                                         )}
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-orange-700">{formatPrice(calc.equipements_recommandes.onduleur.prix_unitaire)}</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-orange-700">
+                                            {formatPrice(
+                                              calc.equipements_recommandes
+                                                .onduleur.prix_unitaire
+                                            )}
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}
@@ -598,13 +800,51 @@ export default function AdminHistoryPage() {
                                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
                                       <div className="flex items-center gap-2 mb-3">
                                         <Cable className="w-5 h-5 text-gray-600" />
-                                        <p className="font-semibold text-gray-700">Câble</p>
+                                        <p className="font-semibold text-gray-700">
+                                          Câble
+                                        </p>
                                       </div>
                                       <div className="space-y-2 text-sm">
-                                        <p><span className="font-medium">Modèle:</span> {calc.equipements_recommandes.cable.modele}</p>
-                                        <p><span className="font-medium">Référence:</span> <span className="font-mono text-xs">{calc.equipements_recommandes.cable.reference}</span></p>
-                                        <p><span className="font-medium">Prix:</span> <span className="font-bold text-gray-700">{formatPrice(calc.equipements_recommandes.cable.prix_unitaire)} / m</span></p>
-                                        <p><span className="font-medium">Quantité:</span> <span className="text-gray-600">À calculer selon installation</span></p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Modèle:
+                                          </span>{" "}
+                                          {
+                                            calc.equipements_recommandes.cable
+                                              .modele
+                                          }
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Référence:
+                                          </span>{" "}
+                                          <span className="font-mono text-xs">
+                                            {
+                                              calc.equipements_recommandes.cable
+                                                .reference
+                                            }
+                                          </span>
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Prix:
+                                          </span>{" "}
+                                          <span className="font-bold text-gray-700">
+                                            {formatPrice(
+                                              calc.equipements_recommandes.cable
+                                                .prix_unitaire
+                                            )}{" "}
+                                            / m
+                                          </span>
+                                        </p>
+                                        <p>
+                                          <span className="font-medium">
+                                            Quantité:
+                                          </span>{" "}
+                                          <span className="text-gray-600">
+                                            À calculer selon installation
+                                          </span>
+                                        </p>
                                       </div>
                                     </div>
                                   )}

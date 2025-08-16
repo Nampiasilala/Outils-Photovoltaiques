@@ -12,27 +12,31 @@ import {
   Star,
   CheckCircle,
 } from "lucide-react";
+import Image from "next/image";
 
 export default function HomePage() {
   const features = [
     {
       icon: Zap,
       title: "Calcul précis",
-      description: "Algorithme professionnel prenant en compte tous les paramètres : consommation, autonomie, irradiation solaire locale.",
+      description:
+        "Algorithme professionnel prenant en compte tous les paramètres : consommation, autonomie, irradiation solaire locale.",
       color: "from-blue-50 to-blue-100 border-blue-200",
       iconColor: "text-blue-600",
     },
     {
       icon: Globe,
       title: "Données locales",
-      description: "Irradiation solaire automatique basée sur votre localisation grâce aux données satellite NASA.",
+      description:
+        "Irradiation solaire automatique basée sur votre localisation grâce aux données satellite NASA.",
       color: "from-green-50 to-green-100 border-green-200",
       iconColor: "text-green-600",
     },
     {
       icon: Download,
       title: "Rapport PDF",
-      description: "Téléchargez un rapport détaillé avec tous les calculs, équipements recommandés et coûts estimés.",
+      description:
+        "Téléchargez un rapport détaillé avec tous les calculs, équipements recommandés et coûts estimés.",
       color: "from-purple-50 to-purple-100 border-purple-200",
       iconColor: "text-purple-600",
     },
@@ -48,22 +52,26 @@ export default function HomePage() {
     {
       step: "1",
       title: "Renseignez vos besoins",
-      description: "Indiquez votre consommation journalière et vos contraintes d'installation",
+      description:
+        "Indiquez votre consommation journalière et vos contraintes d'installation",
     },
     {
       step: "2",
       title: "Précisez votre localisation",
-      description: "L'irradiation solaire sera calculée automatiquement pour votre région",
+      description:
+        "L'irradiation solaire sera calculée automatiquement pour votre région",
     },
     {
       step: "3",
       title: "Obtenez vos résultats",
-      description: "Dimensions, équipements recommandés et coûts estimés instantanément",
+      description:
+        "Dimensions, équipements recommandés et coûts estimés instantanément",
     },
     {
       step: "4",
       title: "Téléchargez le rapport",
-      description: "Rapport PDF complet pour votre installateur ou votre projet",
+      description:
+        "Rapport PDF complet pour votre installateur ou votre projet",
     },
   ];
 
@@ -78,11 +86,15 @@ export default function HomePage() {
                 <Sun className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Calculateur Solaire</h1>
-                <p className="text-xs text-gray-600 hidden sm:block">Dimensionnement photovoltaïque</p>
+                <h1 className="text-xl font-bold text-gray-900">
+                  Calculateur Solaire
+                </h1>
+                <p className="text-xs text-gray-600 hidden sm:block">
+                  Dimensionnement photovoltaïque
+                </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <Link
                 href="/calculate"
@@ -92,7 +104,7 @@ export default function HomePage() {
                 Calculer
               </Link>
               <Link
-                href="/admin/login"
+                href="/admin-login"
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
               >
                 <Shield className="w-4 h-4" />
@@ -106,23 +118,30 @@ export default function HomePage() {
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <section className="py-16 md:py-24 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-8 shadow-2xl">
-            <Sun className="w-10 h-10 text-white" />
+          <div className="p-4">
+            <Image
+              src="/logo.png" // chemin relatif à /public
+              alt="Logo"
+              width={40}
+              height={40}
+            />
           </div>
-          
+
           <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Dimensionnez votre
+            77Dimensionnez votre
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
               installation solaire
             </span>
           </h2>
-          
+
           <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-            Calculez facilement la puissance, le nombre de panneaux et batteries nécessaires 
-            pour votre installation photovoltaïque autonome. 
-            <strong className="text-gray-900">Gratuit et sans inscription.</strong>
+            Calculez facilement la puissance, le nombre de panneaux et batteries
+            nécessaires pour votre installation photovoltaïque autonome.
+            <strong className="text-gray-900">
+              Gratuit et sans inscription.
+            </strong>
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <Link
               href="/calculate"
@@ -132,7 +151,7 @@ export default function HomePage() {
               Commencer le calcul
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            
+
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircle className="w-4 h-4 text-green-600" />
               <span>Aucune inscription requise</span>
@@ -146,7 +165,9 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-md mb-4">
                   <stat.icon className="w-6 h-6 text-blue-600" />
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {stat.value}
+                </div>
                 <div className="text-gray-600">{stat.label}</div>
               </div>
             ))}
@@ -160,7 +181,8 @@ export default function HomePage() {
               Pourquoi choisir notre calculateur ?
             </h3>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Une solution complète et professionnelle pour dimensionner votre installation solaire
+              Une solution complète et professionnelle pour dimensionner votre
+              installation solaire
             </p>
           </div>
 
@@ -170,7 +192,9 @@ export default function HomePage() {
                 key={index}
                 className={`bg-gradient-to-br ${feature.color} rounded-xl p-8 shadow-sm hover:shadow-lg transition-all duration-200 hover:scale-[1.02]`}
               >
-                <div className={`inline-flex items-center justify-center w-12 h-12 bg-white rounded-lg shadow-md mb-6`}>
+                <div
+                  className={`inline-flex items-center justify-center w-12 h-12 bg-white rounded-lg shadow-md mb-6`}
+                >
                   <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
                 </div>
                 <h4 className="text-xl font-semibold text-gray-900 mb-3">
@@ -219,8 +243,9 @@ export default function HomePage() {
               Prêt à calculer votre installation ?
             </h3>
             <p className="text-xl text-blue-100 mb-10 max-w-3xl mx-auto leading-relaxed">
-              Notre calculateur vous donnera une estimation complète en quelques minutes.
-              Commencez dès maintenant, c'est gratuit et sans engagement.
+              Notre calculateur vous donnera une estimation complète en quelques
+              minutes. Commencez dès maintenant, c'est gratuit et sans
+              engagement.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
@@ -231,7 +256,7 @@ export default function HomePage() {
                 Lancer le calculateur
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              
+
               <div className="flex items-center gap-2 text-blue-100">
                 <CheckCircle className="w-5 h-5" />
                 <span>Résultats instantanés</span>
@@ -251,7 +276,7 @@ export default function HomePage() {
                 © 2024 Calculateur Solaire. Tous droits réservés.
               </span>
             </div>
-            
+
             <div className="flex items-center space-x-6">
               <Link
                 href="/calculate"
@@ -260,7 +285,7 @@ export default function HomePage() {
                 Calculateur
               </Link>
               <Link
-                href="/admin/login"
+                href="/admin-login"
                 className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors"
               >
                 <Shield className="w-4 h-4" />
