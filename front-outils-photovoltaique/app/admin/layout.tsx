@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import AdminNavbar from "@/components/AdminNavbar";
+import AdminNavbar from "@/components/admin/AdminNavbar";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (

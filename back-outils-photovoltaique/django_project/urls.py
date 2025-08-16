@@ -24,4 +24,5 @@ urlpatterns = [
     path('api/parametres/',      include('parametres.urls')),
     path('api/equipements/',     include('equipements.urls')),
     path('api/dimensionnements/', include('dimensionnements.urls')),
+    path('api/contenus/', include('contenus.urls')), 
 ]

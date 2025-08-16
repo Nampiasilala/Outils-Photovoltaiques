@@ -62,7 +62,7 @@ export default function AdminHomePage() {
     },
     {
       href: "/admin/content",                   // ⬅️ nouvelle carte
-      title: "Contenu",
+      title: "Contenus",
       desc: "Éditer les pages de contenu",
       icon: <FileText className="w-5 h-5" />,
     },

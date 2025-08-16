@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'parametres',
     'equipements',
     'dimensionnements',
+    'contenus',
 ]
 
 # Middleware

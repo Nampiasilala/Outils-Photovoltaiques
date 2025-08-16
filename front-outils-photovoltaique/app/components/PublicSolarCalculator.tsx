@@ -1,15 +1,14 @@
-// app/components/PublicSolarCalculator.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { usePDFGenerator } from "@/hooks/usePDFGenerator";
-import { 
-  formatPrice, 
-  formatEnergyLocale, 
-  formatNumber, 
+import {
+  formatPrice,
+  formatEnergyLocale,
+  formatNumber,
   formatPower,
   formatCapacity,
-  formatVoltage 
+  formatVoltage,
 } from "@/utils/formatters";
 import type { CalculationInput, CalculationResult } from "@/types/api";
 import {
@@ -26,9 +25,143 @@ import {
   Search,
   Cable,
   Download,
+  Info,
+  X,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useDebounce } from "use-debounce";
+
+/* ========================== Info Button + Modal ========================== */
+
+function InfoButton({
+  title,
+  html,
+  children,
+}: {
+  title: string;
+  html?: string; // HTML (Tiptap) depuis la base
+  children?: React.ReactNode; // fallback si pas d’HTML
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="ml-2 inline-flex items-center justify-center rounded-full border border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-50 w-6 h-6"
+        aria-label={`Informations : ${title}`}
+        title="Informations"
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg rounded-xl bg-white shadow-xl border border-slate-200">
+              <div className="flex items-center justify-between px-5 py-4 border-b">
+                <h3 className="font-semibold text-slate-900">{title}</h3>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="p-1 rounded hover:bg-slate-100"
+                  aria-label="Fermer"
+                >
+                  <X className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
+              <div className="px-5 py-4 text-sm text-slate-700 space-y-2">
+                {html ? (
+                  <div
+                    className="prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: html }}
+                  />
+                ) : (
+                  children
+                )}
+              </div>
+              <div className="px-5 py-3 border-t flex justify-end">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="px-4 py-2 rounded bg-slate-900 text-white text-sm hover:bg-black"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ============================ API (publique) ============================ */
+
+const publicAPI = {
+  calculate: async (data: CalculationInput): Promise<CalculationResult> => {
+    const API_BASE =
+      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001/api";
+    const response = await fetch(`${API_BASE}/dimensionnements/calculate/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erreur ${response.status}: ${errorText}`);
+    }
+    return (await response.json()) as CalculationResult;
+  },
+};
+
+// aide dynamique depuis la base
+type HelpMapItem = {
+  title: string;
+  body_html: string;
+};
+type HelpMap = Record<string, HelpMapItem>;
+
+async function fetchHelpFromDB(keys: string[]): Promise<HelpMap> {
+  const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001/api";
+  const params = encodeURIComponent(keys.join(","));
+  // ✅ endpoint public groupé
+  const url = `${API_BASE}/contenus/public/help-by-key/?keys=${params}`;
+
+  try {
+    const res = await fetch(url, { headers: { "Content-Type": "application/json" }, cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const out: HelpMap = {};
+    if (Array.isArray(data)) {
+      data.forEach((item: any) => {
+        if (item?.key) {
+          out[item.key] = {
+            title: item.title || "",
+            body_html: item.body_html || item.bodyHtml || item.body || "",
+          };
+        }
+      });
+    } else if (data && typeof data === "object") {
+      Object.entries<any>(data).forEach(([k, v]) => {
+        out[k] = {
+          title: v?.title || "",
+          body_html: v?.body_html || v?.bodyHtml || v?.body || "",
+        };
+      });
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/* ============================ Composant main ============================ */
 
 interface FormData {
   E_jour: number;
@@ -39,40 +172,13 @@ interface FormData {
   localisation: string;
 }
 
-// API publique (sans authentification)
-const publicAPI = {
-  calculate: async (data: CalculationInput): Promise<CalculationResult> => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001/api';
-    const response = await fetch(`${API_BASE}/dimensionnements/calculate/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erreur ${response.status}: ${errorText}`);
-    }
-
-    return await response.json() as CalculationResult;
-  },
-};
-
-// Fonction de formatage pour les prix avec devise personnalisée
 const formatPriceWithCurrency = (n?: number | null, currency?: string) => {
   if (typeof n !== "number") return "—";
-  
-  if (currency === "MGA") {
-    return formatPrice(n);
-  }
-  
-  const formatted = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  return `${formatted} ${currency || 'Ar'}`;
+  if (currency === "MGA") return formatPrice(n);
+  const formatted = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${formatted} ${currency || "Ar"}`;
 };
 
-// Composant EquipCard
 const EquipCard = ({
   title,
   c,
@@ -149,14 +255,19 @@ export default function PublicSolarCalculator() {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // États pour les APIs de géocodage et d'irradiation
+  // Aide dynamique
+  const [help, setHelp] = useState<HelpMap>({});
+  useEffect(() => {
+    const keys = ["e_jour", "p_max", "n_autonomie", "v_batterie", "localisation", "h_solaire"];
+    fetchHelpFromDB(keys).then(setHelp);
+  }, []);
+
+  // Géocodage & Irradiation
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loadingIrradiation, setLoadingIrradiation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any | null>(null);
-
   const [debouncedLocalisation] = useDebounce(formData.localisation, 500);
 
-  // Geocodage pour trouver les coordonnées
   useEffect(() => {
     if (debouncedLocalisation && !selectedLocation) {
       setLoadingIrradiation(true);
@@ -179,7 +290,6 @@ export default function PublicSolarCalculator() {
     }
   }, [debouncedLocalisation, selectedLocation]);
 
-  // Récupération de l'irradiation à partir des coordonnées
   const fetchIrradiation = async (lat: number, lon: number) => {
     setLoadingIrradiation(true);
     try {
@@ -231,7 +341,6 @@ export default function PublicSolarCalculator() {
 
   const handleDownloadPDF = async () => {
     if (!result) return;
-
     const pdfData = {
       result,
       inputData: {
@@ -243,7 +352,6 @@ export default function PublicSolarCalculator() {
         localisation: formData.localisation,
       },
     };
-
     await generatePDF(pdfData);
   };
 
@@ -267,7 +375,6 @@ export default function PublicSolarCalculator() {
       toast.success("Calcul effectué avec succès !");
     } catch (err: any) {
       console.error("Erreur lors du calcul:", err);
-
       if (err.message.includes("400")) {
         toast.error("Données invalides. Vérifiez vos saisies.");
         setErrors(["Veuillez vérifier les données saisies"]);
@@ -295,9 +402,18 @@ export default function PublicSolarCalculator() {
               <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
                 <Zap className="text-yellow-500" /> Consommation
               </h3>
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Consommation journalière (Wh)
-              </label>
+
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Consommation journalière (Wh)
+                </label>
+                <InfoButton
+                  title={help.e_jour?.title || "Consommation journalière (Wh)"}
+                  html={help.e_jour?.body_html}
+                >
+                  <p>Somme de l’énergie consommée sur 24&nbsp;h (puissance × durée).</p>
+                </InfoButton>
+              </div>
               <input
                 type="number"
                 className="w-full mb-4 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -305,9 +421,18 @@ export default function PublicSolarCalculator() {
                 onChange={(e) => updateField("E_jour", +e.target.value)}
                 placeholder="Ex: 1520"
               />
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Puissance max (W)
-              </label>
+
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Puissance max (W)
+                </label>
+                <InfoButton
+                  title={help.p_max?.title || "Puissance max (W)"}
+                  html={help.p_max?.body_html}
+                >
+                  <p>Pic de puissance utilisé simultanément.</p>
+                </InfoButton>
+              </div>
               <input
                 type="number"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -322,19 +447,37 @@ export default function PublicSolarCalculator() {
               <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
                 <Settings className="text-purple-500" /> Configuration
               </h3>
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Jours d'autonomie
-              </label>
+
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Jours d'autonomie
+                </label>
+                <InfoButton
+                  title={help.n_autonomie?.title || "Jours d’autonomie"}
+                  html={help.n_autonomie?.body_html}
+                >
+                  <p>Jours sans soleil couverts par les batteries.</p>
+                </InfoButton>
+              </div>
               <input
                 type="number"
                 className="w-full mb-4 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 value={formData.N_autonomie}
                 onChange={(e) => updateField("N_autonomie", +e.target.value)}
-                min="1"
+                min={1}
               />
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Tension batterie
-              </label>
+
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Tension batterie
+                </label>
+                <InfoButton
+                  title={help.v_batterie?.title || "Tension batterie"}
+                  html={help.v_batterie?.body_html}
+                >
+                  <p>12&nbsp;V, 24&nbsp;V ou 48&nbsp;V selon la puissance.</p>
+                </InfoButton>
+              </div>
               <div className="flex space-x-2">
                 {[12, 24, 48].map((v) => (
                   <button
@@ -358,9 +501,18 @@ export default function PublicSolarCalculator() {
               <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
                 <Globe className="text-green-500" /> Environnement
               </h3>
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Localisation
-              </label>
+
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Localisation
+                </label>
+                <InfoButton
+                  title={help.localisation?.title || "Localisation"}
+                  html={help.localisation?.body_html}
+                >
+                  <p>Ville/lieu utilisé pour estimer l’irradiation.</p>
+                </InfoButton>
+              </div>
               <div className="relative mb-4">
                 <div className="relative">
                   <input
@@ -394,9 +546,18 @@ export default function PublicSolarCalculator() {
                   </ul>
                 )}
               </div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Irradiation (kWh/m²/j)
-              </label>
+
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Irradiation (kWh/m²/j)
+                </label>
+                <InfoButton
+                  title={help.h_solaire?.title || "Irradiation (kWh/m²/j)"}
+                  html={help.h_solaire?.body_html}
+                >
+                  <p>Énergie solaire moyenne reçue par m² et par jour.</p>
+                </InfoButton>
+              </div>
               <input
                 type="number"
                 step="0.1"
@@ -415,6 +576,7 @@ export default function PublicSolarCalculator() {
                   ✓ Irradiation calculée automatiquement.
                 </p>
               )}
+
               <button
                 onClick={handleSubmit}
                 disabled={isLoading}
@@ -453,7 +615,6 @@ export default function PublicSolarCalculator() {
       {/* Résultats */}
       {result && (
         <>
-          {/* Résumé */}
           <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
             <div className="flex justify-between items-center mb-6">
               <h3 className="flex items-center gap-2 text-xl font-semibold text-gray-800">
@@ -491,7 +652,9 @@ export default function PublicSolarCalculator() {
               <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg text-center">
                 <ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">Bilan énergétique annuel</p>
-                <p className="text-lg font-bold text-gray-800">{formatEnergyLocale(result.bilan_energetique_annuel)}</p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatEnergyLocale(result.bilan_energetique_annuel)}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg text-center">
                 <DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
