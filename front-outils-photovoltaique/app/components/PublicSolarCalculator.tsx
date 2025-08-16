@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useDebounce } from "use-debounce";
+import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ loader centralisé
 
 /* ========================== Info Button + Modal ========================== */
 
@@ -129,7 +130,6 @@ async function fetchHelpFromDB(keys: string[]): Promise<HelpMap> {
   const API_BASE =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001/api";
   const params = encodeURIComponent(keys.join(","));
-  // ✅ endpoint public groupé
   const url = `${API_BASE}/contenus/public/help-by-key/?keys=${params}`;
 
   try {
@@ -241,6 +241,7 @@ const EquipCard = ({
 
 export default function PublicSolarCalculator() {
   const { generatePDF, isGenerating } = usePDFGenerator();
+  const { wrap } = useLoading(); // ✅ overlay global
 
   const [formData, setFormData] = useState<FormData>({
     E_jour: 0,
@@ -253,7 +254,7 @@ export default function PublicSolarCalculator() {
 
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false); // ✅ local pour le bouton
 
   // Aide dynamique
   const [help, setHelp] = useState<HelpMap>({});
@@ -358,7 +359,7 @@ export default function PublicSolarCalculator() {
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    setIsLoading(true);
+    setIsCalculating(true);
     try {
       const payload = {
         E_jour: formData.E_jour,
@@ -369,25 +370,29 @@ export default function PublicSolarCalculator() {
         localisation: formData.localisation,
       };
 
-      const data: CalculationResult = await publicAPI.calculate(payload);
+      const data: CalculationResult = await wrap(
+        () => publicAPI.calculate(payload),
+        "Calcul en cours…"
+      ); // ✅ overlay global pendant le calcul
+
       setResult(data);
       setErrors([]);
       toast.success("Calcul effectué avec succès !");
     } catch (err: any) {
       console.error("Erreur lors du calcul:", err);
-      if (err.message.includes("400")) {
+      if (err?.message?.includes("400")) {
         toast.error("Données invalides. Vérifiez vos saisies.");
         setErrors(["Veuillez vérifier les données saisies"]);
-      } else if (err.message.includes("429")) {
+      } else if (err?.message?.includes("429")) {
         toast.error("Trop de requêtes. Veuillez patienter avant de relancer le calcul.");
         setErrors(["Limite de calculs atteinte. Veuillez patienter."]);
       } else {
         setResult(null);
-        setErrors([err.message || "Erreur inattendue"]);
-        toast.error(err.message || "Erreur lors du calcul");
+        setErrors([err?.message || "Erreur inattendue"]);
+        toast.error(err?.message || "Erreur lors du calcul");
       }
     } finally {
-      setIsLoading(false);
+      setIsCalculating(false);
     }
   };
 
@@ -528,7 +533,8 @@ export default function PublicSolarCalculator() {
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 </div>
                 {loadingIrradiation && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-center text-gray-500">
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-center text-gray-500 flex items-center justify-center gap-2">
+                    <Spinner className="w-4 h-4" />
                     Chargement...
                   </div>
                 )}
@@ -579,12 +585,12 @@ export default function PublicSolarCalculator() {
 
               <button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={isCalculating}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? (
+                {isCalculating ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <Spinner className="w-5 h-5 text-white" />
                     Calcul en cours...
                   </>
                 ) : (
@@ -627,7 +633,7 @@ export default function PublicSolarCalculator() {
               >
                 {isGenerating ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <Spinner className="w-4 h-4 text-white" />
                     Génération...
                   </>
                 ) : (
@@ -754,7 +760,7 @@ export default function PublicSolarCalculator() {
             >
               {isGenerating ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <Spinner className="w-5 h-5 text-white" />
                   Génération du rapport PDF...
                 </>
               ) : (

@@ -1,4 +1,3 @@
-// app/admin/profile/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,7 +10,6 @@ import {
   Edit3,
   Save,
   X,
-  Loader2,
   Lock,
   Eye,
   EyeOff,
@@ -22,6 +20,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useLoading, Spinner } from "@/LoadingProvider";
 
 interface Profile {
   id: number;
@@ -38,6 +37,7 @@ const API = process.env.NEXT_PUBLIC_API_BASE_URL!;
 export default function AdminProfilePage() {
   const router = useRouter();
   const { admin, loading: authLoading, logout } = useAuth();
+  const { wrap, isBusy } = useLoading(); // ✅ overlay + état global
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [form, setForm] = useState<Profile | null>(null);
@@ -55,7 +55,6 @@ export default function AdminProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Helpers d’affichage
   const getRoleFromFlags = (is_superuser?: boolean, is_staff?: boolean, fallback?: string) => {
     if (is_superuser) return "admin";
     if (is_staff) return "manager";
@@ -90,7 +89,6 @@ export default function AdminProfilePage() {
   useEffect(() => {
     if (authLoading) return;
     if (!admin) {
-      // Pas d’admin connecté → vers la page de login admin
       router.replace("/admin/login");
       return;
     }
@@ -98,36 +96,34 @@ export default function AdminProfilePage() {
     (async () => {
       setLoading(true);
       try {
-        // GET /users/:id/
-        const res = await fetchWithAdminAuth(`${API}/users/${admin.id}/`);
-        if (!res.ok) {
-          // fetchWithAdminAuth tente déjà un refresh ; s'il reste 401, on déconnecte
-          if (res.status === 401) {
-            logout();
-            return;
+        await wrap(async () => {
+          const res = await fetchWithAdminAuth(`${API}/users/${admin.id}/`);
+          if (!res.ok) {
+            if (res.status === 401) {
+              logout();
+              return;
+            }
+            const text = await res.text().catch(() => "");
+            throw new Error(`Erreur HTTP ${res.status} ${text}`);
           }
-          const text = await res.text().catch(() => "");
-          throw new Error(`Erreur HTTP ${res.status} ${text}`);
-        }
 
-        const d = await res.json();
+          const d = await res.json();
+          const derivedRole = getRoleFromFlags(d?.is_superuser, d?.is_staff, d?.role);
+          const derivedStatus = d?.status ?? "active";
 
-        // Dérive des champs optionnels si absents (role/status)
-        const derivedRole = getRoleFromFlags(d?.is_superuser, d?.is_staff, d?.role);
-        const derivedStatus = d?.status ?? "active";
+          const p: Profile = {
+            id: d.id,
+            username: d.username ?? admin.username ?? "",
+            email: d.email ?? admin.email,
+            role: derivedRole,
+            status: derivedStatus,
+            date_joined: d.date_joined ?? new Date().toISOString(),
+            last_login: d.last_login ?? null,
+          };
 
-        const p: Profile = {
-          id: d.id,
-          username: d.username ?? admin.username ?? "",
-          email: d.email ?? admin.email,
-          role: derivedRole,
-          status: derivedStatus,
-          date_joined: d.date_joined ?? new Date().toISOString(),
-          last_login: d.last_login ?? null,
-        };
-
-        setProfile(p);
-        setForm(p);
+          setProfile(p);
+          setForm(p);
+        }, "Chargement du profil…");
       } catch (err: any) {
         console.error("Erreur profil:", err);
         toast.error(err?.message || "Erreur lors du chargement du profil");
@@ -135,28 +131,27 @@ export default function AdminProfilePage() {
         setLoading(false);
       }
     })();
-  }, [admin, authLoading, logout, router]);
+  }, [admin, authLoading, logout, router, wrap]);
 
   const saveProfile = async () => {
     if (!form) return;
     setIsSaving(true);
     try {
-      const res = await fetchWithAdminAuth(`${API}/users/${form.id}/`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          username: form.username,
-          email: form.email,
-        }),
-      });
+      await wrap(async () => {
+        const res = await fetchWithAdminAuth(`${API}/users/${form.id}/`, {
+          method: "PATCH",
+          body: JSON.stringify({ username: form.username, email: form.email }),
+        });
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          logout();
-          return;
+        if (!res.ok) {
+          if (res.status === 401) {
+            logout();
+            return;
+          }
+          const text = await res.text().catch(() => "");
+          throw new Error(`Erreur ${res.status}: ${text}`);
         }
-        const text = await res.text().catch(() => "");
-        throw new Error(`Erreur ${res.status}: ${text}`);
-      }
+      }, "Enregistrement du profil…");
 
       setProfile(form);
       setEditing(false);
@@ -183,37 +178,36 @@ export default function AdminProfilePage() {
 
     setIsChangingPassword(true);
     try {
-      const res = await fetchWithAdminAuth(`${API}/users/${admin.id}/change-password/`, {
-        method: "POST",
-        body: JSON.stringify({
-          old_password: oldPassword,
-          new_password: newPassword,
-          confirm_password: confirmPassword,
-        }),
-      });
+      await wrap(async () => {
+        const res = await fetchWithAdminAuth(`${API}/users/${admin.id}/change-password/`, {
+          method: "POST",
+          body: JSON.stringify({
+            old_password: oldPassword,
+            new_password: newPassword,
+            confirm_password: confirmPassword,
+          }),
+        });
 
-      const result = await res.json().catch(() => null);
+        const result = await res.json().catch(() => null);
 
-      if (!res.ok) {
-        // Si le backend renvoie un dict d'erreurs champ → messages[]
-        if (result && typeof result === "object") {
-          Object.entries(result).forEach(([field, messages]) => {
-            if (Array.isArray(messages)) {
-              messages.forEach((msg) => toast.error(`${field} : ${msg}`));
-            } else if (messages) {
-              toast.error(`${field} : ${messages}`);
-            }
-          });
-        } else {
-          toast.error(`Erreur ${res.status}`);
+        if (!res.ok) {
+          if (result && typeof result === "object") {
+            Object.entries(result).forEach(([field, messages]) => {
+              if (Array.isArray(messages)) {
+                messages.forEach((msg) => toast.error(`${field} : ${msg}`));
+              } else if (messages) {
+                toast.error(`${field} : ${messages}`);
+              }
+            });
+          } else {
+            toast.error(`Erreur ${res.status}`);
+          }
+          return;
         }
-        return;
-      }
+      }, "Mise à jour du mot de passe…");
 
       toast.success("Mot de passe mis à jour");
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      setOldPassword(""); setNewPassword(""); setConfirmPassword("");
       setShowPasswordField(false);
     } catch (err: any) {
       console.error(err);
@@ -229,7 +223,8 @@ export default function AdminProfilePage() {
     return (
       <div className="flex items-center justify-center min-h-[400px] bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl">
         <div className="text-center">
-          <Loader2 className="animate-spin w-12 h-12 text-blue-600 mx-auto mb-4" />
+          {/* ⬇️ n’affiche le spinner local que si l’overlay n’est PAS visible */}
+          {!isBusy && <div className="mx-auto mb-4"><Spinner size={48} /></div>}
           <p className="text-gray-600 font-medium">Chargement du profil...</p>
         </div>
       </div>
@@ -240,12 +235,8 @@ export default function AdminProfilePage() {
     return (
       <div className="p-8 text-center bg-red-50 border border-red-200 rounded-xl">
         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-red-800 mb-2">
-          Erreur d'authentification
-        </h3>
-        <p className="text-red-600">
-          Session invalide. Veuillez vous reconnecter.
-        </p>
+        <h3 className="text-lg font-semibold text-red-800 mb-2">Erreur d'authentification</h3>
+        <p className="text-red-600">Session invalide. Veuillez vous reconnecter.</p>
       </div>
     );
   }
@@ -254,12 +245,8 @@ export default function AdminProfilePage() {
     return (
       <div className="p-8 text-center bg-yellow-50 border border-yellow-200 rounded-xl">
         <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-          Erreur de chargement
-        </h3>
-        <p className="text-yellow-700">
-          Impossible de charger le profil. Réessayez plus tard.
-        </p>
+        <h3 className="text-lg font-semibold text-yellow-800 mb-2">Erreur de chargement</h3>
+        <p className="text-yellow-700">Impossible de charger le profil. Réessayez plus tard.</p>
       </div>
     );
   }
@@ -275,16 +262,12 @@ export default function AdminProfilePage() {
                 <h1 className="text-2xl font-bold mb-2">{profile.username || "(sans nom)"}</h1>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleColor(
-                      profile.role
-                    )} bg-white/90`}
+                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleColor(profile.role)} bg-white/90`}
                   >
                     <Shield className="w-4 h-4 inline mr-1" />
                     {profile.role}
                   </span>
-                  <span className={`text-sm font-medium ${getStatusColor(profile.status)}`}>
-                    • {profile.status}
-                  </span>
+                  <span className={`text-sm font-medium ${getStatusColor(profile.status)}`}>• {profile.status}</span>
                 </div>
               </div>
             </div>
@@ -297,14 +280,12 @@ export default function AdminProfilePage() {
                     disabled={isSaving}
                     className="bg-green-500 hover:bg-green-600 disabled:bg-green-400 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
                   >
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {/* ⬇️ pas de double spinner : si overlay actif, on laisse l’icône */}
+                    {isSaving ? (!isBusy ? <Spinner size={16} /> : <Save className="w-4 h-4" />) : <Save className="w-4 h-4" />}
                     {isSaving ? "Sauvegarde..." : "Sauvegarder"}
                   </button>
                   <button
-                    onClick={() => {
-                      setEditing(false);
-                      setForm(profile);
-                    }}
+                    onClick={() => { setEditing(false); setForm(profile); }}
                     className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm"
                   >
                     <X className="w-4 h-4" />
@@ -479,16 +460,17 @@ export default function AdminProfilePage() {
                   disabled={isChangingPassword}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-purple-400 disabled:to-pink-400 text-white text-sm px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
                 >
-                  {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  {/* idem : pas de mini-spinner si l’overlay tourne */}
+                  {isChangingPassword ? (!isBusy ? <Spinner size={16} /> : <CheckCircle className="w-4 h-4" />) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
                   {isChangingPassword ? "Modification..." : "Modifier le mot de passe"}
                 </button>
 
                 <button
                   onClick={() => {
                     setShowPasswordField(false);
-                    setOldPassword("");
-                    setNewPassword("");
-                    setConfirmPassword("");
+                    setOldPassword(""); setNewPassword(""); setConfirmPassword("");
                   }}
                   className="px-6 py-3 rounded-lg font-semibold text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200"
                 >
@@ -499,9 +481,7 @@ export default function AdminProfilePage() {
           ) : (
             <div className="text-center py-8">
               <Lock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                Modifier votre mot de passe
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Modifier votre mot de passe</h3>
               <p className="text-gray-500 mb-6">Assurez-vous que votre compte reste sécurisé</p>
               <button
                 onClick={() => setShowPasswordField(true)}

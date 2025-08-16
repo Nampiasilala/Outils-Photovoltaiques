@@ -1,4 +1,3 @@
-// app/admin/login/page.tsx
 "use client";
 
 import Link from "next/link";
@@ -7,16 +6,17 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthContext";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { useLoading, Spinner } from "@/LoadingProvider"; // loader centralisé
 
 // Icônes en import dynamique
-const Eye = dynamic(() => import("lucide-react").then((mod) => mod.Eye));
-const EyeOff = dynamic(() => import("lucide-react").then((mod) => mod.EyeOff));
-const Mail = dynamic(() => import("lucide-react").then((mod) => mod.Mail));
-const Lock = dynamic(() => import("lucide-react").then((mod) => mod.Lock));
-const LogIn = dynamic(() => import("lucide-react").then((mod) => mod.LogIn));
-const AlertCircle = dynamic(() => import("lucide-react").then((mod) => mod.AlertCircle));
-const CheckCircle = dynamic(() => import("lucide-react").then((mod) => mod.CheckCircle));
-const HomeIcon = dynamic(() => import("lucide-react").then((mod) => mod.Home));
+const Eye = dynamic(() => import("lucide-react").then((m) => m.Eye));
+const EyeOff = dynamic(() => import("lucide-react").then((m) => m.EyeOff));
+const Mail = dynamic(() => import("lucide-react").then((m) => m.Mail));
+const Lock = dynamic(() => import("lucide-react").then((m) => m.Lock));
+const LogIn = dynamic(() => import("lucide-react").then((m) => m.LogIn));
+const AlertCircle = dynamic(() => import("lucide-react").then((m) => m.AlertCircle));
+const CheckCircle = dynamic(() => import("lucide-react").then((m) => m.CheckCircle));
+const HomeIcon = dynamic(() => import("lucide-react").then((m) => m.Home));
 
 interface LoginFormData {
   email: string;
@@ -27,13 +27,13 @@ type ValidationErrors = Partial<Record<keyof LoginFormData, string>>;
 export default function AdminLoginPage() {
   const router = useRouter();
   const { admin, login, loading: authLoading } = useAuth();
+  const { wrap, isBusy } = useLoading(); // ⬅️ récupère isBusy
 
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // spinner du bouton (local)
   const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
   const [errors, setErrors] = useState<ValidationErrors>({});
 
-  // Déjà connecté → vers /admin
   useEffect(() => {
     if (admin && !authLoading) {
       router.replace("/admin");
@@ -74,7 +74,8 @@ export default function AdminLoginPage() {
 
     setIsLoading(true);
     try {
-      await login(formData.email, formData.password);
+      // ⬇️ L’overlay global s’affiche ici
+      await wrap(() => login(formData.email, formData.password), "Connexion…");
 
       toast.success(
         <div className="flex items-center gap-3">
@@ -90,7 +91,6 @@ export default function AdminLoginPage() {
       const msg = err instanceof Error ? err.message : "";
 
       if (msg === "ADMIN_ONLY") {
-        // Toast spécifique non-admin
         toast.error(
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -101,7 +101,6 @@ export default function AdminLoginPage() {
           { className: "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
         );
       } else {
-        // Toast générique
         toast.error(
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -115,16 +114,17 @@ export default function AdminLoginPage() {
     }
   };
 
+  // ⬇️ Si l’overlay (isBusy) est actif pendant authLoading, on masque le spinner local pour éviter le doublon
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+          {!isBusy && <Spinner size={48} />} {/* ⬅️ évite double spinner avec l’overlay */}
           <p className="text-gray-600">Vérification de l'authentification...</p>
         </div>
       </div>
     );
-    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 relative overflow-hidden">
@@ -144,7 +144,7 @@ export default function AdminLoginPage() {
           <div className="bg-white/80 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl p-6 sm:p-8 transform hover:scale-[1.02] transition-all duration-300">
             <div className="text-center mb-6 sm:mb-8">
               <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-3 sm:mb-4 shadow-lg">
-                <LogIn className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+                <LogIn className="w-7 h-7 sm:w-8 text-white" />
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                 Connexion (Admin)
@@ -218,12 +218,9 @@ export default function AdminLoginPage() {
                 aria-busy={isLoading}
                 className="w-full flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-base"
               >
-                {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <LogIn className="w-5 h-5" />
-                )}
-                {isLoading ? "Connexion en cours..." : "Se connecter"}
+                {/* ⬇️ si l’overlay tourne (isBusy), on évite d’afficher le spinner local du bouton */}
+                {isLoading && !isBusy ? <Spinner size={20} /> : <LogIn className="w-5 h-5" />}
+                {isLoading || isBusy ? "Connexion en cours..." : "Se connecter"}
               </button>
             </form>
 

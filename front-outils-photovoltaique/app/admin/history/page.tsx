@@ -1,4 +1,3 @@
-// app/admin/history/page.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -8,7 +7,6 @@ import { toast } from "react-toastify";
 import {
   History as HistoryIcon,
   Calculator,
-  Loader2,
   Info,
   Sun,
   Zap,
@@ -35,6 +33,7 @@ import {
   formatPower,
   formatters,
 } from "@/utils/formatters";
+import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ loader centralisé
 
 // --------- Types alignés avec ton backend ----------
 interface EquipmentDetail {
@@ -82,6 +81,7 @@ interface ResultData {
 export default function AdminHistoryPage() {
   const router = useRouter();
   const { admin, loading: authLoading } = useAdminAuth();
+  const { wrap, isBusy } = useLoading(); // ✅ overlay global
 
   const [history, setHistory] = useState<ResultData[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -95,13 +95,18 @@ export default function AdminHistoryPage() {
   // Déclenche le load SEULEMENT quand l’admin est bien authentifié
   useEffect(() => {
     if (authLoading) return;
-    if (!admin) return; // useAdminAuth redirige déjà vers /admin/login
+    if (!admin) return;
 
     const fetchHistory = async () => {
       try {
         setLoadingHistory(true);
         setError(null);
-        const data = await dimensionnementAPI.getAll();
+
+        // ✅ overlay global + retour de la promesse
+        const data = await wrap(
+          () => dimensionnementAPI.getAll(),
+          "Chargement de l’historique…"
+        );
 
         // tri par date décroissante
         const parsed = data
@@ -127,14 +132,16 @@ export default function AdminHistoryPage() {
     };
 
     void fetchHistory();
-  }, [admin, authLoading]);
+  }, [admin, authLoading, wrap]);
 
-  const toggleSet = (setter: any) => (id: number) =>
-    setter((prev: Set<number>) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const toggleSet =
+    (setter: React.Dispatch<React.SetStateAction<Set<number>>>) =>
+    (id: number) =>
+      setter((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
 
   const toggleExpanded = toggleSet(setExpandedItems);
   const toggleInputs = toggleSet(setShowInputs);
@@ -157,14 +164,12 @@ export default function AdminHistoryPage() {
   const handleDelete = async (id: number) => {
     setDeletingId(id);
     try {
-      await dimensionnementAPI.delete(id);
+      await wrap(() => dimensionnementAPI.delete(id), "Suppression du calcul…");
       setHistory((prev) => prev.filter((calc) => calc.id !== id));
       toast.success("Calcul supprimé avec succès !");
     } catch (err: any) {
       console.error("Échec de la suppression :", err);
-      toast.error(
-        err?.message || "Erreur lors de la suppression du calcul."
-      );
+      toast.error(err?.message || "Erreur lors de la suppression du calcul.");
     } finally {
       setDeletingId(null);
     }
@@ -175,7 +180,7 @@ export default function AdminHistoryPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <Spinner className="mx-auto mb-4" size={48} />
           <p className="text-gray-600">Vérification de l’authentification…</p>
         </div>
       </div>
@@ -199,14 +204,14 @@ export default function AdminHistoryPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={expandAll}
-                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
+                      className="bg-white/20 hover:bg.white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
                     >
                       <Eye className="w-4 h-4" />
                       Tout développer
                     </button>
                     <button
                       onClick={collapseAll}
-                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
+                      className="bg-white/20 hover:bg.white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
                     >
                       <EyeOff className="w-4 h-4" />
                       Tout réduire
@@ -218,12 +223,14 @@ export default function AdminHistoryPage() {
 
             <div className="p-8">
               {loadingHistory ? (
+                  !isBusy ? (
                 <div className="flex items-center justify-center py-16 text-gray-500">
                   <div className="text-center">
-                    <Loader2 className="animate-spin w-12 h-12 text-blue-500 mx-auto mb-4" />
+                    <Spinner className="mx-auto mb-4" size={48} />
                     <p className="font-medium">Chargement de l'historique...</p>
                   </div>
                 </div>
+                  ) : null
               ) : error ? (
                 <div className="bg-red-50 border border-red-200 p-6 rounded-xl text-red-800 flex items-center gap-3">
                   <AlertCircle className="w-6 h-6 flex-shrink-0" />
@@ -291,7 +298,10 @@ export default function AdminHistoryPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                          <div
+                            className="flex items-center gap-3"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             {/* Indicateurs rapides */}
                             <div className="hidden sm:flex items-center gap-4 text-sm text-gray-600">
                               <div className="flex items-center gap-1">

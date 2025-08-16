@@ -1,7 +1,7 @@
 // app/admin/contents/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Save,
   Edit,
@@ -15,8 +15,9 @@ import {
   X,
 } from "lucide-react";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";           // ✅ on garde toast direct
+// ❌ ne PAS réimporter le CSS ici (le Toaster global le fait déjà)
+import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ overlay + icône
 
 // ------------------------ Types ------------------------
 interface HelpContent {
@@ -282,7 +283,7 @@ function EditForm({
         >
           {saving ? (
             <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
+              <Spinner className="w-4 h-4" />  {/* ✅ spinner centralisé */}
               Sauvegarde...
             </>
           ) : (
@@ -307,20 +308,24 @@ export default function AdminHelpContentsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const { wrap } = useLoading(); // ✅ overlay global
+
   // Chargement (admin requis)
-  const loadHelpContents = async () => {
+  const loadHelpContents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAdminAuth("/contenus/admin/");
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
-      const data = (await res.json()) as HelpContent[];
-      setHelpContents(Array.isArray(data) ? data : []);
+      await wrap(async () => {
+        const res = await fetchWithAdminAuth("/contenus/admin/");
+        if (!res.ok) throw new Error(`Erreur ${res.status}`);
+        const data = (await res.json()) as HelpContent[];
+        setHelpContents(Array.isArray(data) ? data : []);
+      }, "Chargement des contenus…");
     } catch (err: any) {
-      toast.error(err?.message || "Échec du chargement", { position: "top-right" });
+      toast.error(err?.message || "Échec du chargement");
     } finally {
       setLoading(false);
     }
-  };
+  }, [wrap]);
 
   // Création / Mise à jour
   const saveContent = async (
@@ -331,37 +336,39 @@ export default function AdminHelpContentsPage() {
   ) => {
     setSaving(true);
     try {
-      const existing = helpContents.find((c) => c.key === fieldKey);
-      const body_html = textToHtml(bodyText);
+      await wrap(async () => {
+        const existing = helpContents.find((c) => c.key === fieldKey);
+        const body_html = textToHtml(bodyText);
 
-      let res: Response;
-      if (existing) {
-        res = await fetchWithAdminAuth(`/contenus/admin/${encodeURIComponent(fieldKey)}/`, {
-          method: "PATCH",
-          body: JSON.stringify({ title, body_html, is_active: isActive }),
-        });
-      } else {
-        res = await fetchWithAdminAuth(`/contenus/admin/`, {
-          method: "POST",
-          body: JSON.stringify({ key: fieldKey, title, body_html, is_active: isActive }),
-        });
-      }
+        let res: Response;
+        if (existing) {
+          res = await fetchWithAdminAuth(`/contenus/admin/${encodeURIComponent(fieldKey)}/`, {
+            method: "PATCH",
+            body: JSON.stringify({ title, body_html, is_active: isActive }),
+          });
+        } else {
+          res = await fetchWithAdminAuth(`/contenus/admin/`, {
+            method: "POST",
+            body: JSON.stringify({ key: fieldKey, title, body_html, is_active: isActive }),
+          });
+        }
 
-      if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        throw new Error(detail || `Erreur ${res.status}`);
-      }
+        if (!res.ok) {
+          const detail = await res.text().catch(() => "");
+          throw new Error(detail || `Erreur ${res.status}`);
+        }
+      }, "Sauvegarde…");
 
-      toast.success(existing ? "Contenu mis à jour ✔️" : "Contenu créé ✔️", {
-        position: "top-right",
-        autoClose: 2500,
-      });
+      toast.success(
+        helpContents.some((c) => c.key === fieldKey) ? "Contenu mis à jour ✔️" : "Contenu créé ✔️",
+        { autoClose: 2500 }
+      );
 
       await loadHelpContents();
       setEditingField(null);
       setEditingContent(null);
     } catch (err: any) {
-      toast.error(err?.message || "Échec de la sauvegarde", { position: "top-right" });
+      toast.error(err?.message || "Échec de la sauvegarde");
     } finally {
       setSaving(false);
     }
@@ -375,7 +382,7 @@ export default function AdminHelpContentsPage() {
 
   useEffect(() => {
     loadHelpContents();
-  }, []);
+  }, [loadHelpContents]);
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -390,7 +397,7 @@ export default function AdminHelpContentsPage() {
           disabled={loading}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          {loading ? <Spinner className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
           Actualiser
         </button>
       </div>

@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./Providers";
+import Toaster from "@/components/Toaster"; // ✅ ajoute le container toast
 
 export const metadata: Metadata = {
   title: "Calculateur Solaire",
@@ -22,7 +23,10 @@ export default function RootLayout({
         />
       </head>
       <body className="font-inter">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

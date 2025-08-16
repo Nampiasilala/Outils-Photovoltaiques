@@ -10,18 +10,20 @@ import {
   LogOut,
   ArrowRight,
   User,
-  FileText, // ⬅️ nouvel import
+  FileText,
 } from "lucide-react";
+import { Spinner, useLoading } from "@/LoadingProvider";
 
 export default function AdminHomePage() {
   const { admin, loading, logout } = useAdminAuth();
+  const { wrap } = useLoading();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Chargement de l’interface admin…</p>
+          <Spinner size={32} />
+          <p className="text-gray-600 mt-3">Chargement de l’interface admin…</p>
         </div>
       </div>
     );
@@ -61,7 +63,7 @@ export default function AdminHomePage() {
       icon: <History className="w-5 h-5" />,
     },
     {
-      href: "/admin/content",                   // ⬅️ nouvelle carte
+      href: "/admin/content", // ← route corrigée (plural)
       title: "Contenus",
       desc: "Éditer les pages de contenu",
       icon: <FileText className="w-5 h-5" />,
@@ -83,7 +85,6 @@ export default function AdminHomePage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Raccourci Profil */}
             <Link
               href="/admin/profile"
               className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md bg-white border shadow-sm hover:bg-slate-50"
@@ -100,7 +101,11 @@ export default function AdminHomePage() {
             </Link>
 
             <button
-              onClick={logout}
+              onClick={() =>
+                wrap(async () => {
+                  await Promise.resolve(logout());
+                }, "Déconnexion…")
+              }
               className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-md bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
             >
               <LogOut className="w-4 h-4" />

@@ -1,37 +1,26 @@
-// app/admin/parameters/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/components/AuthContext";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
-import {
-  RefreshCw,
-  AlertTriangle,
-  Save,
-  Edit,
-  XCircle,
-  CheckCircle,
-} from "lucide-react";
+import { AlertTriangle, Save, Edit, XCircle, CheckCircle } from "lucide-react";
 import { toast } from "react-toastify";
+import { useLoading, Spinner } from "@/LoadingProvider"; // loader centralisé
 
 type Parameters = {
-  n_global: number;          // 0..1
-  k_securite: number;        // >=1
-  dod: number;               // 0..1
-  k_dimensionnement: number; // >=1
-  s_max: number;             // 0..1
-  i_sec: number;             // >=1
+  n_global: number;
+  k_securite: number;
+  dod: number;
+  k_dimensionnement: number;
+  s_max: number;
+  i_sec: number;
 };
-
 type ParameterKey = keyof Parameters;
 
-const parameterInfo: Record<ParameterKey, {
-  name: string;
-  description: string;
-  unit?: string;
-  range: string;
-  step?: string;
-}> = {
+const parameterInfo: Record<
+  ParameterKey,
+  { name: string; description: string; unit?: string; range: string; step?: string }
+> = {
   n_global: {
     name: "Rendement global",
     description: "Rendement global PV→régulateur→batterie→onduleur (typ. 0,70–0,80).",
@@ -72,17 +61,17 @@ const parameterInfo: Record<ParameterKey, {
 
 export default function AdminParametersPage() {
   const { admin, loading } = useAdminAuth();
+  const { wrap, isBusy } = useLoading(); // ⬅️ on s’aligne sur l’overlay global
+
   const [parameters, setParameters] = useState<Parameters | null>(null);
   const [editing, setEditing] = useState<ParameterKey | null>(null);
   const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // GET public → pas besoin d’auth (AllowAny côté DRF). Ça évite tout 401 parasite.
-  const fetchParameters = async () => {
-    setBusy(true);
+  // GET public (AllowAny)
+  const fetchParameters = async (withOverlay = true) => {
     setError(null);
-    try {
+    const doFetch = async () => {
       const res = await fetchWithAdminAuth("/parametres/effective/", {}, /*requiresAuth*/ false);
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
@@ -97,31 +86,42 @@ export default function AdminParametersPage() {
         s_max: obj.s_max,
         i_sec: obj.i_sec,
       });
+    };
+
+    try {
+      if (withOverlay) {
+        await wrap(doFetch, "Chargement des paramètres…");
+      } else {
+        await doFetch();
+      }
     } catch (err: any) {
       const msg = err?.message || "Erreur de chargement";
       setError(msg);
       toast.error("Erreur de chargement : " + msg);
-    } finally {
-      setBusy(false);
     }
   };
 
-  // PUT protégé → nécessite adminAccessToken (géré par fetchWithAdminAuth)
+  // PUT protégé → adminAccessToken requis
   const saveParameters = async () => {
     if (!parameters) return;
-    setBusy(true);
     setError(null);
+
     try {
-      const res = await fetchWithAdminAuth(
-        "/parametres/effective/",
-        { method: "PUT", body: JSON.stringify(parameters) },
-        /*requiresAuth*/ true
-      );
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status}: ${txt}`);
-      }
-      await fetchParameters(); // re-sync
+      await wrap(async () => {
+        const res = await fetchWithAdminAuth(
+          "/parametres/effective/",
+          { method: "PUT", body: JSON.stringify(parameters) },
+          /*requiresAuth*/ true
+        );
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status}: ${txt}`);
+        }
+      }, "Enregistrement…");
+
+      // Re-sync SANS overlay pour éviter wrap imbriqué (= 2 overlays)
+      await fetchParameters(false);
+
       setSaved(true);
       toast.success("Paramètres sauvegardés avec succès.");
       setTimeout(() => setSaved(false), 1800);
@@ -130,25 +130,29 @@ export default function AdminParametersPage() {
       const msg = err?.message || "Erreur lors de la sauvegarde";
       setError(msg);
       toast.error("Erreur lors de la sauvegarde : " + msg);
-    } finally {
-      setBusy(false);
     }
   };
 
   useEffect(() => {
     if (!loading && admin) {
-      fetchParameters();
+      void fetchParameters(true);
     }
-  }, [loading, admin]);
+  }, [loading, admin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading || busy && !parameters) {
+  // Guard de chargement : on n’affiche le spinner local que si l’overlay n’est pas déjà visible
+  if (loading || (!parameters && !error)) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+        <div className="flex flex-col items-center gap-3 text-slate-600">
+          {!isBusy && <Spinner size={28} />} {/* ⬅️ évite le double spinner */}
+          <span className="text-sm">Chargement…</span>
+        </div>
       </div>
     );
   }
+
   if (!admin) return null;
+
   if (!parameters) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -209,18 +213,19 @@ export default function AdminParametersPage() {
                   <>
                     <button
                       onClick={saveParameters}
-                      disabled={busy}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                      disabled={isBusy}
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 flex items-center gap-2"
                       title="Enregistrer"
                     >
-                      <Save size={16} />
+                      {isBusy ? <Spinner size={14} /> : <Save size={16} />}
+                      <span>Enregistrer</span>
                     </button>
                     <button
                       onClick={() => {
-                        fetchParameters();
+                        void fetchParameters(true);
                         setEditing(null);
                       }}
-                      disabled={busy}
+                      disabled={isBusy}
                       className="bg-gray-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
                       title="Annuler"
                     >

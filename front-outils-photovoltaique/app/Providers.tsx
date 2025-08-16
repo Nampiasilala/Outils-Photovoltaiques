@@ -1,19 +1,14 @@
 "use client";
 
-import { AuthProvider } from "@/components/AuthContext"; // ajuste si besoin
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { AuthProvider } from "@/components/AuthContext";
+import { LoadingProvider } from "@/LoadingProvider"; // si tu as ajouté le loader global
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      {children}
-      {/* conteneur unique de React-Toastify */}
-      <ToastContainer
-        position="top-right"
-        pauseOnFocusLoss={false}
-        className="text-sm"
-      />
+      <LoadingProvider>
+        {children}
+      </LoadingProvider>
     </AuthProvider>
   );
 }

@@ -1,4 +1,3 @@
-// app/admin/users/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -6,12 +5,12 @@ import { useAdminAuth } from "@/components/AuthContext";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { toast } from "react-toastify";
 import DeleteAlert from "@/components/DeleteAlert";
+import { useLoading, Spinner } from "@/LoadingProvider";
 import {
   Users as UsersIcon,
   Mail,
   Search,
   Filter,
-  Loader,
 } from "lucide-react";
 
 type RoleFilter = "Tous" | "Admin" | "Modérateur" | "Utilisateur" | "Invité";
@@ -20,12 +19,13 @@ interface UserRow {
   id: number;
   username: string;
   email: string;
-  role: string;      // string libre côté backend
-  joinDate: string;  // ISO
+  role: string;
+  joinDate: string;
 }
 
 export default function AdminUsersPage() {
   const { admin, loading: guardLoading } = useAdminAuth();
+  const { wrap, isBusy } = useLoading(); // ⬅️ on récupère isBusy
 
   const [rows, setRows] = useState<UserRow[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -37,20 +37,22 @@ export default function AdminUsersPage() {
   const loadUsers = async () => {
     setFetching(true);
     try {
-      const res = await fetchWithAdminAuth("/users/");
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`Erreur ${res.status}: ${txt || res.statusText}`);
-      }
-      const data = await res.json();
-      const mapped: UserRow[] = (Array.isArray(data) ? data : []).map((u: any) => ({
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        role: u.role ?? (u.is_superuser ? "Admin" : u.is_staff ? "Modérateur" : "Utilisateur"),
-        joinDate: u.date_joined ?? u.created_at ?? new Date().toISOString(),
-      }));
-      setRows(mapped);
+      await wrap(async () => {
+        const res = await fetchWithAdminAuth("/users/");
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`Erreur ${res.status}: ${txt || res.statusText}`);
+        }
+        const data = await res.json();
+        const mapped: UserRow[] = (Array.isArray(data) ? data : []).map((u: any) => ({
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          role: u.role ?? (u.is_superuser ? "Admin" : u.is_staff ? "Modérateur" : "Utilisateur"),
+          joinDate: u.date_joined ?? u.created_at ?? new Date().toISOString(),
+        }));
+        setRows(mapped);
+      }, "Chargement des utilisateurs…");
     } catch (err: any) {
       toast.error(err?.message || "Échec du chargement des utilisateurs.");
     } finally {
@@ -60,7 +62,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (!guardLoading && admin) void loadUsers();
-  }, [guardLoading, admin]);
+  }, [guardLoading, admin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ----- Derived -----
   const filtered = useMemo(() => {
@@ -80,12 +82,14 @@ export default function AdminUsersPage() {
   const handleDeleteUser = async (id: number): Promise<void> => {
     setIsDeleting(id);
     try {
-      const res = await fetchWithAdminAuth(`/users/${id}/`, { method: "DELETE" });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`Erreur ${res.status}: ${txt || res.statusText}`);
-      }
-      setRows((r) => r.filter((x) => x.id !== id));
+      await wrap(async () => {
+        const res = await fetchWithAdminAuth(`/users/${id}/`, { method: "DELETE" });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`Erreur ${res.status}: ${txt || res.statusText}`);
+        }
+        setRows((r) => r.filter((x) => x.id !== id));
+      }, "Suppression de l’utilisateur…");
       toast.success("Utilisateur supprimé avec succès !");
     } catch (err: any) {
       toast.error(err?.message || "Échec de la suppression de l'utilisateur.");
@@ -98,7 +102,8 @@ export default function AdminUsersPage() {
   if (guardLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="animate-spin h-10 w-10 rounded-full border-b-2 border-blue-600" />
+        {/* On n'affiche le spinner local que si l’overlay global n’est pas visible */}
+        {!isBusy && <Spinner size={40} />}
       </div>
     );
   }
@@ -145,11 +150,13 @@ export default function AdminUsersPage() {
 
       {/* Table */}
       {fetching ? (
-        <div className="flex items-center justify-center min-h-[200px] bg-white rounded-lg shadow-md">
-          <Loader className="animate-spin w-8 h-8 text-blue-600" />
-          <span className="ml-3 text-base text-slate-600">
-            Chargement des utilisateurs…
-          </span>
+        <div
+          className="flex items-center justify-center min-h-[200px] bg-white rounded-lg shadow-md"
+          aria-busy="true"
+        >
+          {/* Pas de double spinner : masque le local si overlay actif */}
+          {!isBusy && <Spinner size={28} />}
+          <span className="ml-3 text-base text-slate-600">Chargement des utilisateurs…</span>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -200,7 +207,8 @@ export default function AdminUsersPage() {
                         <DeleteAlert
                           label={`Supprimer ${u.username} ?`}
                           onConfirm={() => handleDeleteUser(u.id)}
-                          isLoading={isDeleting === u.id}
+                          // Évite le mini-spinner dans le bouton quand l’overlay est déjà là
+                          isLoading={isDeleting === u.id && !isBusy}
                         />
                       </td>
                     </tr>
