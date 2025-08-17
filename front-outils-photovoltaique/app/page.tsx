@@ -1,22 +1,13 @@
 import Link from "next/link";
-import {
-  Sun,
-  Zap,
-  Globe,
-  Calculator,
-  Download,
-  Shield,
-  ArrowRight,
-  Star,
-  Users,
-  TrendingUp,
-  CheckCircle,
-} from "lucide-react";
+import { Icons } from "../src/assets/icons"; // Adjust the import path as necessary
+
+
+import Image from "next/image";
 
 export default function HomePage() {
   const features = [
     {
-      icon: Zap,
+      icon: Icons.Zap,
       title: "Calcul précis",
       description:
         "Algorithme professionnel prenant en compte tous les paramètres : consommation, autonomie, irradiation solaire locale.",
@@ -24,7 +15,7 @@ export default function HomePage() {
       iconColor: "text-blue-600",
     },
     {
-      icon: Globe,
+      icon: Icons.Globe,
       title: "Données locales",
       description:
         "Irradiation solaire automatique basée sur votre localisation grâce aux données satellite NASA.",
@@ -32,7 +23,7 @@ export default function HomePage() {
       iconColor: "text-green-600",
     },
     {
-      icon: Download,
+      icon: Icons.Download,
       title: "Rapport PDF",
       description:
         "Téléchargez un rapport détaillé avec tous les calculs, équipements recommandés et coûts estimés.",
@@ -42,9 +33,9 @@ export default function HomePage() {
   ];
 
   const stats = [
-    { label: "Calculs effectués", value: "10,000+", icon: Calculator },
-    { label: "Utilisateurs satisfaits", value: "95%", icon: Star },
-    { label: "Équipements référencés", value: "500+", icon: Zap },
+    { label: "Calculs effectués", value: "100+", icon: Icons.Calculator },
+    { label: "Testeurs satisfaits", value: "95%", icon: Icons.Star },
+    { label: "Équipements référencés", value: "20+", icon: Icons.Zap },
   ];
 
   const steps = [
@@ -81,9 +72,15 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="inline-flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg">
-                <Sun className="w-6 h-6 text-white" />
+              <div className="inline-flex items-center justify-center w-10 h-10">
+                <Image
+                  src="/logo.png" // chemin relatif à /public
+                  alt="Logo"
+                  width={40}
+                  height={40}
+                />
               </div>
+
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
                   Calculateur Solaire
@@ -97,17 +94,10 @@ export default function HomePage() {
             <div className="flex items-center space-x-4">
               <Link
                 href="/calculate"
-                className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
               >
-                <Calculator className="w-4 h-4" />
+                <Icons.Calculator className="w-4 h-4" />
                 Calculer
-              </Link>
-              <Link
-                href="/admin-login"
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                <Shield className="w-4 h-4" />
-                <span className="hidden sm:inline">Administration</span>
               </Link>
             </div>
           </div>
@@ -117,8 +107,13 @@ export default function HomePage() {
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <section className="py-16 md:py-24 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-8 shadow-2xl">
-            <Sun className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center  mb-8 ">
+            <Image
+              src="/logo.png" // chemin relatif à /public
+              alt="Logo"
+              width={200}
+              height={200}
+            />
           </div>
 
           <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
@@ -139,15 +134,15 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <Link
               href="/calculate"
-              className="group inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+              className="group inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-green-400 hover:from-blue-700 hover:to-green-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
             >
-              <Calculator className="w-6 h-6" />
+              <Icons.Calculator className="w-6 h-6" />
               Commencer le calcul
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <Icons.ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
 
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircle className="w-4 h-4 text-green-600" />
+              <Icons.CheckCircle className="w-4 h-4 text-green-600" />
               <span>Aucune inscription requise</span>
             </div>
           </div>
@@ -186,7 +181,9 @@ export default function HomePage() {
                 key={index}
                 className={`bg-gradient-to-br ${feature.color} rounded-xl p-8 shadow-sm hover:shadow-lg transition-all duration-200 hover:scale-[1.02]`}
               >
-                <div className={`inline-flex items-center justify-center w-12 h-12 bg-white rounded-lg shadow-md mb-6`}>
+                <div
+                  className={`inline-flex items-center justify-center w-12 h-12 bg-white rounded-lg shadow-md mb-6`}
+                >
                   <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
                 </div>
                 <h4 className="text-xl font-semibold text-gray-900 mb-3">
@@ -230,7 +227,7 @@ export default function HomePage() {
 
         {/* CTA Section */}
         <section className="py-16">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 md:p-16 text-center text-white shadow-2xl">
+          <div className="bg-gradient-to-r from-blue-400 to-indigo-600 rounded-2xl p-8 md:p-16 text-center text-white shadow-2xl">
             <h3 className="text-3xl md:text-4xl font-bold mb-6">
               Prêt à calculer votre installation ?
             </h3>
@@ -244,13 +241,13 @@ export default function HomePage() {
                 href="/calculate"
                 className="group inline-flex items-center gap-3 bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-xl font-semibold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
               >
-                <Calculator className="w-6 h-6" />
+                <Icons.Calculator className="w-6 h-6" />
                 Lancer le calculateur
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <Icons.ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
 
               <div className="flex items-center gap-2 text-blue-100">
-                <CheckCircle className="w-5 h-5" />
+                <Icons.CheckCircle className="w-5 h-5" />
                 <span>Résultats instantanés</span>
               </div>
             </div>
@@ -258,32 +255,77 @@ export default function HomePage() {
         </section>
 
         {/* Footer */}
-        <footer className="py-12 border-t border-gray-200 mt-16">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-3 mb-4 md:mb-0">
-              <div className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg">
-                <Sun className="w-4 h-4 text-white" />
+        <footer className="bg-gray-50 border-t border-gray-200 mt-16">
+          <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Colonne 1 : Logo + Copyright */}
+            <div className="flex flex-col items-center md:items-start space-y-4">
+              <div className="inline-flex items-center justify-center w-10 h-10 ">
+                <Image
+                  src="/logo.png" // chemin relatif à /public
+                  alt="Logo"
+                  width={40}
+                  height={40}
+                />{" "}
               </div>
-              <span className="text-gray-600">
-                © {new Date().getFullYear()} Calculateur Solaire. Tous droits
-                réservés.
-              </span>
+              <p className="text-gray-600 text-sm text-center md:text-left">
+                © {new Date().getFullYear()} Calculateur Solaire. <br />
+                Tous droits réservés.
+              </p>
             </div>
 
-            <div className="flex items-center space-x-6">
+            {/* Colonne 2 : Navigation */}
+            <div className="flex flex-col items-center space-y-3">
+              <h4 className="text-gray-900 font-semibold text-lg">
+                Navigation
+              </h4>
               <Link
                 href="/calculate"
-                className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                className="text-gray-600 hover:text-blue-600 transition-colors"
               >
                 Calculateur
               </Link>
               <Link
                 href="/admin-login"
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors"
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
               >
-                <Shield className="w-4 h-4" />
-                Interface Admin
+                <Icons.Shield className="w-4 h-4" />
+                Voir plus
               </Link>
+            </div>
+
+            {/* Colonne 3 : Contact & Réseaux */}
+            <div className="flex flex-col items-center md:items-end space-y-4">
+              <h4 className="text-gray-900 font-semibold text-lg">Contact</h4>
+              <a
+                href="mailto:nampiasilala@gmail.com"
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <Icons.Mail className="w-4 h-4" />
+                nampiasilala@gmail.com
+              </a>
+              <div className="flex space-x-3">
+                <a
+                  href="https://facebook.com/"
+                  target="_blank"
+                  className="p-2 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors"
+                >
+                  <Icons.Facebook className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://twitter.com/"
+                  target="_blank"
+                  className="p-2 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-sky-500 hover:border-sky-500 transition-colors"
+                >
+                  <Icons.Twitter className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://instagram.com/"
+                  target="_blank"
+                  className="p-2 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-pink-500 hover:border-pink-500 transition-colors"
+                >
+                  <Icons.Instagram className="w-5 h-5" />
+                </a>
+              </div>
             </div>
           </div>
         </footer>
