@@ -3,14 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/components/AuthContext";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
-import {
-  Settings,
-  AlertTriangle,
-  Save,
-  Edit,
-  XCircle,
-  CheckCircle,
-} from "lucide-react";
+import { Icons } from "../../../src/assets/icons";  
 import { toast } from "react-toastify";
 import { useLoading, Spinner } from "@/LoadingProvider"; // loader centralisé
 
@@ -175,7 +168,7 @@ export default function AdminParametersPage() {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
-          <AlertTriangle />
+          <Icons.AlertTriangle />
           <span>{error || "Impossible de charger les paramètres."}</span>
         </div>
       </div>
@@ -186,22 +179,17 @@ export default function AdminParametersPage() {
     key === "dod" || key === "s_max" ? value.toFixed(2) : String(value);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto p-10">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
-          <Settings className="w-7 h-7 text-blue-600" />
+          <Icons.Settings className="w-7 h-7 text-blue-600" />
           Gestion des paramètres
         </h1>
       </div>
 
-      <h1 className="text-2xl font-bold text-slate-900 mb-2">Paramètres</h1>
-      <p className="text-slate-600 mb-6">
-        Configurez les paramètres du système.
-      </p>
-
       {error && (
         <div className="mb-4 flex items-center space-x-2 bg-red-100 text-red-800 px-4 py-2 rounded text-sm">
-          <AlertTriangle />
+          <Icons.AlertTriangle />
           <span>{error}</span>
         </div>
       )}
@@ -252,7 +240,7 @@ export default function AdminParametersPage() {
                         className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 flex items-center gap-2"
                         title="Enregistrer"
                       >
-                        {isBusy ? <Spinner size={14} /> : <Save size={16} />}
+                        {isBusy ? <Spinner size={14} /> : <Icons.Save size={16} />}
                         <span>Enregistrer</span>
                       </button>
                       <button
@@ -264,7 +252,7 @@ export default function AdminParametersPage() {
                         className="bg-gray-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
                         title="Annuler"
                       >
-                        <XCircle size={16} />
+                        <Icons.XCircle size={16} />
                       </button>
                     </>
                   ) : (
@@ -276,7 +264,7 @@ export default function AdminParametersPage() {
                       className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
                       title="Modifier"
                     >
-                      <Edit size={16} />
+                      <Icons.Edit size={16} />
                     </button>
                   )}
                 </div>
@@ -288,7 +276,7 @@ export default function AdminParametersPage() {
 
       {saved && (
         <div className="mt-4 flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded text-sm">
-          <CheckCircle />
+          <Icons.CheckCircle />
           <span>Paramètres sauvegardés !</span>
         </div>
       )}

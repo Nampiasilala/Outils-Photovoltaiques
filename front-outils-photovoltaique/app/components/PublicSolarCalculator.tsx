@@ -11,23 +11,7 @@ import {
   formatVoltage,
 } from "@/utils/formatters";
 import type { CalculationInput, CalculationResult } from "@/types/api";
-import {
-  Sun,
-  Zap,
-  Globe,
-  AlertCircle,
-  Calculator,
-  Settings,
-  DollarSign,
-  BatteryCharging,
-  PanelTop,
-  ClipboardCheck,
-  Search,
-  Cable,
-  Download,
-  Info,
-  X,
-} from "lucide-react";
+import { Icons } from "../../src/assets/icons"; // Ajuster le chemin si nécessaire
 import { toast } from "react-toastify";
 import { useDebounce } from "use-debounce";
 import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ loader centralisé
@@ -53,7 +37,7 @@ function InfoButton({
         aria-label={`Informations : ${title}`}
         title="Informations"
       >
-        <Info className="w-3.5 h-3.5" />
+        <Icons.Info className="w-3.5 h-3.5" />
       </button>
 
       {open && (
@@ -71,7 +55,7 @@ function InfoButton({
                   className="p-1 rounded hover:bg-slate-100"
                   aria-label="Fermer"
                 >
-                  <X className="w-5 h-5 text-slate-600" />
+                  <Icons.X className="w-5 h-5 text-slate-600" />
                 </button>
               </div>
               <div className="px-5 py-4 text-sm text-slate-700 space-y-2">
@@ -405,7 +389,7 @@ export default function PublicSolarCalculator() {
             {/* Consommation */}
             <section className="bg-gray-50 p-6 rounded-xl">
               <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
-                <Zap className="text-yellow-500" /> Consommation
+                <Icons.Zap className="text-yellow-500" /> Consommation
               </h3>
 
               <div className="flex items-center justify-between mb-2">
@@ -450,7 +434,7 @@ export default function PublicSolarCalculator() {
             {/* Configuration */}
             <section className="bg-gray-50 p-6 rounded-xl">
               <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
-                <Settings className="text-purple-500" /> Configuration
+                <Icons.Settings className="text-purple-500" /> Configuration
               </h3>
 
               <div className="flex items-center justify-between mb-2">
@@ -504,7 +488,7 @@ export default function PublicSolarCalculator() {
             {/* Environnement */}
             <section className="bg-gray-50 p-6 rounded-xl">
               <h3 className="flex items-center gap-2 font-semibold mb-4 text-gray-800">
-                <Globe className="text-green-500" /> Environnement
+                <Icons.Globe className="text-green-500" /> Environnement
               </h3>
 
               <div className="flex items-center justify-between mb-2">
@@ -530,7 +514,7 @@ export default function PublicSolarCalculator() {
                     }}
                     placeholder="Ex: Antananarivo"
                   />
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Icons.Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 </div>
                 {loadingIrradiation && (
                   <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-center text-gray-500 flex items-center justify-center gap-2">
@@ -595,7 +579,7 @@ export default function PublicSolarCalculator() {
                   </>
                 ) : (
                   <>
-                    <Calculator className="w-5 h-5" /> Calculer
+                    <Icons.Calculator className="w-5 h-5" /> Calculer
                   </>
                 )}
               </button>
@@ -608,7 +592,7 @@ export default function PublicSolarCalculator() {
       {errors.length > 0 && (
         <div className="bg-red-50 border border-red-200 p-6 rounded-xl shadow-sm">
           <h4 className="flex items-center gap-2 text-red-800 mb-3 font-semibold">
-            <AlertCircle className="w-5 h-5" /> Erreurs de validation
+            <Icons.AlertCircle className="w-5 h-5" /> Erreurs de validation
           </h4>
           <ul className="list-disc pl-5 text-red-700 space-y-1">
             {errors.map((e, i) => (
@@ -624,7 +608,7 @@ export default function PublicSolarCalculator() {
           <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
             <div className="flex justify-between items-center mb-6">
               <h3 className="flex items-center gap-2 text-xl font-semibold text-gray-800">
-                <Calculator className="text-blue-600" /> Résultats du Dimensionnement
+                <Icons.Calculator className="text-blue-600" /> Résultats du Dimensionnement
               </h3>
               <button
                 onClick={handleDownloadPDF}
@@ -638,7 +622,7 @@ export default function PublicSolarCalculator() {
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4" />
+                    <Icons.Download className="w-4 h-4" />
                     Télécharger PDF
                   </>
                 )}
@@ -646,34 +630,34 @@ export default function PublicSolarCalculator() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg text-center">
-                <PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                <Icons.PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">Puissance totale</p>
                 <p className="text-lg font-bold text-gray-800">{formatPower(result.puissance_totale)}</p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
-                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">Capacité batterie</p>
                 <p className="text-lg font-bold text-gray-800">{formatEnergyLocale(result.capacite_batterie)}</p>
               </div>
               <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg text-center">
-                <ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                <Icons.ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">Bilan énergétique annuel</p>
                 <p className="text-lg font-bold text-gray-800">
                   {formatEnergyLocale(result.bilan_energetique_annuel)}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg text-center">
-                <DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+                <Icons.DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">Coût total estimé</p>
                 <p className="text-lg font-bold text-gray-800">{formatPrice(result.cout_total)}</p>
               </div>
               <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg text-center">
-                <Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+                <Icons.Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">Nombre de panneaux</p>
                 <p className="text-lg font-bold text-gray-800">{formatNumber(result.nombre_panneaux)}</p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
-                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">Nombre de batteries</p>
                 <p className="text-lg font-bold text-gray-800">{formatNumber(result.nombre_batteries)}</p>
               </div>
@@ -684,13 +668,13 @@ export default function PublicSolarCalculator() {
           {result?.equipements_recommandes && (
             <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
               <h3 className="flex items-center gap-2 text-xl font-semibold mb-6 text-gray-800">
-                <Zap className="text-indigo-600" /> Équipements recommandés
+                <Icons.Zap className="text-indigo-600" /> Équipements recommandés
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <EquipCard
                   title="Panneau solaire"
-                  icon={Sun}
+                  icon={Icons.Sun}
                   c={result.equipements_recommandes.panneau}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
@@ -702,7 +686,7 @@ export default function PublicSolarCalculator() {
 
                 <EquipCard
                   title="Batterie"
-                  icon={BatteryCharging}
+                  icon={Icons.BatteryCharging}
                   c={result.equipements_recommandes.batterie}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
@@ -714,7 +698,7 @@ export default function PublicSolarCalculator() {
 
                 <EquipCard
                   title="Régulateur"
-                  icon={Settings}
+                  icon={Icons.Settings}
                   c={result.equipements_recommandes.regulateur}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
@@ -726,7 +710,7 @@ export default function PublicSolarCalculator() {
 
                 <EquipCard
                   title="Onduleur"
-                  icon={Zap}
+                  icon={Icons.Zap}
                   c={result.equipements_recommandes.onduleur}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
@@ -738,7 +722,7 @@ export default function PublicSolarCalculator() {
 
                 <EquipCard
                   title="Câble"
-                  icon={Cable}
+                  icon={Icons.Cable}
                   c={result.equipements_recommandes.cable}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
@@ -765,7 +749,7 @@ export default function PublicSolarCalculator() {
                 </>
               ) : (
                 <>
-                  <Download className="w-5 h-5" />
+                  <Icons.Download className="w-5 h-5" />
                   Télécharger le rapport complet PDF
                 </>
               )}

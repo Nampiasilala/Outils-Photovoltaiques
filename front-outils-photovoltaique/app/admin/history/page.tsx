@@ -4,26 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { dimensionnementAPI } from "@/lib/api";
 import { toast } from "react-toastify";
-import {
-  History as HistoryIcon,
-  Calculator,
-  Info,
-  Sun,
-  Zap,
-  BatteryCharging,
-  DollarSign,
-  ClipboardCheck,
-  PanelTop,
-  AlertCircle,
-  Calendar,
-  MapPin,
-  ChevronDown,
-  ChevronRight,
-  Settings,
-  Eye,
-  EyeOff,
-  Cable,
-} from "lucide-react";
+import {Icons} from "../../../src/assets/icons"
 import DeleteAlert from "@/components/DeleteAlert";
 import { useAdminAuth } from "@/components/AuthContext";
 import {
@@ -188,10 +169,10 @@ export default function AdminHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="p-10 max-w-screen-xl mx-auto overflow-x-auto text-sm">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
-          <HistoryIcon className="w-7 h-7 text-blue-600" />
+          <Icons.History className="w-7 h-7 text-blue-600" />
           Gestion des historiques
         </h1>
       </div>
@@ -199,10 +180,10 @@ export default function AdminHistoryPage() {
         <div className="mx-auto max-w-7xl px-2">
           <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 text-white">
+            <div className="bg-gradient-to-r from-blue-600 to-green-600 p-2 text-white">
               <div className="flex flex-col px-4 sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h2 className="text-base font-bold flex items-center gap-3">
-                  <HistoryIcon className="w-6 h-6" />
+                  <Icons.History className="w-6 h-6" />
                   Historique des calculs
                 </h2>
 
@@ -212,14 +193,14 @@ export default function AdminHistoryPage() {
                       onClick={expandAll}
                       className="bg-white/20 hover:bg.white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Icons.Eye className="w-4 h-4" />
                       Tout développer
                     </button>
                     <button
                       onClick={collapseAll}
                       className="bg-white/20 hover:bg.white/30 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm text-sm"
                     >
-                      <EyeOff className="w-4 h-4" />
+                      <Icons.EyeOff className="w-4 h-4" />
                       Tout réduire
                     </button>
                   </div>
@@ -241,7 +222,7 @@ export default function AdminHistoryPage() {
                 ) : null
               ) : error ? (
                 <div className="bg-red-50 border border-red-200 p-6 rounded-xl text-red-800 flex items-center gap-3">
-                  <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                  <Icons.AlertCircle className="w-6 h-6 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold mb-1">Erreur de chargement</h3>
                     <p>{error}</p>
@@ -250,7 +231,7 @@ export default function AdminHistoryPage() {
               ) : !hasData ? (
                 <div className="text-center py-16">
                   <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Info className="w-12 h-12 text-gray-400" />
+                    <Icons.Info className="w-12 h-12 text-gray-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-700 mb-2">
                     Aucun calcul enregistré
@@ -263,7 +244,7 @@ export default function AdminHistoryPage() {
                     onClick={() => router.push("/calculate")}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl"
                   >
-                    <Calculator className="w-5 h-5" />
+                    <Icons.Calculator className="w-5 h-5" />
                     Nouveau calcul
                   </button>
                 </div>
@@ -283,9 +264,9 @@ export default function AdminHistoryPage() {
                           <div className="flex items-center gap-4">
                             <div className="flex items-center gap-3">
                               {expandedItems.has(calc.id) ? (
-                                <ChevronDown className="w-5 h-5 text-gray-500" />
+                                <Icons.ChevronDown className="w-5 h-5 text-gray-500" />
                               ) : (
-                                <ChevronRight className="w-5 h-5 text-gray-500" />
+                                <Icons.ChevronRight className="w-5 h-5 text-gray-500" />
                               )}
                               <div>
                                 <h3 className="text-lg font-semibold text-gray-800">
@@ -313,15 +294,15 @@ export default function AdminHistoryPage() {
                             {/* Indicateurs rapides */}
                             <div className="hidden sm:flex items-center gap-4 text-sm text-gray-600">
                               <div className="flex items-center gap-1">
-                                <Sun className="w-4 h-4 text-orange-500" />
+                                <Icons.Sun className="w-4 h-4 text-orange-500" />
                                 <span>{calc.nombre_panneaux} panneaux</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <BatteryCharging className="w-4 h-4 text-green-500" />
+                                <Icons.BatteryCharging className="w-4 h-4 text-green-500" />
                                 <span>{calc.nombre_batteries} batteries</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <DollarSign className="w-4 h-4 text-yellow-600" />
+                                <Icons.DollarSign className="w-4 h-4 text-yellow-600" />
                                 <span>{formatPrice(calc.cout_total)}</span>
                               </div>
                             </div>
@@ -343,12 +324,12 @@ export default function AdminHistoryPage() {
                           {/* Résultats */}
                           <div className="mb-6 pt-4">
                             <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                              <ClipboardCheck className="w-5 h-5 text-blue-500" />
+                              <Icons.ClipboardCheck className="w-5 h-5 text-blue-500" />
                               Résultats du dimensionnement
                             </h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                               <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center">
-                                <PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                                <Icons.PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
                                   Puissance totale
                                 </p>
@@ -357,7 +338,7 @@ export default function AdminHistoryPage() {
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
-                                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                                <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
                                   Capacité batterie
                                 </p>
@@ -366,7 +347,7 @@ export default function AdminHistoryPage() {
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
-                                <Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+                                <Icons.Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
                                   Panneaux
                                 </p>
@@ -375,7 +356,7 @@ export default function AdminHistoryPage() {
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
-                                <BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                                <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
                                   Batteries
                                 </p>
@@ -384,7 +365,7 @@ export default function AdminHistoryPage() {
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center">
-                                <ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                                <Icons.ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
                                   Bilan annuel
                                 </p>
@@ -395,7 +376,7 @@ export default function AdminHistoryPage() {
                                 </p>
                               </div>
                               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg text-center">
-                                <DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+                                <Icons.DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
                                   Coût total
                                 </p>
@@ -414,13 +395,13 @@ export default function AdminHistoryPage() {
                                 className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200"
                               >
                                 <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                                  <Info className="w-5 h-5 text-blue-500" />
+                                  <Icons.Info className="w-5 h-5 text-blue-500" />
                                   Données d'entrée
                                 </h4>
                                 {showInputs.has(calc.id) ? (
-                                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                                  <Icons.ChevronDown className="w-5 h-5 text-gray-500" />
                                 ) : (
-                                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                                  <Icons.ChevronRight className="w-5 h-5 text-gray-500" />
                                 )}
                               </button>
 
@@ -429,7 +410,7 @@ export default function AdminHistoryPage() {
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
                                       <div className="p-2 bg-yellow-100 rounded-full">
-                                        <Zap className="w-5 h-5 text-yellow-600" />
+                                        <Icons.Zap className="w-5 h-5 text-yellow-600" />
                                       </div>
                                       <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -445,7 +426,7 @@ export default function AdminHistoryPage() {
 
                                     <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
                                       <div className="p-2 bg-red-100 rounded-full">
-                                        <Zap className="w-5 h-5 text-red-600" />
+                                        <Icons.Zap className="w-5 h-5 text-red-600" />
                                       </div>
                                       <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -461,7 +442,7 @@ export default function AdminHistoryPage() {
 
                                     <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
                                       <div className="p-2 bg-purple-100 rounded-full">
-                                        <Calendar className="w-5 h-5 text-purple-600" />
+                                        <Icons.Calendar className="w-5 h-5 text-purple-600" />
                                       </div>
                                       <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -478,7 +459,7 @@ export default function AdminHistoryPage() {
 
                                     <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
                                       <div className="p-2 bg-green-100 rounded-full">
-                                        <BatteryCharging className="w-5 h-5 text-green-600" />
+                                        <Icons.BatteryCharging className="w-5 h-5 text-green-600" />
                                       </div>
                                       <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -494,7 +475,7 @@ export default function AdminHistoryPage() {
 
                                     <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100 md:col-span-2 lg:col-span-1">
                                       <div className="p-2 bg-blue-100 rounded-full">
-                                        <MapPin className="w-5 h-5 text-blue-600" />
+                                        <Icons.MapPin className="w-5 h-5 text-blue-600" />
                                       </div>
                                       <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -519,13 +500,13 @@ export default function AdminHistoryPage() {
                                 className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200"
                               >
                                 <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                                  <Settings className="w-5 h-5 text-purple-500" />
+                                  <Icons.Settings className="w-5 h-5 text-purple-500" />
                                   Équipements recommandés
                                 </h4>
                                 {showEquipments.has(calc.id) ? (
-                                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                                  <Icons.ChevronDown className="w-5 h-5 text-gray-500" />
                                 ) : (
-                                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                                  <Icons.ChevronRight className="w-5 h-5 text-gray-500" />
                                 )}
                               </button>
 
@@ -535,7 +516,7 @@ export default function AdminHistoryPage() {
                                   {calc.equipements_recommandes.panneau && (
                                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                                       <div className="flex items-center gap-2 mb-3">
-                                        <Sun className="w-5 h-5 text-blue-600" />
+                                        <Icons.Sun className="w-5 h-5 text-blue-600" />
                                         <p className="font-semibold text-blue-700">
                                           Panneau solaire
                                         </p>
@@ -604,7 +585,7 @@ export default function AdminHistoryPage() {
                                   {calc.equipements_recommandes.batterie && (
                                     <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
                                       <div className="flex items-center gap-2 mb-3">
-                                        <BatteryCharging className="w-5 h-5 text-green-600" />
+                                        <Icons.BatteryCharging className="w-5 h-5 text-green-600" />
                                         <p className="font-semibold text-green-700">
                                           Batterie
                                         </p>
@@ -673,7 +654,7 @@ export default function AdminHistoryPage() {
                                   {calc.equipements_recommandes.regulateur && (
                                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
                                       <div className="flex items-center gap-2 mb-3">
-                                        <Settings className="w-5 h-5 text-purple-600" />
+                                        <Icons.Settings className="w-5 h-5 text-purple-600" />
                                         <p className="font-semibold text-purple-700">
                                           Régulateur
                                         </p>
@@ -730,7 +711,7 @@ export default function AdminHistoryPage() {
                                   {calc.equipements_recommandes.onduleur && (
                                     <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
                                       <div className="flex items-center gap-2 mb-3">
-                                        <Zap className="w-5 h-5 text-orange-600" />
+                                        <Icons.Zap className="w-5 h-5 text-orange-600" />
                                         <p className="font-semibold text-orange-700">
                                           Onduleur
                                         </p>
@@ -799,7 +780,7 @@ export default function AdminHistoryPage() {
                                   {calc.equipements_recommandes.cable && (
                                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
                                       <div className="flex items-center gap-2 mb-3">
-                                        <Cable className="w-5 h-5 text-gray-600" />
+                                        <Icons.Cable className="w-5 h-5 text-gray-600" />
                                         <p className="font-semibold text-gray-700">
                                           Câble
                                         </p>
@@ -866,7 +847,7 @@ export default function AdminHistoryPage() {
                     onClick={() => router.push("/calculate")}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center gap-3 mx-auto shadow-lg hover:shadow-xl"
                   >
-                    <Calculator className="w-6 h-6" />
+                    <Icons.Calculator className="w-6 h-6" />
                     Nouveau calcul
                   </button>
                 </div>

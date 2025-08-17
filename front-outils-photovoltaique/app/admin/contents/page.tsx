@@ -2,19 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  FileText,
-  Save,
-  Edit,
-  CheckCircle,
-  AlertCircle,
-  RefreshCw,
-  Zap,
-  Settings,
-  Globe,
-  Eye,
-  X,
-} from "lucide-react";
+import { Icons } from "../../../src/assets/icons"; // Ajuster le chemin si nécessaire
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { toast } from "react-toastify"; // ✅ on garde toast direct
 // ❌ ne PAS réimporter le CSS ici (le Toaster global le fait déjà)
@@ -38,7 +26,7 @@ const PREDEFINED_FIELDS = [
     title: "Consommation journalière",
     description: "Énergie consommée par jour",
     unit: "Wh",
-    icon: Zap,
+    icon: Icons.Zap,
     color: "yellow",
     category: "Consommation",
     placeholder: "Ex: 1520",
@@ -50,7 +38,7 @@ const PREDEFINED_FIELDS = [
     title: "Puissance maximale",
     description: "Pic de puissance simultané",
     unit: "W",
-    icon: Zap,
+    icon: Icons.Zap,
     color: "orange",
     category: "Consommation",
     placeholder: "Ex: 400",
@@ -62,7 +50,7 @@ const PREDEFINED_FIELDS = [
     title: "Jours d'autonomie",
     description: "Jours sans soleil couverts",
     unit: "jours",
-    icon: Settings,
+    icon: Icons.Settings,
     color: "purple",
     category: "Configuration",
     placeholder: "Ex: 3",
@@ -74,7 +62,7 @@ const PREDEFINED_FIELDS = [
     title: "Tension batterie",
     description: "Voltage du système",
     unit: "V",
-    icon: Settings,
+    icon: Icons.Settings,
     color: "blue",
     category: "Configuration",
     placeholder: "12V, 24V ou 48V",
@@ -86,7 +74,7 @@ const PREDEFINED_FIELDS = [
     title: "Localisation",
     description: "Position géographique",
     unit: "",
-    icon: Globe,
+    icon: Icons.Globe,
     color: "green",
     category: "Environnement",
     placeholder: "Ex: Antananarivo",
@@ -98,7 +86,7 @@ const PREDEFINED_FIELDS = [
     title: "Irradiation solaire",
     description: "Énergie solaire disponible",
     unit: "kWh/m²/j",
-    icon: Globe,
+    icon: Icons.Globe,
     color: "amber",
     category: "Environnement",
     placeholder: "Ex: 4.5",
@@ -141,12 +129,12 @@ function FieldCard({
   const IconComponent = field.icon;
 
   const colorClasses = {
-    yellow: "from-yellow-50 to-yellow-100 border-yellow-200 text-yellow-700",
-    orange: "from-orange-50 to-orange-100 border-orange-200 text-orange-700",
-    purple: "from-purple-50 to-purple-100 border-purple-200 text-purple-700",
-    blue: "from-blue-50 to-blue-100 border-blue-200 text-blue-700",
-    green: "from-green-50 to-green-100 border-green-200 text-green-700",
-    amber: "from-amber-50 to-amber-100 border-amber-200 text-amber-700",
+    yellow: "border-yellow-200 text-yellow-700",
+    orange: "border-orange-200 text-orange-700",
+    purple: "border-purple-200 text-purple-700",
+    blue: "border-blue-200 text-blue-700",
+    green: "border-green-200 text-green-700",
+    amber: "border-amber-200 text-amber-700",
   };
 
   return (
@@ -158,7 +146,7 @@ function FieldCard({
       >
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/70 rounded-lg">
+            <div className="p-2 bg-slate-100 rounded-lg">
               <IconComponent className="w-5 h-5" />
             </div>
             <div>
@@ -173,9 +161,9 @@ function FieldCard({
           </div>
           <div className="flex items-center gap-1">
             {isConfigured ? (
-              <CheckCircle className="w-5 h-5 text-green-600" />
+              <Icons.CheckCircle className="w-5 h-5 text-green-600" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-gray-400" />
+              <Icons.AlertCircle className="w-5 h-5 text-gray-400" />
             )}
           </div>
         </div>
@@ -189,18 +177,18 @@ function FieldCard({
           <div className="text-xs opacity-75">
             Statut :{" "}
             {isConfigured ? (
-              <span className="text-green-700 font-medium">✅ Configuré</span>
+              <span className="text-green-700 font-medium">Configuré</span>
             ) : (
-              <span className="text-gray-600">⚠️ Non configuré</span>
+              <span className="text-gray-600">Non configuré</span>
             )}
           </div>
 
           <div className="flex gap-2 pt-2">
             <button
               onClick={onEdit}
-              className="flex-1 px-3 py-2 bg-white/80 hover:bg-white text-gray-800 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+              className="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-300 text-gray-800 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
             >
-              <Edit className="w-4 h-4" />
+              <Icons.Edit className="w-4 h-4" />
               {isConfigured ? "Modifier" : "Configurer"}
             </button>
             {isConfigured && (
@@ -209,7 +197,7 @@ function FieldCard({
                 className="px-3 py-2 bg-white/80 hover:bg-white text-gray-800 rounded-lg text-sm font-medium transition-colors"
                 title="Aperçu"
               >
-                <Eye className="w-4 h-4" />
+                <Icons.Eye className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -301,7 +289,7 @@ function EditForm({
             </>
           ) : (
             <>
-              <Save className="w-4 h-4" />
+              <Icons.Save className="w-4 h-4" />
               {existingContent ? "Mettre à jour" : "Créer"}
             </>
           )}
@@ -384,9 +372,9 @@ export default function AdminHelpContentsPage() {
 
       toast.success(
         helpContents.some((c) => c.key === fieldKey)
-          ? "Contenu mis à jour ✔️"
-          : "Contenu créé ✔️",
-        { autoClose: 2500 }
+          ? "Contenu mis à jour "
+          : "Contenu créé ",
+        { autoClose: 2000 }
       );
 
       await loadHelpContents();
@@ -410,54 +398,32 @@ export default function AdminHelpContentsPage() {
   }, [loadHelpContents]);
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-10 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
-          <FileText className="w-7 h-7 text-blue-600" />
+          <Icons.FileText className="w-7 h-7 text-blue-600" />
           Gestion des notices
         </h1>
       </div>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            🎯 Aides utilisateur (admin)
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Configurez les explications affichées via l’icône ℹ️
-          </p>
-        </div>
-        <button
-          onClick={loadHelpContents}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-        >
-          {loading ? (
-            <Spinner className="w-4 h-4" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
-          Actualiser
-        </button>
-      </div>
+      
 
       {/* Grilles par catégorie — 3 cartes/ligne dès md: */}
       {Object.entries(fieldsByCategory).map(([category, fields]) => (
         <div key={category} className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
             {category === "Consommation" && (
-              <Zap className="w-5 h-5 text-yellow-500" />
+              <Icons.Zap className="w-5 h-5 text-yellow-500" />
             )}
             {category === "Configuration" && (
-              <Settings className="w-5 h-5 text-purple-500" />
+              <Icons.Settings className="w-5 h-5 text-purple-500" />
             )}
             {category === "Environnement" && (
-              <Globe className="w-5 h-5 text-green-500" />
+              <Icons.Globe className="w-5 h-5 text-green-500" />
             )}
             {category}
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fields.map((field) => {
               const helpContent =
                 helpContents.find((c) => c.key === field.key) || null;
@@ -489,7 +455,7 @@ export default function AdminHelpContentsPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-semibold">
-                  {editingContent ? "✏️ Modifier" : "➕ Configurer"} :{" "}
+                  {editingContent ? "Modifier" : "Configurer"} :{" "}
                   {editingField.title}
                 </h2>
                 <p className="text-gray-600 text-sm">
@@ -503,7 +469,7 @@ export default function AdminHelpContentsPage() {
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
-                <X className="w-5 h-5" />
+                <Icons.X className="w-5 h-5" />
               </button>
             </div>
 
@@ -523,13 +489,13 @@ export default function AdminHelpContentsPage() {
           <div className="bg-white rounded-xl p-6 w-full max-w-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">
-                👁️ Aperçu : {previewField.title}
+                Aperçu : {previewField.title}
               </h2>
               <button
                 onClick={() => setPreviewField(null)}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
-                <X className="w-5 h-5" />
+                <Icons.X className="w-5 h-5" />
               </button>
             </div>
 
