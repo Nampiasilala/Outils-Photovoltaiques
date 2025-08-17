@@ -106,7 +106,7 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <section className="py-16 md:py-24 text-center">
+        <section className="py-16 md:py-18 text-center">
           <div className="inline-flex items-center justify-center  mb-8 ">
             <Image
               src="/logo.png" // chemin relatif à /public

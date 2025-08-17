@@ -7,12 +7,14 @@ import {
   Download,
   Shield,
   ArrowRight,
+  ArrowLeft,
   Star,
   CheckCircle,
   Facebook,
   Twitter,
   Instagram,
   Mail,
+  Home
 } from "lucide-react";
 
 export const Icons = {
@@ -23,10 +25,12 @@ export const Icons = {
   Download,
   Shield,
   ArrowRight,
+  ArrowLeft,
   Star,
   CheckCircle,
   Facebook,
   Twitter,
   Instagram,
   Mail,
+  Home,
 };
