@@ -251,16 +251,30 @@ def compute_dimensionnement(data, param):
 
     # === 5) Câble DC ===
     I_dc_req = puissance_totale / V_batterie  # A
-    cables = Equipement.objects.filter(categorie='cable')
-    amp_field = f("cable", "ampacity")  # ampacite_A
-    if cables.filter(**{f"{amp_field}__isnull": False}).exists():
-        cables_ok = cables.filter(**{f"{amp_field}__gte": I_dc_req}).order_by('prix_unitaire')
-        cable_choisi = cables_ok.first()
-    else:
-        cable_choisi = cables.order_by('prix_unitaire').first()
+    cables = Equipement.objects.filter(categorie__iexact='cable')  # insensible à la casse
+    amp_field = f("cable", "ampacity")  # -> 'ampacite_A' via FIELD_MAP
+
+    # Nettoyage: exclure ampacité NULL ou 0
+    cables = (cables
+            .exclude(**{f"{amp_field}__isnull": True})
+            .exclude(**{amp_field: 0}))
+
+    # 1) Essayer de prendre un câble qui couvre l'intensité requise (prix le plus bas)
+    cables_ok = (cables
+                .filter(**{f"{amp_field}__gte": I_dc_req})
+                .order_by('prix_unitaire'))
+
+    cable_choisi = cables_ok.first()
+    cable_surclasse = False
+
+    # 2) Sinon, prendre le plus puissant (et à puissance égale, le moins cher)
+    if cable_choisi is None:
+        # ordre: ampacité décroissante, puis prix croissant
+        cable_choisi = cables.order_by(f"-{amp_field}", "prix_unitaire").first()
+        cable_surclasse = True  # indicateur utile pour tracer/afficher
 
     if cable_choisi is None:
-        raise ValueError("Aucun câble trouvé.")
+        raise ValueError("Aucun câble trouvé (aucune ampacité exploitable).")
 
     # === 6) Coûts & bilan ===
     bilan_energetique_annuel = E_jour * Decimal('365')
