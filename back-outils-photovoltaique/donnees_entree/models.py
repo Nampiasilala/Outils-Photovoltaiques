@@ -6,6 +6,7 @@ class DonneesEntree(models.Model):
     n_autonomie = models.FloatField()  # Nombre de jours d'autonomie
     localisation = models.CharField(max_length=255, db_index=True)
     v_batterie = models.FloatField()  # Tension batterie
+    h_solaire = models.FloatField(null=True, blank=True) 
 
     class Meta:
         indexes = [

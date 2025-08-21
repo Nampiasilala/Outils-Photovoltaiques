@@ -12,6 +12,7 @@ from .serializers import DimensionnementSerializer, CalculationInputSerializer
 from .utils import compute_dimensionnement
 from donnees_entree.models import DonneesEntree
 from parametres.services import get_or_create_global_params
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,34 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
         except Exception:
             logger.exception("Erreur inattendue lors du calcul.")
             return Response({"detail": "Erreur interne."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        with transaction.atomic():
+            entree = DonneesEntree.objects.create(
+                e_jour=data["E_jour"],
+                p_max=data["P_max"],
+                n_autonomie=data["N_autonomie"],
+                localisation=data.get("localisation", ""),
+                v_batterie=data["V_batterie"],
+                h_solaire=data["H_solaire"],  # ✅ on archive ce qui a servi au calcul
+            )
+
+            dim = Dimensionnement.objects.create(
+                entree=entree,
+                parametre=param,
+                puissance_totale=calculated["puissance_totale"],
+                capacite_batterie=calculated["capacite_batterie"],
+                nombre_panneaux=calculated["nombre_panneaux"],
+                nombre_batteries=calculated["nombre_batteries"],
+                bilan_energetique_annuel=calculated["bilan_energetique_annuel"],
+                cout_total=calculated["cout_total"],
+                panneau_recommande=calculated["panneau_recommande"],
+                batterie_recommandee=calculated["batterie_recommandee"],
+                regulateur_recommande=calculated["regulateur_recommande"],
+                onduleur_recommande=calculated.get("onduleur_recommande"),
+                cable_recommande=calculated.get("cable_recommande"),
+            )
+
+        return Response(DimensionnementSerializer(dim).data, status=status.HTTP_201_CREATED)
 
         # 4) Sauvegarde entrée (anonyme)
         entree = DonneesEntree.objects.create(
