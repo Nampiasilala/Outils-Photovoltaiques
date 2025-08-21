@@ -1,4 +1,4 @@
-// app/hooks/usePDFGenerator.ts - Version avec utilitaires centralisés
+// app/hooks/usePDFGenerator.ts - Version améliorée avec cohérence mobile
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import jsPDF from 'jspdf';
@@ -12,7 +12,7 @@ interface PDFData {
 export const usePDFGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Configuration pour les tableaux manuels
+  // Configuration pour les tableaux manuels - cohérente avec mobile
   const tableConfig = {
     headerHeight: 8,
     rowHeight: 6,
@@ -21,6 +21,11 @@ export const usePDFGenerator = () => {
     margin: 20,
     headerColor: [41, 128, 185] as const, // Bleu
     alternateRowColor: [245, 245, 245] as const, // Gris clair
+    sectionColors: {
+      parameters: [52, 152, 219] as const, // Bleu
+      results: [46, 204, 113] as const, // Vert
+      equipment: [230, 126, 34] as const, // Orange
+    }
   };
 
   // Classe pour créer des tableaux manuellement
@@ -38,12 +43,13 @@ export const usePDFGenerator = () => {
       startY: number, 
       headers: string[], 
       data: string[][], 
-      columnWidths: number[]
+      columnWidths: number[],
+      headerColor?: readonly [number, number, number]
     ): number {
       let currentY = startY;
       
       // Header
-      this.drawTableHeader(startX, currentY, headers, columnWidths);
+      this.drawTableHeader(startX, currentY, headers, columnWidths, headerColor);
       currentY += this.config.headerHeight;
       
       // Data rows
@@ -55,14 +61,21 @@ export const usePDFGenerator = () => {
       // Border autour du tableau
       const totalWidth = columnWidths.reduce((sum, width) => sum + width, 0);
       const totalHeight = this.config.headerHeight + (data.length * this.config.rowHeight);
+      this.doc.setDrawColor(150, 150, 150);
       this.doc.rect(startX, startY, totalWidth, totalHeight);
       
       return currentY + 5; // Espacement après le tableau
     }
 
-    private drawTableHeader(startX: number, startY: number, headers: string[], columnWidths: number[]) {
+    private drawTableHeader(
+      startX: number, 
+      startY: number, 
+      headers: string[], 
+      columnWidths: number[],
+      customColor?: readonly [number, number, number]
+    ) {
       // Background du header
-      const [r, g, b] = this.config.headerColor;
+      const [r, g, b] = customColor || this.config.headerColor;
       this.doc.setFillColor(r, g, b);
       const totalWidth = columnWidths.reduce((sum, width) => sum + width, 0);
       this.doc.rect(startX, startY, totalWidth, this.config.headerHeight, 'F');
@@ -121,150 +134,237 @@ export const usePDFGenerator = () => {
     }
   }
 
-  // Générateur de nom de fichier
+  // Générateur de nom de fichier amélioré
   const generateFilename = (data: PDFData, isQuick = false) => {
-    const date = formatDate(data.result.date_calcul).replace(/\//g, '-');
-    const location = sanitizeFilename(data.inputData.localisation);
+    const now = new Date();
+    const dateStr = formatDate(now.toISOString()).replace(/\//g, '-');
+    const location = sanitizeFilename(data.inputData?.localisation || 'calcul');
     const prefix = isQuick ? 'dimensionnement' : 'dimensionnement-solaire';
-    return `${prefix}-${date}-${location}.pdf`;
+    const timestamp = now.getTime();
+    return `${prefix}-${dateStr}-${location}-${timestamp}.pdf`;
   };
 
-  // Création du header
+  // Création du header amélioré
   const addHeader = (doc: jsPDF, data: PDFData) => {
+    // Ligne de couleur en haut
+    doc.setFillColor(41, 128, 185);
+    doc.rect(0, 0, doc.internal.pageSize.width, 5, 'F');
+    
     // Titre principal
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('Rapport de Dimensionnement Photovoltaique', 20, 25);
+    doc.setTextColor(41, 128, 185);
+    doc.text('Rapport de Dimensionnement Photovoltaïque', 20, 25);
+
+    // Sous-titre
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Système solaire autonome', 20, 35);
+
+    // Ligne de séparation
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 38, doc.internal.pageSize.width - 20, 38);
 
     // Informations générales
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const dateStr = formatDate(data.result.date_calcul);
-    doc.text(`Date: ${dateStr}`, 20, 40);
-    doc.text(`Localisation: ${data.inputData.localisation}`, 120, 40);
+    doc.setTextColor(0, 0, 0);
+    
+    const now = new Date();
+    const dateStr = formatDate(now.toISOString());
+    const location = data.inputData?.localisation || 'Non spécifiée';
+    
+    doc.text(`Date du rapport: ${dateStr}`, 20, 48);
+    doc.text(`Localisation: ${location}`, 120, 48);
 
-    return 50; // Position Y de départ pour le contenu
+    return 58; // Position Y de départ pour le contenu
   };
 
-  // Tableau des données d'entrée
+  // Validation des données d'entrée
+  const validateInputData = (data: PDFData): boolean => {
+    if (!data?.inputData || !data?.result) {
+      toast.error('Données incomplètes pour la génération du PDF');
+      return false;
+    }
+
+    const required = ['E_jour', 'P_max', 'N_autonomie', 'V_batterie', 'H_solaire'];
+    const missing = required.filter(field => !data.inputData[field]);
+    
+    if (missing.length > 0) {
+      toast.error(`Données manquantes: ${missing.join(', ')}`);
+      return false;
+    }
+
+    return true;
+  };
+
+  // Tableau des données d'entrée amélioré
   const addInputDataTable = (doc: jsPDF, data: PDFData, startY: number) => {
     const tableBuilder = new TableBuilder(doc, tableConfig);
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(52, 152, 219);
     doc.text('1. Données d\'entrée', 20, startY);
 
-    const headers = ['Paramètre', 'Valeur'];
+    const headers = ['Paramètre', 'Valeur', 'Unité'];
     const inputData = [
-      ['Consommation journalière', `${data.inputData.E_jour} Wh`],
-      ['Puissance maximale', `${data.inputData.P_max} W`],
-      ['Jours d\'autonomie', `${data.inputData.N_autonomie}`],
-      ['Tension batterie', `${data.inputData.V_batterie} V`],
-      ['Irradiation solaire', `${data.inputData.H_solaire} kWh/m²/j`],
+      ['Consommation journalière', `${data.inputData.E_jour || 0}`, 'Wh'],
+      ['Puissance maximale', `${data.inputData.P_max || 0}`, 'W'],
+      ['Jours d\'autonomie', `${data.inputData.N_autonomie || 0}`, 'jours'],
+      ['Tension batterie', `${data.inputData.V_batterie || 0}`, 'V'],
+      ['Irradiation solaire', `${data.inputData.H_solaire || 0}`, 'kWh/m²/j'],
     ];
 
-    const columnWidths = [100, 70];
-    return tableBuilder.drawTable(20, startY + 8, headers, inputData, columnWidths);
+    const columnWidths = [80, 50, 40];
+    return tableBuilder.drawTable(
+      20, 
+      startY + 8, 
+      headers, 
+      inputData, 
+      columnWidths,
+      tableConfig.sectionColors.parameters
+    );
   };
 
-  // Tableau des résultats
+  // Tableau des résultats amélioré
   const addResultsTable = (doc: jsPDF, data: PDFData, startY: number) => {
     const tableBuilder = new TableBuilder(doc, tableConfig);
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(46, 204, 113);
     doc.text('2. Résultats du dimensionnement', 20, startY);
 
-    const headers = ['Élément', 'Valeur'];
+    const headers = ['Élément', 'Valeur', 'Unité'];
     const results = [
-      ['Puissance totale', `${data.result.puissance_totale.toFixed(1)} W`],
-      ['Capacité batterie', `${data.result.capacite_batterie.toFixed(1)} Wh`],
-      ['Bilan énergétique annuel', formatEnergy(data.result.bilan_energetique_annuel)],
-      ['Coût total estimé', formatPrice(data.result.cout_total)],
-      ['Nombre de panneaux', `${data.result.nombre_panneaux}`],
-      ['Nombre de batteries', `${data.result.nombre_batteries}`],
+      ['Puissance totale', `${(data.result.puissance_totale || 0).toFixed(1)}`, 'W'],
+      ['Capacité batterie', `${(data.result.capacite_batterie || 0).toFixed(1)}`, 'Wh'],
+      ['Bilan énergétique annuel', `${(data.result.bilan_energetique_annuel || 0).toFixed(2)}`, 'kWh'],
+      ['Coût total estimé', formatPrice(data.result.cout_total || 0), 'Ar'],
+      ['Nombre de panneaux', `${data.result.nombre_panneaux || 0}`, 'unités'],
+      ['Nombre de batteries', `${data.result.nombre_batteries || 0}`, 'unités'],
     ];
 
-    const columnWidths = [100, 70];
-    return tableBuilder.drawTable(20, startY + 8, headers, results, columnWidths);
+    const columnWidths = [80, 50, 40];
+    return tableBuilder.drawTable(
+      20, 
+      startY + 8, 
+      headers, 
+      results, 
+      columnWidths,
+      tableConfig.sectionColors.results
+    );
   };
 
-  // Tableau des équipements
+  // Tableau des équipements amélioré
   const addEquipmentsTable = (doc: jsPDF, data: PDFData, startY: number) => {
     const tableBuilder = new TableBuilder(doc, tableConfig);
-    const equipments = data.result.equipements_recommandes;
+    const equipments = data.result?.equipements_recommandes;
+    
+    if (!equipments) {
+      return startY; // Pas d'équipements à afficher
+    }
+
     const equipmentData: string[][] = [];
 
-    // Mappage des équipements
+    // Mappage des équipements avec vérifications
     const equipmentMap = [
       { 
         equipment: equipments.panneau, 
         name: 'Panneau', 
-        quantity: data.result.nombre_panneaux,
-        getSpecs: (eq: any) => `${eq.puissance_W || ''} W`
+        quantity: data.result.nombre_panneaux || 0,
+        getSpecs: (eq: any) => eq?.puissance_W ? `${eq.puissance_W} W` : 'N/A'
       },
       { 
         equipment: equipments.batterie, 
         name: 'Batterie', 
-        quantity: data.result.nombre_batteries,
-        getSpecs: (eq: any) => `${eq.capacite_Ah || ''} Ah`
+        quantity: data.result.nombre_batteries || 0,
+        getSpecs: (eq: any) => eq?.capacite_Ah ? `${eq.capacite_Ah} Ah` : 'N/A'
       },
       { 
         equipment: equipments.regulateur, 
         name: 'Régulateur', 
         quantity: 1,
-        getSpecs: (eq: any) => 'MPPT'
+        getSpecs: (eq: any) => eq?.puissance_W ? `${eq.puissance_W} W` : 'MPPT'
       },
       { 
         equipment: equipments.onduleur, 
         name: 'Onduleur', 
         quantity: 1,
-        getSpecs: (eq: any) => `${eq.puissance_W || ''} W`
+        getSpecs: (eq: any) => eq?.puissance_W ? `${eq.puissance_W} W` : 'N/A'
       },
       { 
         equipment: equipments.cable, 
         name: 'Câble', 
         quantity: 'Variable',
-        getSpecs: (eq: any) => 'Installation'
+        getSpecs: () => 'Installation'
       },
     ];
 
     equipmentMap.forEach(({ equipment, name, quantity, getSpecs }) => {
       if (equipment) {
+        const price = equipment.prix_unitaire ? 
+          formatPrice(equipment.prix_unitaire) : 'N/A';
+        
         equipmentData.push([
           name,
-          equipment.modele || '',
-          equipment.reference || '',
+          equipment.modele || 'N/A',
+          equipment.reference || 'N/A',
           getSpecs(equipment),
-          formatPrice(equipment.prix_unitaire),
+          price,
           quantity.toString()
         ]);
       }
     });
 
+    if (equipmentData.length === 0) {
+      return startY; // Aucun équipement valide
+    }
+
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(230, 126, 34);
     doc.text('3. Équipements recommandés', 20, startY);
 
     const headers = ['Type', 'Modèle', 'Référence', 'Specs', 'Prix', 'Qté'];
     const columnWidths = [25, 35, 30, 25, 30, 25];
     
-    return tableBuilder.drawTable(20, startY + 8, headers, equipmentData, columnWidths);
+    return tableBuilder.drawTable(
+      20, 
+      startY + 8, 
+      headers, 
+      equipmentData, 
+      columnWidths,
+      tableConfig.sectionColors.equipment
+    );
   };
 
-  // Ajout du footer
+  // Ajout du footer amélioré
   const addFooter = (doc: jsPDF) => {
     const pageHeight = doc.internal.pageSize.height;
+    
+    // Ligne de séparation
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, pageHeight - 30, doc.internal.pageSize.width - 20, pageHeight - 30);
+    
+    // Texte du footer
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(128, 128, 128); // Gris
+    doc.setTextColor(128, 128, 128);
+    
+    const now = new Date();
+    const generationDate = formatDate(now.toISOString());
+    const generationTime = now.toLocaleTimeString('fr-FR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
     
     doc.text('Rapport généré automatiquement par le Calculateur Solaire', 20, pageHeight - 20);
-    doc.text(`Date de génération: ${formatDate(new Date().toISOString())}`, 20, pageHeight - 15);
+    doc.text(`Date de génération: ${generationDate} à ${generationTime}`, 20, pageHeight - 15);
+    
+    // Numéro de page
+    doc.text('Page 1', doc.internal.pageSize.width - 30, pageHeight - 15);
   };
 
   // Fonction principale de génération PDF
@@ -272,7 +372,12 @@ export const usePDFGenerator = () => {
     setIsGenerating(true);
     
     try {
-      toast.info('🔄 Génération du rapport PDF en cours...', { autoClose: 2000 });
+      // Validation des données
+      if (!validateInputData(data)) {
+        return { success: false, error: 'Données invalides' };
+      }
+
+      toast.info('Génération du rapport PDF en cours...', { autoClose: 2000 });
 
       const doc = new jsPDF();
       
@@ -288,15 +393,20 @@ export const usePDFGenerator = () => {
       const fileName = generateFilename(data);
       doc.save(fileName);
 
-      toast.success('✅ Rapport PDF téléchargé avec succès !', { autoClose: 4000 });
-      toast.info(`📄 Nom du fichier : ${fileName}`, { autoClose: 6000, position: 'bottom-right' });
+      toast.success('Rapport PDF téléchargé avec succès !', { autoClose: 4000 });
+      toast.info(`Nom du fichier : ${fileName}`, { 
+        autoClose: 6000, 
+        position: 'bottom-right' 
+      });
 
       return { success: true, fileName };
       
     } catch (error: unknown) {
       console.error('Erreur lors de la génération du PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      toast.error(`❌ Erreur lors de la génération du PDF : ${errorMessage}`, { autoClose: 8000 });
+      toast.error(`Erreur lors de la génération du PDF : ${errorMessage}`, { 
+        autoClose: 8000 
+      });
       return { success: false, error: errorMessage };
     } finally {
       setIsGenerating(false);
@@ -308,41 +418,61 @@ export const usePDFGenerator = () => {
     setIsGenerating(true);
     
     try {
+      if (!validateInputData(data)) {
+        return { success: false, error: 'Données invalides' };
+      }
+
       const doc = new jsPDF();
       const tableBuilder = new TableBuilder(doc, tableConfig);
       
-      // Header simplifié
+      // Header simplifié mais cohérent
+      doc.setFillColor(41, 128, 185);
+      doc.rect(0, 0, doc.internal.pageSize.width, 3, 'F');
+      
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 0, 0);
-      doc.text('Rapport de Dimensionnement', 20, 25);
+      doc.setTextColor(41, 128, 185);
+      doc.text('Rapport de Dimensionnement - Résumé', 20, 25);
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Date: ${formatDate(data.result.date_calcul)}`, 20, 35);
-      doc.text(`Localisation: ${data.inputData.localisation}`, 120, 35);
+      doc.setTextColor(0, 0, 0);
+      
+      const now = new Date();
+      const dateStr = formatDate(now.toISOString());
+      const location = data.inputData?.localisation || 'Non spécifiée';
+      
+      doc.text(`Date: ${dateStr}`, 20, 35);
+      doc.text(`Localisation: ${location}`, 120, 35);
 
       // Tableau des résultats essentiels
       const headers = ['Élément', 'Valeur'];
       const quickResults = [
-        ['Puissance totale', `${data.result.puissance_totale.toFixed(1)} W`],
-        ['Coût total', formatPrice(data.result.cout_total)],
-        ['Panneaux nécessaires', `${data.result.nombre_panneaux}`],
-        ['Batteries nécessaires', `${data.result.nombre_batteries}`],
+        ['Puissance totale', `${(data.result.puissance_totale || 0).toFixed(1)} W`],
+        ['Coût total', formatPrice(data.result.cout_total || 0)],
+        ['Panneaux nécessaires', `${data.result.nombre_panneaux || 0}`],
+        ['Batteries nécessaires', `${data.result.nombre_batteries || 0}`],
       ];
 
       const columnWidths = [100, 70];
-      tableBuilder.drawTable(20, 45, headers, quickResults, columnWidths);
+      tableBuilder.drawTable(
+        20, 
+        45, 
+        headers, 
+        quickResults, 
+        columnWidths,
+        tableConfig.sectionColors.results
+      );
       
       const fileName = generateFilename(data, true);
       doc.save(fileName);
 
-      toast.success('📄 PDF téléchargé !', { autoClose: 2000 });
+      toast.success('PDF téléchargé !', { autoClose: 2000 });
       return { success: true, fileName };
       
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      toast.error('❌ Erreur lors de la génération du PDF', { autoClose: 4000 });
+      toast.error('Erreur lors de la génération du PDF', { autoClose: 4000 });
       return { success: false, error: errorMessage };
     } finally {
       setIsGenerating(false);
