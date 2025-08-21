@@ -103,31 +103,3 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
             )
 
         return Response(DimensionnementSerializer(dim).data, status=status.HTTP_201_CREATED)
-
-        # 4) Sauvegarde entrée (anonyme)
-        entree = DonneesEntree.objects.create(
-            e_jour=data["E_jour"],
-            p_max=data["P_max"],
-            n_autonomie=data["N_autonomie"],
-            localisation=data.get("localisation", ""),
-            v_batterie=data["V_batterie"],
-        )
-
-        # 5) Sauvegarde résultat
-        dim = Dimensionnement.objects.create(
-            entree=entree,
-            parametre=param,
-            puissance_totale=calculated["puissance_totale"],
-            capacite_batterie=calculated["capacite_batterie"],
-            nombre_panneaux=calculated["nombre_panneaux"],
-            nombre_batteries=calculated["nombre_batteries"],
-            bilan_energetique_annuel=calculated["bilan_energetique_annuel"],
-            cout_total=calculated["cout_total"],
-            panneau_recommande=calculated["panneau_recommande"],
-            batterie_recommandee=calculated["batterie_recommandee"],
-            regulateur_recommande=calculated["regulateur_recommande"],
-            onduleur_recommande=calculated.get("onduleur_recommande"),
-            cable_recommande=calculated.get("cable_recommande"),
-        )
-
-        return Response(DimensionnementSerializer(dim).data, status=status.HTTP_201_CREATED)
