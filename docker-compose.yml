@@ -9,10 +9,10 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   backend:
-    build: ./back-outils-photovoltaique
+    image: nampiasilala/outils-photovoltaiques-backend 
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./back-outils-photovoltaique:/app
@@ -30,9 +30,10 @@ services:
       - DJANGO_DEBUG=${DJANGO_DEBUG}
 
   frontend:
-    build: ./front-outils-photovoltaique
+    image: nampiasilala/outils-photovoltaiques-frontend
     volumes:
       - ./front-outils-photovoltaique:/app
+      - /app/node_modules 
     ports:
       - "3000:3000"
     depends_on:

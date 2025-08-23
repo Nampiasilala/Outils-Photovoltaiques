@@ -1,4 +1,10 @@
 services:
+  backend:
+    build: ./back-outils-photovoltaique
+    volumes:
+      - ./back-outils-photovoltaique:/app
+    environment:
+      - DJANGO_DEBUG=1  # Force debug en développement
   frontend:
     build:
       context: ./front-outils-photovoltaique
