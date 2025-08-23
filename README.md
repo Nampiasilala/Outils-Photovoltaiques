@@ -29,7 +29,9 @@ Le tout conteneurisé avec Docker Compose pour faciliter le déploiement et le d
    DB_USER=devuser  
    DB_PASSWORD=devpass  
    DB_HOST=db  
-   DB_PORT=5432  
+   DB_PORT=5432
+
+   Ou bien "Copiez .env.example vers .env"  
 
 3. Lancer les conteneurs  
    docker compose up --build
