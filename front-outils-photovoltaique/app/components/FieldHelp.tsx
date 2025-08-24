@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Info, X, Loader2 } from "lucide-react";
+import { env } from "@/lib/env";
 
 type HelpContent = {
   id: number;
@@ -37,8 +38,7 @@ export default function FieldHelp({
   const fetchHelp = useCallback(async () => {
     setLoading(true);
     try {
-      const base = process.env.NEXT_PUBLIC_API_BASE_URL!;
-      const res = await fetch(`${base}/contenus/public/by-key/${encodeURIComponent(keyName)}/`, {
+        const base = env.NEXT_PUBLIC_API_BASE_URL;      const res = await fetch(`${base}/contenus/public/by-key/${encodeURIComponent(keyName)}/`, {
         cache: "no-store",
       });
       if (!res.ok) {

@@ -11,15 +11,34 @@ __pycache__/
 *.mo
 *.sqlite3
 
+# Tests / typing / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+.coverage
+coverage.xml
+
 # ======================
-# Environnement virtuel
+# Environnements
 # ======================
 env/
 venv/
 ENV/
 .venv/
+
+# Secrets / env files (ne jamais committer)
 .env
-.env.*
+.env.local
+.env.development
+.env.production
+.env.prod
+.env.test
+.env.*.local
+
+# Garde un exemple
+!.env.example
 
 # ======================
 # Django
@@ -28,8 +47,7 @@ static/
 staticfiles/
 media/
 db.sqlite3
-*.sqlite3
-*.json
+# ⚠️ Ne PAS ignorer *.json globalement (sinon package.json & co disparaissent)
 
 # ======================
 # Node.js / React / Next.js
@@ -39,9 +57,11 @@ node_modules/
 out/
 dist/
 build/
-package-lock.json
-yarn.lock
 npm-debug.log*
+
+# ⚠️ Ne PAS ignorer les lockfiles : garde package-lock.json
+# yarn.lock aussi si tu utilises yarn (mais choisis un seul gestionnaire)
+# (donc on n'ignore ni package-lock.json ni yarn.lock)
 
 # ======================
 # Docker
@@ -62,3 +82,8 @@ npm-debug.log*
 # ======================
 .DS_Store
 Thumbs.db
+
+# ======================
+# Hébergeurs
+# ======================
+# .vercel/  # décommente si tu utilises Vercel

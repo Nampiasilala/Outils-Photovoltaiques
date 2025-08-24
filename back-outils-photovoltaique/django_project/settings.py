@@ -1,194 +1,146 @@
 import os
 from pathlib import Path
-import environ
 from datetime import timedelta
+import environ
 
-# Initialiser environ pour charger les variables d'environnement
+# === Chemins de base ===
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# === Environnement (.env à la racine du backend) ===
 env = environ.Env()
+env_file = os.path.join(BASE_DIR, ".env")
+if os.path.exists(env_file):
+    environ.Env.read_env(env_file)  # charge les variables si le fichier existe
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# === Sécurité / Debug ===
+SECRET_KEY = env("DJANGO_SECRET_KEY", default="django-insecure-key-not-set")
+DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
-# environ.Env.read_env()  # Charger le fichier .env
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
-
-# Chemin de base du projet
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Sécurité
-SECRET_KEY = env('DJANGO_SECRET_KEY', default='django-insecure-key-not-set')
-
-# Pour le dev / debug
-DEBUG = env.bool('DJANGO_DEBUG', default=True)
-
-ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['localhost','127.0.0.1','.ngrok-free.app'])
-
-CSRF_TRUSTED_ORIGINS = env.list(
-    'CSRF_TRUSTED_ORIGINS',
-    default=['https://*.ngrok-free.app','http://localhost','http://127.0.0.1']
+# Ex: DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1,.ngrok-free.app"
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["localhost", "127.0.0.1", ".ngrok-free.app"],
 )
 
-# Apps installées
+# Ex: CSRF_TRUSTED_ORIGINS="http://localhost:3000,http://localhost:8000,https://*.ngrok-free.app"
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "https://*.ngrok-free.app",
+    ],
+)
+
+# === Applications ===
 INSTALLED_APPS = [
-    # Django apps
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    # Django
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
 
-    # Third-party apps
-    'corsheaders',
-    'rest_framework',
-    'rest_framework_simplejwt',
+    # Tiers
+    "corsheaders",
+    "rest_framework",
+    "rest_framework_simplejwt",
 
-    # Local apps
-    'users',
-    'donnees_entree',
-    'parametres',
-    'equipements',
-    'dimensionnements',
-    'contenus',
+    # Local
+    "users",
+    "donnees_entree",
+    "parametres",
+    "equipements",
+    "dimensionnements",
+    "contenus",
 ]
 
-# Middleware
+# === Middleware ===
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    # WhiteNoise juste après SecurityMiddleware
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# CORS (dev)
-CORS_ALLOW_ALL_ORIGINS = env.bool('CORS_ALLOW_ALL_ORIGINS', default=True)
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+# === CORS ===
+# En prod réelle, préfère CORS_ALLOWED_ORIGINS au lieu d'ouvrir à tous.
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=True)
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
-# URL Configuration
-ROOT_URLCONF = 'django_project.urls'
+# === URL / WSGI ===
+ROOT_URLCONF = "django_project.urls"
+WSGI_APPLICATION = "django_project.wsgi.application"
 
-# Templates Configuration
+# === Templates ===
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-# WSGI Application
-WSGI_APPLICATION = 'django_project.wsgi.application'
-
-# Database configuration
+# === Base de données ===
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME', default='dimensionnement'),
-        'USER': env('DB_USER', default='devuser'),
-        'PASSWORD': env('DB_PASSWORD', default='devpass'),
-        'HOST': env('DB_HOST', default='localhost'),
-        'PORT': env('DB_PORT', default='5432'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("DB_NAME", default="dimensionnement"),
+        "USER": env("DB_USER", default="devuser"),
+        "PASSWORD": env("DB_PASSWORD", default="devpass"),
+        "HOST": env("DB_HOST", default="localhost"),
+        "PORT": env("DB_PORT", default="5432"),
     }
 }
 
-# Auth User Model
-AUTH_USER_MODEL = 'users.User'
+# === Fichiers statiques & médias ===
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # requis pour collectstatic
 
-# Django Rest Framework (DRF) Configuration
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# WhiteNoise : compression + manifest pour prod
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# === Auth / DRF / JWT ===
+AUTH_USER_MODEL = "users.User"
+
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # 'rest_framework.authentication.SessionAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # "rest_framework.authentication.SessionAuthentication",
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',
-    ),
-}
-
-# Default auto field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Static files (CSS, JavaScript, Images)
-STATIC_URL = '/static/'
-
-# Security settings
-# SECURE_SSL_REDIRECT = env.bool('DJANGO_SECURE_SSL_REDIRECT', default=True)
-# SECURE_HSTS_SECONDS = 3600  # Only in production
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Only in production
-# SECURE_HSTS_PRELOAD = True  # Only in production
-# SECURE_CONTENT_TYPE_NOSNIFF = True
-# X_FRAME_OPTIONS = 'DENY'  # Protects against clickjacking
-# CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=True)
-# SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=True)
-
-# Logging Configuration (production-ready)
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-    },
-}
-
-# Default settings for auto migration (auto generation of IDs)
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Debugging and exception handling
-DEBUG_PROPAGATE_EXCEPTIONS = True
-
-AUTHENTICATION_BACKENDS = [
-    'users.backends.EmailBackend',
-    'django.contrib.auth.backends.ModelBackend',
-]
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-}
-
-REST_FRAMEWORK.update({
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
@@ -199,4 +151,28 @@ REST_FRAMEWORK.update({
         "user": "120/minute",
         "dimension_create": "10/minute",
     },
-})
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+AUTHENTICATION_BACKENDS = [
+    "users.backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# === Divers ===
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEBUG_PROPAGATE_EXCEPTIONS = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"level": "DEBUG", "class": "logging.StreamHandler"}},
+    "loggers": {"django": {"handlers": ["console"], "level": "INFO", "propagate": True}},
+}

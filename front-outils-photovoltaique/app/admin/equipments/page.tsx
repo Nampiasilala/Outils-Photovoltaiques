@@ -8,13 +8,13 @@ import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { toast } from "react-toastify";
 import { Icons } from "../../../src/assets/icons";
 import { Spinner, useLoading } from "@/LoadingProvider";
-
+import { env } from "@/lib/env";
 const EditEquipmentModal = dynamic(
   () => import("@/components/admin/AddEquipmentModal"),
   { ssr: false }
 );
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL!;
+const API = env.NEXT_PUBLIC_API_BASE_URL;
 
 type Categorie =
   | "panneau_solaire"

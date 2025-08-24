@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
+import { env } from "@/lib/env";
 
 interface JwtPayload {
   user_id: number;
@@ -149,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const API = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const API = env.NEXT_PUBLIC_API_BASE_URL;
 
   const clearAuthState = () => {
     if (typeof window !== "undefined") {

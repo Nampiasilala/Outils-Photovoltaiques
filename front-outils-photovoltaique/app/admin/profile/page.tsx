@@ -8,7 +8,7 @@ import { Icons } from "../../../src/assets/icons"; // Ajuster si nécessaire
 
 import { toast } from "react-toastify";
 import { useLoading, Spinner } from "@/LoadingProvider";
-
+import { env } from "@/lib/env";
 interface Profile {
   id: number;
   username: string;
@@ -19,7 +19,7 @@ interface Profile {
   last_login: string | null;
 }
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL!;
+const API = env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function AdminProfilePage() {
   const router = useRouter();

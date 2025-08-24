@@ -15,7 +15,7 @@ import { Icons } from "../../src/assets/icons"; // Ajuster le chemin si nécessa
 import { toast } from "react-toastify";
 import { useDebounce } from "use-debounce";
 import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ loader centralisé
-
+import { env } from "@/lib/env";
 /* ========================== Info Button + Modal ========================== */
 
 function InfoButton({
@@ -88,8 +88,7 @@ function InfoButton({
 
 const publicAPI = {
   calculate: async (data: CalculationInput): Promise<CalculationResult> => {
-    const API_BASE =
-      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001/api";
+    const API_BASE = env.NEXT_PUBLIC_API_BASE_URL;
     const response = await fetch(`${API_BASE}/dimensionnements/calculate/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

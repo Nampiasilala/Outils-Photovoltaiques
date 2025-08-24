@@ -1,5 +1,6 @@
 // app/lib/fetchWithAdminAuth.ts
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
+import { env } from "@/lib/env";
+const API_BASE = env.NEXT_PUBLIC_API_BASE_URL;
 
 /** Helpers: lis n'importe quelle paire de clés (nouvelles ou anciennes) */
 function getAccessToken(): string | null {

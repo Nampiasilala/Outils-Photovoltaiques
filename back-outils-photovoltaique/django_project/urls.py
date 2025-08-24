@@ -4,9 +4,16 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from django.http import JsonResponse
 from users.views import RegisterView, LoginView
 
+def health(_request):
+    return JsonResponse({"status": "ok"})
+
 urlpatterns = [
+    #juste pour tester si le serveur est en ligne
+    path('health/', health, name='health'),
+    
     # Admin Django
     path('admin/', admin.site.urls),
 

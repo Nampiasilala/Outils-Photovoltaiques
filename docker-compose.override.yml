@@ -1,21 +1,66 @@
+# Mode DEV , Remplace l’image par un build local:
+
+# backend: build local + migrate + runserver.
+
+# frontend: build local avec Dockerfile.dev, et lance next dev (hot-reload).
+
+# Injecte NEXT_PUBLIC_API_BASE_URL dans le conteneur front.
+
+# Pas de montage /app/.next → c’est bien (sinon Next “prod” râle).
+
+
+
 services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # évite le conflit si tu as Postgres local sur 5432
+
   backend:
     build: ./back-outils-photovoltaique
+    command: sh -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: db
+      DB_PORT: 5432
     volumes:
       - ./back-outils-photovoltaique:/app
-    environment:
-      - DJANGO_DEBUG=1  # Force debug en développement
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
   frontend:
     build:
       context: ./front-outils-photovoltaique
-      dockerfile: Dockerfile.dev
-      # dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.dev   # OK pour du dev
+    command: sh -lc "npm ci || npm install; npx next dev -H 0.0.0.0 -p 3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NODE_ENV: development
     volumes:
       - ./front-outils-photovoltaique:/app
       - /app/node_modules
-      - /app/.next
+      # PAS de montage /app/.next en dev (ça casse souvent le démarrage)
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      # - NODE_ENV=production
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
