@@ -18,6 +18,14 @@ class Dimensionnement(models.Model):
     entree = models.ForeignKey(DonneesEntree, on_delete=models.CASCADE)
     parametre = models.ForeignKey(ParametreSysteme, on_delete=models.CASCADE)
 
+    nb_batt_serie = models.PositiveIntegerField(null=True, blank=True)
+    nb_batt_parallele = models.PositiveIntegerField(null=True, blank=True)
+    topologie_batterie = models.CharField(max_length=16, null=True, blank=True)
+
+    nb_pv_serie = models.PositiveIntegerField(null=True, blank=True)
+    nb_pv_parallele = models.PositiveIntegerField(null=True, blank=True)
+    topologie_pv = models.CharField(max_length=16, null=True, blank=True)
+
     # Équipements recommandés (facultatifs)
     panneau_recommande = models.ForeignKey(
         Equipement, on_delete=models.SET_NULL, null=True, blank=True,

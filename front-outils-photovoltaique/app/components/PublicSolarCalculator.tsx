@@ -11,11 +11,36 @@ import {
   formatVoltage,
 } from "@/utils/formatters";
 import type { CalculationInput, CalculationResult } from "@/types/api";
-import { Icons } from "../../src/assets/icons"; // Ajuster le chemin si nécessaire
+import { Icons } from "../../src/assets/icons";
 import { toast } from "react-toastify";
 import { useDebounce } from "use-debounce";
-import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ loader centralisé
+import { useLoading, Spinner } from "@/LoadingProvider";
 import { env } from "@/lib/env";
+
+/* ============================ Types étendus (locaux) ============================ */
+// ✅ étend le type côté front pour exploiter le payload enrichi du backend
+type CalcResultExtended = CalculationResult & {
+  equipements_recommandes?: {
+    panneau?: any;
+    batterie?: any;
+    regulateur?: any;
+    onduleur?: any;
+    cable?: any;
+  };
+  // topologie
+  nb_batt_serie?: number;
+  nb_batt_parallele?: number;
+  topologie_batterie?: string;
+  nb_pv_serie?: number;
+  nb_pv_parallele?: number;
+  topologie_pv?: string;
+  // câble global
+  longueur_cable_global_m?: number;
+  prix_cable_global?: number;
+  // id utile
+  dimensionnement_id?: number;
+};
+
 /* ========================== Info Button + Modal ========================== */
 
 function InfoButton({
@@ -24,8 +49,8 @@ function InfoButton({
   children,
 }: {
   title: string;
-  html?: string; // HTML (Tiptap) depuis la base
-  children?: React.ReactNode; // fallback si pas d’HTML
+  html?: string;
+  children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -116,7 +141,10 @@ async function fetchHelpFromDB(keys: string[]): Promise<HelpMap> {
   const url = `${API_BASE}/contenus/public/help-by-key/?keys=${params}`;
 
   try {
-    const res = await fetch(url, { headers: { "Content-Type": "application/json" }, cache: "no-store" });
+    const res = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
@@ -224,7 +252,7 @@ const EquipCard = ({
 
 export default function PublicSolarCalculator() {
   const { generatePDF, isGenerating } = usePDFGenerator();
-  const { wrap } = useLoading(); // ✅ overlay global
+  const { wrap } = useLoading();
 
   const [formData, setFormData] = useState<FormData>({
     E_jour: 0,
@@ -237,12 +265,19 @@ export default function PublicSolarCalculator() {
 
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false); // ✅ local pour le bouton
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Aide dynamique
   const [help, setHelp] = useState<HelpMap>({});
   useEffect(() => {
-    const keys = ["e_jour", "p_max", "n_autonomie", "v_batterie", "localisation", "h_solaire"];
+    const keys = [
+      "e_jour",
+      "p_max",
+      "n_autonomie",
+      "v_batterie",
+      "localisation",
+      "h_solaire",
+    ];
     fetchHelpFromDB(keys).then(setHelp);
   }, []);
 
@@ -263,7 +298,10 @@ export default function PublicSolarCalculator() {
           const data = await res.json();
           setSuggestions(data);
         } catch (error) {
-          console.error("Erreur lors de la recherche de la localisation", error);
+          console.error(
+            "Erreur lors de la recherche de la localisation",
+            error
+          );
         } finally {
           setLoadingIrradiation(false);
         }
@@ -293,14 +331,19 @@ export default function PublicSolarCalculator() {
       updateField("H_solaire", parseFloat(avgIrradiation.toFixed(2)));
     } catch (error) {
       console.error("Erreur lors de la récupération de l'irradiation", error);
-      toast.error("Impossible de récupérer l'irradiation pour cette localisation.");
+      toast.error(
+        "Impossible de récupérer l'irradiation pour cette localisation."
+      );
       updateField("H_solaire", 0);
     } finally {
       setLoadingIrradiation(false);
     }
   };
 
-  const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
+  const updateField = <K extends keyof FormData>(
+    field: K,
+    value: FormData[K]
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -313,12 +356,16 @@ export default function PublicSolarCalculator() {
 
   const validate = () => {
     const errs: string[] = [];
-    if (formData.E_jour <= 0) errs.push("La consommation journalière doit être > 0.");
+    if (formData.E_jour <= 0)
+      errs.push("La consommation journalière doit être > 0.");
     if (formData.P_max <= 0) errs.push("La puissance max doit être > 0.");
-    if (formData.N_autonomie <= 0) errs.push("Le nombre de jours d'autonomie doit être > 0.");
+    if (formData.N_autonomie <= 0)
+      errs.push("Le nombre de jours d'autonomie doit être > 0.");
     if (formData.H_solaire <= 0) errs.push("L'irradiation doit être > 0.");
-    if (![12, 24, 48].includes(formData.V_batterie)) errs.push("La tension doit être 12 V, 24 V ou 48 V.");
-    if (!formData.localisation.trim()) errs.push("La localisation est requise.");
+    if (![12, 24, 48].includes(formData.V_batterie))
+      errs.push("La tension doit être 12 V, 24 V ou 48 V.");
+    if (!formData.localisation.trim())
+      errs.push("La localisation est requise.");
     setErrors(errs);
     return errs.length === 0;
   };
@@ -356,8 +403,7 @@ export default function PublicSolarCalculator() {
       const data: CalculationResult = await wrap(
         () => publicAPI.calculate(payload),
         "Calcul en cours…"
-      ); // ✅ overlay global pendant le calcul
-
+      );
       setResult(data);
       setErrors([]);
       toast.success("Calcul effectué avec succès !");
@@ -367,7 +413,9 @@ export default function PublicSolarCalculator() {
         toast.error("Données invalides. Vérifiez vos saisies.");
         setErrors(["Veuillez vérifier les données saisies"]);
       } else if (err?.message?.includes("429")) {
-        toast.error("Trop de requêtes. Veuillez patienter avant de relancer le calcul.");
+        toast.error(
+          "Trop de requêtes. Veuillez patienter avant de relancer le calcul."
+        );
         setErrors(["Limite de calculs atteinte. Veuillez patienter."]);
       } else {
         setResult(null);
@@ -378,6 +426,8 @@ export default function PublicSolarCalculator() {
       setIsCalculating(false);
     }
   };
+
+  const R = (result || {}) as CalcResultExtended; // ✅ accès simple aux champs étendus
 
   return (
     <div className="space-y-8">
@@ -399,7 +449,10 @@ export default function PublicSolarCalculator() {
                   title={help.e_jour?.title || "Consommation journalière (Wh)"}
                   html={help.e_jour?.body_html}
                 >
-                  <p>Somme de l’énergie consommée sur 24&nbsp;h (puissance × durée).</p>
+                  <p>
+                    Somme de l’énergie consommée sur 24&nbsp;h (puissance ×
+                    durée).
+                  </p>
                 </InfoButton>
               </div>
               <input
@@ -513,7 +566,10 @@ export default function PublicSolarCalculator() {
                     }}
                     placeholder="Ex: Antananarivo"
                   />
-                  <Icons.Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Icons.Search
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    size={20}
+                  />
                 </div>
                 {loadingIrradiation && (
                   <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-center text-gray-500 flex items-center justify-center gap-2">
@@ -529,7 +585,9 @@ export default function PublicSolarCalculator() {
                         className="p-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors"
                         onClick={() => handleSelectLocation(loc)}
                       >
-                        <div className="font-medium text-sm">{loc.display_name}</div>
+                        <div className="font-medium text-sm">
+                          {loc.display_name}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -607,7 +665,8 @@ export default function PublicSolarCalculator() {
           <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
             <div className="flex justify-between items-center mb-6">
               <h3 className="flex items-center gap-2 text-xl font-semibold text-gray-800">
-                <Icons.Calculator className="text-blue-600" /> Résultats du Dimensionnement
+                <Icons.Calculator className="text-blue-600" /> Résultats du
+                Dimensionnement
               </h3>
               <button
                 onClick={handleDownloadPDF}
@@ -627,58 +686,142 @@ export default function PublicSolarCalculator() {
                 )}
               </button>
             </div>
+
+            {/* KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg text-center">
                 <Icons.PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Puissance totale</p>
-                <p className="text-lg font-bold text-gray-800">{formatPower(result.puissance_totale)}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Puissance totale
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatPower(result.puissance_totale)}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
                 <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Capacité batterie</p>
-                <p className="text-lg font-bold text-gray-800">{formatEnergyLocale(result.capacite_batterie)}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Capacité batterie
+                </p>
+                {/* ✅ correction : capacité en Ah */}
+                <p className="text-lg font-bold text-gray-800">
+                  {formatCapacity(result.capacite_batterie)}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg text-center">
                 <Icons.ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Bilan énergétique annuel</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Bilan énergétique annuel
+                </p>
                 <p className="text-lg font-bold text-gray-800">
                   {formatEnergyLocale(result.bilan_energetique_annuel)}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg text-center">
                 <Icons.DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Coût total estimé</p>
-                <p className="text-lg font-bold text-gray-800">{formatPrice(result.cout_total)}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Coût total estimé
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatPrice(result.cout_total)}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg text-center">
                 <Icons.Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Nombre de panneaux</p>
-                <p className="text-lg font-bold text-gray-800">{formatNumber(result.nombre_panneaux)}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Nombre de panneaux
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatNumber(result.nombre_panneaux)}
+                </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
                 <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600 mb-1">Nombre de batteries</p>
-                <p className="text-lg font-bold text-gray-800">{formatNumber(result.nombre_batteries)}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  Nombre de batteries
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {formatNumber(result.nombre_batteries)}
+                </p>
               </div>
             </div>
+
+            {/* ✅ Topologies */}
+            {(result?.topologie_pv ||
+              result?.topologie_batterie ||
+              result?.nb_pv_serie != null ||
+              result?.nb_pv_parallele != null ||
+              result?.nb_batt_serie != null ||
+              result?.nb_batt_parallele != null) && (
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg border bg-slate-50">
+                  <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                    <Icons.Sun className="w-4 h-4" /> Topologie PV
+                  </h4>
+                  {/* PV */}
+                  <p className="text-sm text-slate-700">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium mr-2">
+                      {result.topologie_pv ||
+                        `${result.nb_pv_serie}S${result.nb_pv_parallele}P`}
+                    </span>
+                    {result.nb_pv_serie != null &&
+                      result.nb_pv_parallele != null && (
+                        <>
+                          ({result.nb_pv_serie} en série ×{" "}
+                          {result.nb_pv_parallele} en parallèle ={" "}
+                          <b>{result.nb_pv_serie * result.nb_pv_parallele}</b>{" "}
+                          panneaux)
+                        </>
+                      )}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-lg border bg-slate-50">
+                  <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                    <Icons.BatteryCharging className="w-4 h-4" /> Topologie
+                    Batteries
+                  </h4>
+                  <p className="text-sm text-slate-700">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium mr-2">
+                      {result.topologie_batterie ||
+                        `${result.nb_batt_serie}S${result.nb_batt_parallele}P`}
+                    </span>
+                    {result.nb_batt_serie != null &&
+                      result.nb_batt_parallele != null && (
+                        <>
+                          ({result.nb_batt_serie} en série ×{" "}
+                          {result.nb_batt_parallele} en parallèle ={" "}
+                          <b>
+                            {result.nb_batt_serie * result.nb_batt_parallele}
+                          </b>{" "}
+                          batteries)
+                        </>
+                      )}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Équipements recommandés */}
-          {result?.equipements_recommandes && (
+          {R?.equipements_recommandes && (
             <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
               <h3 className="flex items-center gap-2 text-xl font-semibold mb-6 text-gray-800">
-                <Icons.Zap className="text-indigo-600" /> Équipements recommandés
+                <Icons.Zap className="text-indigo-600" /> Équipements
+                recommandés
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <EquipCard
                   title="Panneau solaire"
                   icon={Icons.Sun}
-                  c={result.equipements_recommandes.panneau}
+                  c={R.equipements_recommandes.panneau}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
                       <span>Quantité :</span>
-                      <strong className="text-blue-600">{formatNumber(result?.nombre_panneaux)}</strong>
+                      <strong className="text-blue-600">
+                        {formatNumber(result?.nombre_panneaux)}
+                      </strong>
                     </li>
                   }
                 />
@@ -686,11 +829,13 @@ export default function PublicSolarCalculator() {
                 <EquipCard
                   title="Batterie"
                   icon={Icons.BatteryCharging}
-                  c={result.equipements_recommandes.batterie}
+                  c={R.equipements_recommandes.batterie}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
                       <span>Quantité :</span>
-                      <strong className="text-green-600">{formatNumber(result?.nombre_batteries)}</strong>
+                      <strong className="text-green-600">
+                        {formatNumber(result?.nombre_batteries)}
+                      </strong>
                     </li>
                   }
                 />
@@ -698,7 +843,7 @@ export default function PublicSolarCalculator() {
                 <EquipCard
                   title="Régulateur"
                   icon={Icons.Settings}
-                  c={result.equipements_recommandes.regulateur}
+                  c={R.equipements_recommandes.regulateur}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
                       <span>Quantité :</span>
@@ -710,7 +855,7 @@ export default function PublicSolarCalculator() {
                 <EquipCard
                   title="Onduleur"
                   icon={Icons.Zap}
-                  c={result.equipements_recommandes.onduleur}
+                  c={R.equipements_recommandes.onduleur}
                   extra={
                     <li className="flex justify-between border-t pt-2 mt-2">
                       <span>Quantité :</span>
@@ -722,12 +867,28 @@ export default function PublicSolarCalculator() {
                 <EquipCard
                   title="Câble"
                   icon={Icons.Cable}
-                  c={result.equipements_recommandes.cable}
+                  c={R.equipements_recommandes.cable}
                   extra={
-                    <li className="flex justify-between border-t pt-2 mt-2">
-                      <span>Quantité :</span>
-                      <strong className="text-gray-600 text-xs">Selon installation</strong>
-                    </li>
+                    <>
+                      {/* ✅ longueur globale */}
+                      {typeof R.longueur_cable_global_m === "number" && (
+                        <li className="flex justify-between">
+                          <span>Longueur globale :</span>
+                          <strong>
+                            {formatNumber(R.longueur_cable_global_m)} m
+                          </strong>
+                        </li>
+                      )}
+                      {/* ✅ prix total câble */}
+                      {typeof R.prix_cable_global === "number" && (
+                        <li className="flex justify-between">
+                          <span>Prix total câble :</span>
+                          <strong className="text-gray-900">
+                            {formatPrice(R.prix_cable_global)}
+                          </strong>
+                        </li>
+                      )}
+                    </>
                   }
                 />
               </div>

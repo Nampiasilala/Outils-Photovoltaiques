@@ -7,6 +7,7 @@ from django.core.cache import cache
 from equipements.models import Equipement
 from dimensionnements.serializers import EquipementDetailSerializer
 
+DEFAULT_L_CABLE_GLOBAL_M = Decimal("40")  # longueur globale fixe (m)
 # =========================
 #  Mapping des champs ORM
 # =========================
@@ -56,6 +57,29 @@ def _prix_decimal(e):
         return Decimal(str(v)) if v is not None else Decimal("0")
     except Exception:
         return Decimal("0")
+    
+def _get_num(data, key, default="0"):
+    try:
+        return Decimal(str(data.get(key, default)))
+    except Exception:
+        return Decimal(str(default))
+
+def _pick_cable_for_current(I_req: Decimal):
+    """Retourne le câble le moins cher dont l’ampacité couvre I_req."""
+    cables = Equipement.objects.filter(categorie__iexact='cable')
+    amp_field = f("cable", "ampacity")
+    cables = (cables
+              .exclude(**{f"{amp_field}__isnull": True})
+              .exclude(**{f"{amp_field}": 0}))
+    cables_ok = cables.filter(**{f"{amp_field}__gte": I_req}).order_by('prix_unitaire')
+    chosen = cables_ok.first()
+    if not chosen:
+        chosen = cables.order_by(f"-{amp_field}", "prix_unitaire").first()
+    if not chosen:
+        raise ValueError("Aucun câble trouvé (aucune ampacité exploitable).")
+    return chosen
+
+
 
 # =====================================================
 #  Sélection « premier modèle ≥ valeur cible »
@@ -131,11 +155,11 @@ def choisir_modulaire_par_cout(
 # ===========================================================
 #  Contrôles techniques simplifiés (si les champs existent)
 # ===========================================================
-def verifier_contraintes_simplifiees(panneau, n_panneaux, regulateur, V_batt: Decimal):
+def verifier_contraintes_simplifiees(panneau, s_pv: int, regulateur, V_batt: Decimal):
     """
-    Vérifications minimales et silencieuses si champ manquant:
-      - PWM: tension_nominale_module == V_batt
-      - MPPT: Voc_array <= pv_voc_max_V ; Vmp_array dans [mppt_v_min_V, mppt_v_max_V]
+    Vérifs minimales :
+      - PWM : tension_nominale_module == V_batt (1 module en série par string)
+      - MPPT : s_pv*Voc <= pv_voc_max_V ; s_pv*Vmp dans [mppt_v_min_V, mppt_v_max_V]
     """
     try:
         reg_type = (getattr(regulateur, f("regulateur", "type"), "") or "").upper()
@@ -146,22 +170,24 @@ def verifier_contraintes_simplifiees(panneau, n_panneaux, regulateur, V_batt: De
         vmp_max  = Decimal(str(getattr(regulateur, f("regulateur", "mppt_max"), 0)))
         vnom_mod = Decimal(str(getattr(panneau,   f("panneau_solaire", "vnom"), 0)))
 
-        # Hypothèse: PV en parallèle -> tension d'un module
-        Voc_array = Voc_mod
-        Vmp_array = Vmp_mod
+        s = Decimal(str(s_pv or 1))
+        Voc_array = s * Voc_mod
+        Vmp_array = s * Vmp_mod
 
         if reg_type == "PWM" and vnom_mod and V_batt:
             assert vnom_mod == V_batt, "PWM: tension nominale module ≠ tension batterie."
 
-        if reg_type == "MPPT" and Voc_mod and voc_max:
-            assert Voc_array <= voc_max, "MPPT: Voc array > Voc max régulateur."
-        if reg_type == "MPPT" and Vmp_mod and vmp_min and vmp_max:
-            assert vmp_min <= Vmp_array <= vmp_max, "MPPT: Vmp array hors plage MPPT."
+        if reg_type == "MPPT":
+            if Voc_mod and voc_max:
+                assert Voc_array <= voc_max, "MPPT: Voc array > Voc max régulateur."
+            if Vmp_mod and vmp_min and vmp_max:
+                assert vmp_min <= Vmp_array <= vmp_max, "MPPT: Vmp array hors plage MPPT."
     except AssertionError as e:
         raise ValueError(str(e))
     except Exception:
         # champs manquants -> on n'empêche pas le calcul
         pass
+
 
 # =========================
 #  Cache des recommandations
@@ -187,9 +213,11 @@ def compute_dimensionnement(data, param):
     """
     Dimensionne le système PV.
     - data: dict avec E_jour, P_max, N_autonomie, H_solaire, V_batterie
-    - param: instance ParametreSysteme (singleton) avec k_securite, n_global, dod, k_dimensionnement, s_max, i_sec
-    Retourne des clés compatibles avec la vue & le modèle.
+    - param: ParametreSysteme (k_securite, n_global, dod, k_dimensionnement, s_max, i_sec)
     """
+    from decimal import Decimal
+    import math
+
     # --- Entrées utilisateur ---
     E_jour      = Decimal(str(data["E_jour"]))        # Wh/j
     P_max       = Decimal(str(data["P_max"]))         # W
@@ -211,30 +239,41 @@ def compute_dimensionnement(data, param):
     choix_pv = choisir_modulaire_par_cout(
         categorie="panneau_solaire",
         besoin=P_crete,
-        attr_valeur_logique="value",            # -> puissance_W
+        attr_valeur_logique="value",            # puissance_W
         attr_prix="prix_unitaire",
         surdim_max=SURDIM_MAX,
     )
     panneau_choisi   = choix_pv["equip"]
-    nombre_panneaux  = choix_pv["n"]
-    P_array_installe = choix_pv["installe"]            # W
+    nombre_panneaux  = int(choix_pv["n"])              # pourra être ajusté
+    P_array_installe = Decimal(str(choix_pv["installe"]))
 
-    # === 2) Batteries (Ah) ===
-    capacite_batt = (E_jour * N_autonomie) / (V_batterie * DoD)  # Ah
+    # === 2) Batteries (Ah au niveau parc) ===
+    capacite_batt_park = (E_jour * N_autonomie) / (V_batterie * DoD)  # Ah requis au bus
 
     choix_batt = choisir_modulaire_par_cout(
         categorie="batterie",
-        besoin=capacite_batt,
-        attr_valeur_logique="value",            # -> capacite_Ah
+        besoin=capacite_batt_park,
+        attr_valeur_logique="value",            # capacite_Ah
         attr_prix="prix_unitaire",
         surdim_max=SURDIM_MAX,
     )
     batterie_choisie = choix_batt["equip"]
-    nombre_batteries = choix_batt["n"]
+
+    # ---- Batteries : S (série) & P (parallèle) ----
+    V_unit_batt = Decimal(str(getattr(batterie_choisie, f("batterie","vnom"), 0) or 0))
+    Ah_unit     = Decimal(str(getattr(batterie_choisie, f("batterie","value"), 0) or 0))  # capacite_Ah
+
+    S_batt = 1
+    if V_unit_batt and V_batterie:
+        # selon catalogue, on peut assert que la division est entière
+        S_batt = int(V_batterie / V_unit_batt) if (V_batterie % V_unit_batt == 0) else int(math.ceil(V_batterie / V_unit_batt))
+
+    P_batt = int(math.ceil(capacite_batt_park / Ah_unit)) if Ah_unit else 0
+    nombre_batteries = int(S_batt * P_batt)  # ✅ correction par rapport à l'ancien code
 
     # === 3) Onduleur ===
     puissance_totale = P_max * Kdim  # W requis onduleur
-    onduleur_choisi = choisir_equipement('onduleur', puissance_totale, 'value')  # -> puissance_W
+    onduleur_choisi = choisir_equipement('onduleur', puissance_totale, 'value')  # puissance_W
     if onduleur_choisi is None:
         raise ValueError("Aucun onduleur trouvé.")
 
@@ -243,68 +282,107 @@ def compute_dimensionnement(data, param):
     try:
         regulateur_choisi = choisir_equipement('regulateur', I_reg_req, 'value')  # -> courant_A
     except Exception:
-        # Fallback (rare) si comparaison par courant impossible
         regulateur_choisi = choisir_equipement('regulateur', P_array_installe, 'puissance_W')
 
-    # Vérifications simplifiées (optionnelles)
-    verifier_contraintes_simplifiees(panneau_choisi, nombre_panneaux, regulateur_choisi, V_batterie)
+    # ---- PV : S_pv (série) & P_pv (parallèle) ----
+    reg_type = (getattr(regulateur_choisi, f("regulateur", "type"), "") or "").upper()
+    Vmp_mod  = Decimal(str(getattr(panneau_choisi, f("panneau_solaire","vmp"), 0) or 0))
+    Voc_mod  = Decimal(str(getattr(panneau_choisi, f("panneau_solaire","voc"), 0) or 0))
+    vmp_min  = Decimal(str(getattr(regulateur_choisi, f("regulateur","mppt_min"), 0) or 0))
+    vmp_max  = Decimal(str(getattr(regulateur_choisi, f("regulateur","mppt_max"), 0) or 0))
+    voc_max  = Decimal(str(getattr(regulateur_choisi, f("regulateur","voc_max"), 0) or 0))
+    vnom_mod = Decimal(str(getattr(panneau_choisi, f("panneau_solaire","vnom"), 0) or 0))
 
-    # === 5) Câble DC ===
-    I_dc_req = puissance_totale / V_batterie  # A
-    cables = Equipement.objects.filter(categorie__iexact='cable')  # insensible à la casse
-    amp_field = f("cable", "ampacity")  # -> 'ampacite_A' via FIELD_MAP
+    S_pv = 1
+    if reg_type == "PWM":
+        # PWM : on aligne la tension nominale module sur V_batt
+        if vnom_mod and V_batterie and (V_batterie % vnom_mod == 0):
+            S_pv = int(V_batterie / vnom_mod)
+    else:
+        # MPPT : on cherche le plus petit S_pv qui tombe dans la fenêtre MPPT et respecte Voc_max
+        for s in range(1, 25):  # borne large
+            Vmp_arr = Decimal(s) * Vmp_mod
+            Voc_arr = Decimal(s) * Voc_mod
+            ok_vmp = (vmp_min and vmp_max and Vmp_mod and (vmp_min <= Vmp_arr <= vmp_max))
+            ok_voc = (voc_max and Voc_mod and (Voc_arr <= voc_max))
+            if ok_vmp and ok_voc:
+                S_pv = s
+                break
 
-    # Nettoyage: exclure ampacité NULL ou 0
-    cables = (cables
-            .exclude(**{f"{amp_field}__isnull": True})
-            .exclude(**{amp_field: 0}))
+    # Nombre de strings PV en parallèle
+    P_pv = int(math.ceil(Decimal(nombre_panneaux) / Decimal(S_pv)))
+    # Ajuster le nombre total de panneaux pour éviter un string incomplet
+    nombre_panneaux = int(S_pv * P_pv)
+    # Puissance réellement installée (si ajustée)
+    P_mod = Decimal(str(getattr(panneau_choisi, f("panneau_solaire","value"), 0) or 0))
+    P_array_installe = P_mod * Decimal(nombre_panneaux)
 
-    # 1) Essayer de prendre un câble qui couvre l'intensité requise (prix le plus bas)
-    cables_ok = (cables
-                .filter(**{f"{amp_field}__gte": I_dc_req})
-                .order_by('prix_unitaire'))
+    # Vérifs avec la vraie tension de string
+    verifier_contraintes_simplifiees(panneau_choisi, S_pv, regulateur_choisi, V_batterie)
 
-    cable_choisi = cables_ok.first()
-    cable_surclasse = False
+    # === 5) Câble GLOBAL (un seul modèle, longueur unique) ===
+    # a) Courants représentatifs (pire des cas)
+    I_load_bus = (puissance_totale / V_batterie)                 # bus -> onduleur
+    I_pv_bus   = SAFETY_I * (P_array_installe / V_batterie)      # MPPT -> batterie
+    P_mod      = Decimal(str(getattr(panneau_choisi, f("panneau_solaire","value"), 0) or 0))
+    Vmp_mod    = Decimal(str(getattr(panneau_choisi, f("panneau_solaire","vmp"), 1) or 1))
+    I_string   = SAFETY_I * (P_mod / Vmp_mod) if (P_mod and Vmp_mod) else Decimal("0")
 
-    # 2) Sinon, prendre le plus puissant (et à puissance égale, le moins cher)
-    if cable_choisi is None:
-        # ordre: ampacité décroissante, puis prix croissant
-        cable_choisi = cables.order_by(f"-{amp_field}", "prix_unitaire").first()
-        cable_surclasse = True  # indicateur utile pour tracer/afficher
+    I_req_global = max(I_load_bus, I_pv_bus, I_string)
 
-    if cable_choisi is None:
-        raise ValueError("Aucun câble trouvé (aucune ampacité exploitable).")
+    # b) Choix du câble global (le moins cher qui tient I_req_global)
+    cable_global  = _pick_cable_for_current(I_req_global)
+    prix_m_global = _prix_decimal(cable_global)  # prix au mètre
+
+    # c) Longueur globale (fixe, sans front)
+    L_global_m = DEFAULT_L_CABLE_GLOBAL_M  # 40 m
+
+    # d) Prix global des câbles
+    prix_cable_global = (prix_m_global * L_global_m).quantize(Decimal('1.00'))
+
 
     # === 6) Coûts & bilan ===
     bilan_energetique_annuel = E_jour * Decimal('365')
-# ...
+
     prix_pv   = _prix_decimal(panneau_choisi)
     prix_batt = _prix_decimal(batterie_choisie)
     prix_reg  = _prix_decimal(regulateur_choisi)
     prix_ondu = _prix_decimal(onduleur_choisi)
-    prix_cabl = _prix_decimal(cable_choisi)
-
+    
     cout_total = (
         nombre_panneaux * prix_pv +
         nombre_batteries * prix_batt +
-        prix_reg + prix_ondu + prix_cabl
+        prix_reg + prix_ondu +
+        prix_cable_global
     )
 
 
-    # === 7) Résultat (clés attendues par la vue) ===
+    # === 7) Résultat ===
     return {
         "puissance_totale": float(puissance_totale.quantize(Decimal('1.0'))),   # W
-        "capacite_batterie": float(capacite_batt.quantize(Decimal('1.0'))),     # Ah
+        "capacite_batterie": float(capacite_batt_park.quantize(Decimal('1.0'))),# Ah (niveau parc)
         "nombre_panneaux": int(nombre_panneaux),
         "nombre_batteries": int(nombre_batteries),
         "bilan_energetique_annuel": float(bilan_energetique_annuel),            # Wh/an
         "cout_total": float(cout_total.quantize(Decimal('1.00'))),
 
-        # Objets recommandés
+        # Topologies conseillées (NOUVEAU)
+        "nb_batt_serie": int(S_batt),
+        "nb_batt_parallele": int(P_batt),
+        "topologie_batterie": f"{int(S_batt)}S{int(P_batt)}P",
+        "nb_pv_serie": int(S_pv),
+        "nb_pv_parallele": int(P_pv),
+        "topologie_pv": f"{int(S_pv)}S{int(P_pv)}P",
+
+        # Objets recommandés (inchangé)
         "panneau_recommande": panneau_choisi,
         "batterie_recommandee": batterie_choisie,
         "regulateur_recommande": regulateur_choisi,
         "onduleur_recommande": onduleur_choisi,
-        "cable_recommande": cable_choisi,
+        "longueur_cable_global_m": float(L_global_m),
+        "prix_cable_global": float(prix_cable_global),
+        "cable_global": EquipementDetailSerializer(cable_global).data,
+
+        "cable_recommande": cable_global,
     }
+

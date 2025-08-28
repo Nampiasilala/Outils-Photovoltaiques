@@ -1,8 +1,8 @@
+# dimensionnements/serializers.py
 from rest_framework import serializers
 from .models import Dimensionnement
 from equipements.models import Equipement
 from donnees_entree.models import DonneesEntree
-
 
 # -------- Entrée de calcul (POST public) --------
 class CalculationInputSerializer(serializers.Serializer):
@@ -35,7 +35,10 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "reference", "modele", "marque", "nom_commercial",
             "puissance_W", "capacite_Ah", "tension_nominale_V",
-            "prix_unitaire", "devise", "categorie", "categorie_label",
+            "vmp_V", "voc_V",                         # ✅ utiles PV
+            "section_mm2", "ampacite_A",              # ✅ utiles CÂBLE
+            "prix_unitaire", "devise",
+            "categorie", "categorie_label",
         ]
 
     def get_categorie_label(self, obj):
@@ -43,9 +46,16 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        for f in ("puissance_W", "capacite_Ah", "tension_nominale_V", "prix_unitaire"):
+        # cast en float les décimaux utiles
+        for f in (
+            "puissance_W", "capacite_Ah", "tension_nominale_V",
+            "vmp_V", "voc_V", "section_mm2", "ampacite_A", "prix_unitaire"
+        ):
             if data.get(f) is not None:
-                data[f] = float(data[f])
+                try:
+                    data[f] = float(data[f])
+                except (TypeError, ValueError):
+                    pass
         return data
 
 
@@ -53,19 +63,17 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
 class DonneesEntreeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DonneesEntree
-        fields = ["id", "e_jour", "p_max", "n_autonomie", "v_batterie", "localisation"]
+        fields = ["id", "e_jour", "p_max", "n_autonomie", "v_batterie", "localisation", "h_solaire"]
         read_only_fields = fields
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # floats « continus »
-        for f in ("e_jour", "p_max"):
+        for f in ("e_jour", "p_max", "h_solaire"):
             if data.get(f) is not None:
                 try:
                     data[f] = float(data[f])
                 except (TypeError, ValueError):
                     pass
-        # entiers
         for f in ("n_autonomie", "v_batterie"):
             if data.get(f) is not None:
                 try:
@@ -95,6 +103,13 @@ class DimensionnementSerializer(serializers.ModelSerializer):
             "entree_details",
             "parametre",
             "equipements_recommandes",
+            # ✅ Topologies persistées (si ajoutées au modèle)
+            "nb_batt_serie",
+            "nb_batt_parallele",
+            "topologie_batterie",
+            "nb_pv_serie",
+            "nb_pv_parallele",
+            "topologie_pv",
         ]
         read_only_fields = fields
 
@@ -115,7 +130,7 @@ class DimensionnementSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
 
         # entiers
-        for f in ("nombre_panneaux", "nombre_batteries"):
+        for f in ("nombre_panneaux", "nombre_batteries", "nb_batt_serie", "nb_batt_parallele", "nb_pv_serie", "nb_pv_parallele"):
             if data.get(f) is not None:
                 try:
                     data[f] = int(data[f])
@@ -131,3 +146,9 @@ class DimensionnementSerializer(serializers.ModelSerializer):
                     pass
 
         return data
+
+# ⛔️ Supprimer le doublon qui était en bas du fichier :
+# from rest_framework import serializers
+# from .models import Equipement
+# class EquipementSerializer(serializers.ModelSerializer):
+#     ...

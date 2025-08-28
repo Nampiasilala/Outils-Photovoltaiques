@@ -6,7 +6,6 @@
 
 
 
-version: "3.9"
 
 services:
   db:
@@ -22,7 +21,7 @@ services:
       - "5433:5432"
 
   backend:
-    image: nampiasilala/outils-photovoltaiques-backend
+    image: nampiasilala/outils-photovoltaiques-backend:2025-08-24
     ports:
       - "8000:8000"
     depends_on:
@@ -38,7 +37,7 @@ services:
       DB_PORT: 5432
 
   frontend:
-    image: nampiasilala/outils-photovoltaiques-frontend
+    image: nampiasilala/outils-photovoltaiques-frontend:2025-08-24
     ports:
       - "3000:3000"
     depends_on:

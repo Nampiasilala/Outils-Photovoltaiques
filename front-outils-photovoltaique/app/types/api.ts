@@ -6,7 +6,7 @@ export interface CalculationInput {
   N_autonomie: number;     // Nombre de jours d'autonomie
   H_solaire: number;       // Irradiation solaire en kWh/m²/j
   V_batterie: number;      // Tension de la batterie en V (12, 24, ou 48)
-  localisation: string;   // Localisation géographique
+  localisation: string;    // Localisation géographique
 }
 
 export interface Equipment {
@@ -15,8 +15,14 @@ export interface Equipment {
   puissance_W?: number;
   capacite_Ah?: number;
   tension_nominale_V?: number;
-  prix_unitaire: number;
+  prix_unitaire: number;   // Prix unitaire (ex: par mètre pour le câble)
   devise?: string;
+
+  // Champs utiles possibles côté UI (optionnels)
+  section_mm2?: number;
+  ampacite_A?: number;
+  vmp_V?: number;
+  voc_V?: number;
 }
 
 export interface EquipementsRecommandes {
@@ -28,13 +34,30 @@ export interface EquipementsRecommandes {
 }
 
 export interface CalculationResult {
-  puissance_totale: number;                    // Puissance totale en W
-  capacite_batterie: number;                   // Capacité de la batterie en Wh
-  bilan_energetique_annuel: number;           // Bilan énergétique annuel en kWh
-  cout_total: number;                         // Coût total en Ar
-  nombre_panneaux: number;                    // Nombre de panneaux solaires
-  nombre_batteries: number;                   // Nombre de batteries
+  puissance_totale: number;                    // W
+  capacite_batterie: number;                   // Ah (niveau parc)
+  bilan_energetique_annuel: number;            // Wh/an
+  cout_total: number;                          // Ar
+  nombre_panneaux: number;
+  nombre_batteries: number;
+
+  // (optionnel) FK sérialisés et infos UI
   equipements_recommandes?: EquipementsRecommandes;
+
+  // (optionnel) Topologies renvoyées par l'API
+  nb_batt_serie?: number;
+  nb_batt_parallele?: number;
+  topologie_batterie?: string;
+  nb_pv_serie?: number;
+  nb_pv_parallele?: number;
+  topologie_pv?: string;
+
+  // (optionnel) Câble global
+  longueur_cable_global_m?: number;            // m
+  prix_cable_global?: number;                  // Ar
+
+  // (optionnel) Identifiant de la ligne créée
+  dimensionnement_id?: number;
 }
 
 export interface ApiError extends Error {
@@ -80,7 +103,7 @@ export interface ApiErrorResponse {
 
 // Types pour la génération PDF
 export interface PDFData {
-  result: CalculationResult;
+  result: CalculationResult; // inclut désormais topologie + câble (optionnels)
   inputData: CalculationInput;
 }
 
