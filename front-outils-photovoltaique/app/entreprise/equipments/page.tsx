@@ -1,20 +1,45 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { useAuth } from "@/components/AuthContext";
+import { Icons } from "../../../src/assets/icons";
+import { Spinner, useLoading } from "@/LoadingProvider";
+import { env } from "@/lib/env";
+
+const EditEquipmentModal = dynamic(
+  () => import("@/components/admin/AddEquipmentModal"),
+  { ssr: false }
+);
+
+const API = env.NEXT_PUBLIC_API_BASE_URL;
 
 type Role = "Admin" | "Entreprise" | "Utilisateur" | "";
 
-type Equipement = {
+type Categorie =
+  | "panneau_solaire"
+  | "batterie"
+  | "regulateur"
+  | "onduleur"
+  | "cable"
+  | "disjoncteur"
+  | "parafoudre"
+  | "support"
+  | "boitier_jonction"
+  | "connecteur"
+  | "monitoring"
+  | "autre";
+
+interface Equipment {
   id: number;
-  categorie: string;
+  categorie: Categorie;
   reference: string;
-  marque?: string;
-  modele?: string;
-  nom_commercial?: string;
+  marque?: string | null;
+  modele?: string | null;
+  nom_commercial?: string | null;
   prix_unitaire: number;
   devise?: string;
   puissance_W?: number | null;
@@ -29,35 +54,53 @@ type Equipement = {
   mppt_v_max_V?: number | null;
   puissance_surgeb_W?: number | null;
   entree_dc_V?: string | null;
-  sortie_ac_V?: string | null;
-  frequence_Hz?: number | null;
   section_mm2?: number | null;
   ampacite_A?: number | null;
-  disponible: boolean;
+  disponible?: boolean; // ← Propriété optionnelle pour compatibilité
   created_at?: string;
   created_by_email?: string | null;
+}
+
+const CATEGORY_LABEL: Record<Categorie, string> = {
+  panneau_solaire: "Panneau solaire",
+  batterie: "Batterie",
+  regulateur: "Régulateur",
+  onduleur: "Onduleur",
+  cable: "Câble",
+  disjoncteur: "Disjoncteur",
+  parafoudre: "Parafoudre",
+  support: "Support",
+  boitier_jonction: "Boîtier de jonction",
+  connecteur: "Connecteur",
+  monitoring: "Monitoring",
+  autre: "Autre",
 };
 
-const CATEGORIES = [
-  { value: "panneau_solaire", label: "Panneau solaire" },
-  { value: "batterie", label: "Batterie" },
-  { value: "regulateur", label: "Régulateur" },
-  { value: "onduleur", label: "Onduleur" },
-  { value: "cable", label: "Câble" },
-  // autres catégories possibles, mais non couvertes par le mini-form ci-dessous
+const FILTER_CATEGORIES: Array<"Tous" | Categorie> = [
+  "Tous",
+  "panneau_solaire",
+  "batterie",
+  "regulateur",
+  "onduleur",
+  "cable",
+  "autre",
 ];
-
-type FormState = Partial<Equipement> & { categorie: string; reference: string; prix_unitaire: number };
 
 export default function CompanyEquipmentsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { wrap, isBusy } = useLoading();
   const role = (user?.role || "") as Role;
 
-  const [items, setItems] = useState<Equipement[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  const [showModal, setShowModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState<"Tous" | Categorie>("Tous");
+  const [pageLoading, setPageLoading] = useState(true);
 
-  // ---------- Guard d’accès ----------
+  // ---------- Guard d'accès ----------
   useEffect(() => {
     if (loading) return;
     const r = (user?.role || "").toLowerCase();
@@ -72,415 +115,237 @@ export default function CompanyEquipmentsPage() {
     }
   }, [user, loading, router]);
 
-  // ---------- Fetch liste ----------
-  const load = async () => {
-    try {
-      const res = await fetchWithAdminAuth("/equipements/");
-      if (!res.ok) throw new Error("Chargement impossible");
-      const data = await res.json();
-      setItems(Array.isArray(data) ? data : []);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur inconnue");
+  const authHeader = () => {
+    const token =
+      localStorage.getItem("adminAccessToken") ||
+      localStorage.getItem("accessToken");
+    if (!token) {
+      toast.error("Session expirée");
+      router.replace("/admin-login");
+      throw new Error("Token manquant");
     }
+    return {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
   };
 
   useEffect(() => {
-    if (!loading && user) load();
+    if (loading || !user) return;
+    void loadEquipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id]);
+  }, [user, loading]);
 
-  // ---------- Formulaire création ----------
-  const [form, setForm] = useState<FormState>({
-    categorie: "",
-    reference: "",
-    prix_unitaire: 0,
-    disponible: true,
-    devise: "MGA",
-  });
-
-  const onChange = (name: keyof FormState, value: any) =>
-    setForm((f) => ({ ...f, [name]: value }));
-
-  const requiredByCategory = useMemo(() => {
-    // Miroir de tes validations côté modèle:
-    // - panneau_solaire: puissance_W
-    // - batterie: capacite_Ah, tension_nominale_V
-    // - regulateur: courant_A
-    // - onduleur: puissance_W
-    // - cable: ampacite_A, section_mm2
-    switch (form.categorie) {
-      case "panneau_solaire":
-        return ["puissance_W"];
-      case "batterie":
-        return ["capacite_Ah", "tension_nominale_V"];
-      case "regulateur":
-        return ["courant_A"];
-      case "onduleur":
-        return ["puissance_W"];
-      case "cable":
-        return ["ampacite_A", "section_mm2"];
-      default:
-        return [];
-    }
-  }, [form.categorie]);
-
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!form.categorie || !form.reference) {
-      toast.error("Catégorie et Référence sont requis");
-      return;
-    }
-    // Vérifs minimales côté client
-    for (const field of requiredByCategory) {
-      // @ts-ignore
-      const v = form[field];
-      if (v === undefined || v === null || v === "" || Number(v) === 0) {
-        toast.error(`Le champ requis '${field}' est manquant.`);
-        return;
+  const loadEquipments = async () =>
+    wrap(async () => {
+      setPageLoading(true);
+      try {
+        const res = await fetchWithAdminAuth(`${API}/equipements/`, {
+          headers: authHeader(),
+        });
+        if (res.status === 401) {
+          router.replace("/admin-login");
+          return;
+        }
+        if (!res.ok) throw new Error(`Erreur ${res.status}`);
+        const data: Equipment[] = await res.json();
+        
+        // Pour les entreprises, filtrer seulement leurs équipements
+        // (côté backend, l'API devrait déjà filtrer, mais on peut doubler la sécurité)
+        setEquipments(data);
+      } catch (err: any) {
+        toast.error("Erreur de chargement : " + (err?.message || "inconnue"));
+      } finally {
+        setPageLoading(false);
       }
-    }
+    }, "Chargement des équipements…");
 
-    setBusy(true);
-    try {
-      // Nettoyage: ne pas envoyer les champs vides/null
-      const payload: Record<string, any> = {};
-      Object.entries(form).forEach(([k, v]) => {
-        if (v === "" || v === null || v === undefined) return;
-        payload[k] = typeof v === "string" && v.trim ? v.trim() : v;
-      });
+  const formatMGA = (n: number) =>
+    new Intl.NumberFormat("fr-MG", {
+      style: "currency",
+      currency: "MGA",
+      maximumFractionDigits: 0,
+    }).format(n || 0);
 
-      const res = await fetchWithAdminAuth("/equipements/", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Création échouée");
-      }
-      toast.success("Équipement créé");
-      setForm({
-        categorie: "",
-        reference: "",
-        prix_unitaire: 0,
-        disponible: true,
-        devise: "MGA",
-      });
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur inconnue");
-    } finally {
-      setBusy(false);
+  const handleRowClick = (equipment: Equipment) => {
+    setSelectedEquipment(equipment);
+    setModalMode("edit");
+    setShowModal(true);
+  };
+
+  const handleAddClick = () => {
+    setSelectedEquipment(null);
+    setModalMode("add");
+    setShowModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    setSelectedEquipment(null);
+  };
+
+  const handleEquipmentUpdated = (equipment: Equipment) => {
+    if (modalMode === "add") {
+      setEquipments((prev) => [equipment, ...prev]);
+    } else {
+      setEquipments((prev) =>
+        prev.map((e) => (e.id === equipment.id ? equipment : e))
+      );
     }
   };
 
-  // ---------- Actions ligne ----------
-  const remove = async (id: number) => {
-    if (!confirm("Supprimer cet équipement ?")) return;
-    try {
-      const res = await fetchWithAdminAuth(`/equipements/${id}/`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Suppression échouée");
-      toast.success("Supprimé");
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur inconnue");
-    }
+  const handleEquipmentDeleted = (id: number) => {
+    setEquipments((prev) => prev.filter((e) => e.id !== id));
   };
 
-  const toggleDisponible = async (row: Equipement) => {
-    try {
-      const res = await fetchWithAdminAuth(`/equipements/${row.id}/`, {
-        method: "PATCH",
-        body: JSON.stringify({ disponible: !row.disponible }),
-      });
-      if (!res.ok) throw new Error("Mise à jour échouée");
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur inconnue");
-    }
-  };
+  const filtered = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    return equipments.filter((e) => {
+      const matchSearch =
+        !term ||
+        e.reference?.toLowerCase().includes(term) ||
+        e.modele?.toLowerCase().includes(term) ||
+        e.nom_commercial?.toLowerCase().includes(term) ||
+        e.marque?.toLowerCase().includes(term) ||
+        CATEGORY_LABEL[e.categorie].toLowerCase().includes(term);
+      const matchCat =
+        filterCategory === "Tous" ? true : e.categorie === filterCategory;
+      return matchSearch && matchCat;
+    });
+  }, [equipments, searchTerm, filterCategory]);
 
-  // ---------- UI ----------
+  // Guard loading
+  if (loading || pageLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        {!isBusy && <Spinner size={28} />}
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">
-          {role === "Admin" ? "Gestion des équipements (vue Entreprise)" : "Mes équipements"}
+    <div className="p-10 max-w-screen-xl mx-auto overflow-x-auto text-sm">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
+          <Icons.Wrench className="w-7 h-7 text-blue-600" />
+          Mes équipements
         </h1>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 mt-2">
           Connecté en tant que <b>{user?.email}</b> — rôle: <b>{user?.role}</b>
         </div>
-      </header>
-
-      {/* Formulaire de création */}
-      <section className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <h2 className="font-semibold mb-4">Ajouter un équipement</h2>
-        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          <div className="md:col-span-3">
-            <label className="block text-sm text-gray-600 mb-1">Catégorie *</label>
+      </div>
+      
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+        <div className="flex gap-2 flex-wrap">
+          <div className="relative">
+            <Icons.Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              className="pl-7 pr-2 py-2 border rounded-lg text-sm w-full sm:w-64"
+              placeholder="Référence / Modèle / Catégorie…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <Icons.Filter className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <select
-              className="w-full border rounded p-2"
-              value={form.categorie}
-              onChange={(e) => onChange("categorie", e.target.value)}
+              className="pl-7 pr-2 py-2 border rounded-lg text-sm w-full sm:w-52"
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value as "Tous" | Categorie)}
             >
-              <option value="">— Catégorie —</option>
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+              {FILTER_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c === "Tous" ? "Tous" : CATEGORY_LABEL[c]}
+                </option>
               ))}
             </select>
           </div>
-
-          <div className="md:col-span-3">
-            <label className="block text-sm text-gray-600 mb-1">Référence (unique) *</label>
-            <input
-              className="w-full border rounded p-2"
-              value={form.reference}
-              onChange={(e) => onChange("reference", e.target.value)}
-              placeholder="Ex: INV-3K-ABC"
-            />
-          </div>
-
-          <div className="md:col-span-3">
-            <label className="block text-sm text-gray-600 mb-1">Nom commercial</label>
-            <input
-              className="w-full border rounded p-2"
-              value={form.nom_commercial || ""}
-              onChange={(e) => onChange("nom_commercial", e.target.value)}
-              placeholder="Ex: Onduleur 3kW"
-            />
-          </div>
-
-          <div className="md:col-span-3">
-            <label className="block text-sm text-gray-600 mb-1">Prix unitaire (MGA) *</label>
-            <input
-              type="number"
-              step="0.01"
-              className="w-full border rounded p-2"
-              value={form.prix_unitaire ?? 0}
-              onChange={(e) => onChange("prix_unitaire", Number(e.target.value || 0))}
-              placeholder="0"
-            />
-          </div>
-
-          {/* Champs dynamiques selon catégorie */}
-          {form.categorie === "panneau_solaire" && (
-            <>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Puissance (W) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full border rounded p-2"
-                  value={form.puissance_W ?? ""}
-                  onChange={(e) => onChange("puissance_W", Number(e.target.value || 0))}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Vmp (V)</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  className="w-full border rounded p-2"
-                  value={form.vmp_V ?? ""}
-                  onChange={(e) => onChange("vmp_V", Number(e.target.value || 0))}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Voc (V)</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  className="w-full border rounded p-2"
-                  value={form.voc_V ?? ""}
-                  onChange={(e) => onChange("voc_V", Number(e.target.value || 0))}
-                />
-              </div>
-            </>
-          )}
-
-          {form.categorie === "batterie" && (
-            <>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Capacité (Ah) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full border rounded p-2"
-                  value={form.capacite_Ah ?? ""}
-                  onChange={(e) => onChange("capacite_Ah", Number(e.target.value || 0))}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Tension nominale (V) *</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  className="w-full border rounded p-2"
-                  value={form.tension_nominale_V ?? ""}
-                  onChange={(e) => onChange("tension_nominale_V", Number(e.target.value || 0))}
-                />
-              </div>
-            </>
-          )}
-
-          {form.categorie === "regulateur" && (
-            <>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Courant (A) *</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  className="w-full border rounded p-2"
-                  value={form.courant_A ?? ""}
-                  onChange={(e) => onChange("courant_A", Number(e.target.value || 0))}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Type</label>
-                <select
-                  className="w-full border rounded p-2"
-                  value={form.type_regulateur ?? ""}
-                  onChange={(e) => onChange("type_regulateur", e.target.value || null)}
-                >
-                  <option value="">—</option>
-                  <option value="MPPT">MPPT</option>
-                  <option value="PWM">PWM</option>
-                </select>
-              </div>
-            </>
-          )}
-
-          {form.categorie === "onduleur" && (
-            <>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Puissance (W) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full border rounded p-2"
-                  value={form.puissance_W ?? ""}
-                  onChange={(e) => onChange("puissance_W", Number(e.target.value || 0))}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Entrée DC (ex: 12/24)</label>
-                <input
-                  className="w-full border rounded p-2"
-                  value={form.entree_dc_V ?? ""}
-                  onChange={(e) => onChange("entree_dc_V", e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Sortie AC (V)</label>
-                <input
-                  className="w-full border rounded p-2"
-                  value={form.sortie_ac_V ?? "230"}
-                  onChange={(e) => onChange("sortie_ac_V", e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          {form.categorie === "cable" && (
-            <>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Ampacité (A) *</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  className="w-full border rounded p-2"
-                  value={form.ampacite_A ?? ""}
-                  onChange={(e) => onChange("ampacite_A", Number(e.target.value || 0))}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm text-gray-600 mb-1">Section (mm²) *</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  className="w-full border rounded p-2"
-                  value={form.section_mm2 ?? ""}
-                  onChange={(e) => onChange("section_mm2", Number(e.target.value || 0))}
-                />
-              </div>
-            </>
-          )}
-
-          <div className="md:col-span-2 flex items-center gap-2">
-            <input
-              id="disponible"
-              type="checkbox"
-              checked={!!form.disponible}
-              onChange={(e) => onChange("disponible", e.target.checked)}
-            />
-            <label htmlFor="disponible" className="text-sm text-gray-700">Disponible</label>
-          </div>
-
-          <div className="md:col-span-12">
-            <button
-              disabled={busy}
-              className="w-full md:w-auto px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {busy ? "Création..." : "Créer"}
-            </button>
-          </div>
-        </form>
-      </section>
-
-      {/* Liste */}
-      <section className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <h2 className="font-semibold mb-3">Liste des équipements</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="py-2">ID</th>
-                <th>Catégorie</th>
-                <th>Référence</th>
-                <th>Nom</th>
-                <th>Prix</th>
-                <th>Dispo</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((e) => (
-                <tr key={e.id} className="border-b hover:bg-gray-50">
-                  <td className="py-2">{e.id}</td>
-                  <td>{e.categorie}</td>
-                  <td>{e.reference}</td>
-                  <td>{e.nom_commercial || "-"}</td>
-                  <td>{e.prix_unitaire?.toLocaleString?.() ?? e.prix_unitaire} {e.devise || "MGA"}</td>
-                  <td>
-                    <button
-                      onClick={() => toggleDisponible(e)}
-                      className={`px-2 py-1 rounded text-xs ${
-                        e.disponible ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-700"
-                      }`}
-                    >
-                      {e.disponible ? "Oui" : "Non"}
-                    </button>
-                  </td>
-                  <td className="text-right">
-                    <button
-                      onClick={() => remove(e.id)}
-                      className="px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
-                    >
-                      Supprimer
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!items.length && (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-gray-500">
-                    Aucun équipement pour le moment.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
-      </section>
+
+        <button
+          onClick={handleAddClick}
+          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 text-sm w-1/3 sm:w-auto justify-center hover:bg-blue-700"
+        >
+          <Icons.Plus className="w-4 h-4" />
+          <span>Ajouter</span>
+        </button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full table-auto text-sm border rounded-md shadow">
+          <thead className="bg-gray-100 text-gray-700 uppercase text-xs tracking-wider">
+            <tr>
+              <th className="px-3 py-2 text-left">Catégorie</th>
+              <th className="px-3 py-2 text-left">Référence</th>
+              <th className="px-3 py-2 text-left">Modèle / Nom</th>
+              <th className="px-3 py-2 text-left">Marque</th>
+              <th className="px-3 py-2 text-left">Puissance (W)</th>
+              <th className="px-3 py-2 text-left">Capacité (Ah)</th>
+              <th className="px-3 py-2 text-left">Tension (V)</th>
+              <th className="px-3 py-2 text-left">Courant (A)</th>
+              <th className="px-3 py-2 text-left">Prix (MGA)</th>
+              <th className="px-3 py-2 text-left">Statut</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filtered.map((equip) => (
+              <tr 
+                key={equip.id} 
+                className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => handleRowClick(equip)}
+              >
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {CATEGORY_LABEL[equip.categorie]}
+                  </span>
+                </td>
+                <td className="px-3 py-2 font-medium">{equip.reference}</td>
+                <td className="px-3 py-2">
+                  {equip.modele || equip.nom_commercial || "—"}
+                </td>
+                <td className="px-3 py-2">{equip.marque || "—"}</td>
+                <td className="px-3 py-2">{equip.puissance_W ?? "—"}</td>
+                <td className="px-3 py-2">{equip.capacite_Ah ?? "—"}</td>
+                <td className="px-3 py-2">{equip.tension_nominale_V ?? "—"}</td>
+                <td className="px-3 py-2">{equip.courant_A ?? "—"}</td>
+                <td className="px-3 py-2 font-medium">{formatMGA(equip.prix_unitaire)}</td>
+                <td className="px-3 py-2">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    (equip.disponible ?? true)
+                      ? "bg-emerald-100 text-emerald-800" 
+                      : "bg-red-100 text-red-800"
+                  }`}>
+                    {(equip.disponible ?? true) ? "Disponible" : "Indisponible"}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <Icons.Zap className="mx-auto mb-2 w-6 h-6" />
+          <p>Aucun équipement à afficher</p>
+          {equipments.length === 0 && (
+            <p className="text-sm mt-2">Commencez par ajouter votre premier équipement</p>
+          )}
+        </div>
+      )}
+
+      <EditEquipmentModal
+        isOpen={showModal}
+        onClose={handleModalClose}
+        equipment={selectedEquipment}
+        onUpdated={handleEquipmentUpdated}
+        onDeleted={handleEquipmentDeleted}
+        authHeader={authHeader}
+        API={API}
+        mode={modalMode}
+      />
     </div>
   );
 }

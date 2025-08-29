@@ -14,8 +14,12 @@ const EyeOff = dynamic(() => import("lucide-react").then((m) => m.EyeOff));
 const Mail = dynamic(() => import("lucide-react").then((m) => m.Mail));
 const Lock = dynamic(() => import("lucide-react").then((m) => m.Lock));
 const LogIn = dynamic(() => import("lucide-react").then((m) => m.LogIn));
-const AlertCircle = dynamic(() => import("lucide-react").then((m) => m.AlertCircle));
-const CheckCircle = dynamic(() => import("lucide-react").then((m) => m.CheckCircle));
+const AlertCircle = dynamic(() =>
+  import("lucide-react").then((m) => m.AlertCircle)
+);
+const CheckCircle = dynamic(() =>
+  import("lucide-react").then((m) => m.CheckCircle)
+);
 const HomeIcon = dynamic(() => import("lucide-react").then((m) => m.Home));
 
 interface LoginFormData {
@@ -31,19 +35,36 @@ export default function AdminLoginPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
+  const [formData, setFormData] = useState<LoginFormData>({
+    email: "",
+    password: "",
+  });
   const [errors, setErrors] = useState<ValidationErrors>({});
 
   // Redirection selon le rôle si déjà connecté
+  // Dans AdminLoginPage, modifiez le useEffect temporairement :
   useEffect(() => {
     if (!authLoading && user) {
+      // 🔍 DEBUGGING : affichez les valeurs exactes
+      console.log("🔍 DEBUG - user complet:", user);
+      console.log("🔍 DEBUG - user.role brut:", user.role);
+      console.log("🔍 DEBUG - typeof user.role:", typeof user.role);
+
       const role = (user.role || "").toLowerCase();
+      console.log("🔍 DEBUG - role après toLowerCase():", role);
+      console.log("🔍 DEBUG - role === 'entreprise':", role === "entreprise");
+
       if (role === "admin") {
+        console.log("✅ Redirection vers /admin");
         router.replace("/admin");
       } else if (role === "entreprise") {
+        console.log("✅ Redirection vers /entreprise/equipments");
         router.replace("/entreprise/equipments");
       } else {
-        toast.error("Accès refusé: votre rôle ne permet pas d'accéder à cette interface.");
+        console.log("❌ Rôle non reconnu, pas de redirection");
+        toast.error(
+          "Accès refusé: votre rôle ne permet pas d'accéder à cette interface."
+        );
       }
     }
   }, [user, authLoading, router]);
@@ -51,10 +72,13 @@ export default function AdminLoginPage() {
   const validateForm = () => {
     const newErrors: ValidationErrors = {};
     if (!formData.email) newErrors.email = "L'adresse email est requise";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Format d'email invalide";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+      newErrors.email = "Format d'email invalide";
 
     if (!formData.password) newErrors.password = "Le mot de passe est requis";
-    else if (formData.password.length < 6) newErrors.password = "Le mot de passe doit contenir au moins 6 caractères";
+    else if (formData.password.length < 6)
+      newErrors.password =
+        "Le mot de passe doit contenir au moins 6 caractères";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -73,9 +97,15 @@ export default function AdminLoginPage() {
       toast.error(
         <div className="flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <span className="text-sm text-red-700">Veuillez corriger les erreurs dans le formulaire.</span>
+          <span className="text-sm text-red-700">
+            Veuillez corriger les erreurs dans le formulaire.
+          </span>
         </div>,
-        { className: "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
+        {
+          className:
+            "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm",
+          icon: false,
+        }
       );
       return;
     }
@@ -89,7 +119,11 @@ export default function AdminLoginPage() {
           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
           <span className="text-sm text-green-700">Connecté avec succès !</span>
         </div>,
-        { className: "bg-green-50 border border-green-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
+        {
+          className:
+            "bg-green-50 border border-green-200 rounded-xl shadow-md p-4 backdrop-blur-sm",
+          icon: false,
+        }
       );
     } catch (err) {
       console.error("Erreur de connexion:", err);
@@ -105,7 +139,11 @@ export default function AdminLoginPage() {
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
           <span className="text-sm text-red-700">{friendly}</span>
         </div>,
-        { className: "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
+        {
+          className:
+            "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm",
+          icon: false,
+        }
       );
     } finally {
       setIsLoading(false);
@@ -113,7 +151,8 @@ export default function AdminLoginPage() {
   };
 
   // 👉 Masquer la page si on a déjà un user (admin ou entreprise) OU si on charge
-  if (authLoading || user) { // ✅ remplacé admin par user
+  if (authLoading || user) {
+    // ✅ remplacé admin par user
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -151,7 +190,10 @@ export default function AdminLoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
               <div className="space-y-1.5 sm:space-y-2 text-sm">
-                <label htmlFor="email" className="block font-semibold text-gray-700">
+                <label
+                  htmlFor="email"
+                  className="block font-semibold text-gray-700"
+                >
                   Adresse email
                 </label>
                 <div className="relative group">
@@ -164,7 +206,9 @@ export default function AdminLoginPage() {
                     placeholder="exemple@domaine.com"
                     autoComplete="email"
                     className={`w-full pl-9 pr-4 py-2.5 sm:py-3 border rounded-xl bg-white/50 backdrop-blur-sm hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-sm ${
-                      errors.email ? "border-red-300 focus:border-red-500" : "border-gray-200 focus:border-emerald-500"
+                      errors.email
+                        ? "border-red-300 focus:border-red-500"
+                        : "border-gray-200 focus:border-emerald-500"
                     }`}
                   />
                 </div>
@@ -177,7 +221,10 @@ export default function AdminLoginPage() {
               </div>
 
               <div className="space-y-1.5 sm:space-y-2 text-sm">
-                <label htmlFor="password" className="block font-semibold text-gray-700">
+                <label
+                  htmlFor="password"
+                  className="block font-semibold text-gray-700"
+                >
                   Mot de passe
                 </label>
                 <div className="relative group">
@@ -186,11 +233,15 @@ export default function AdminLoginPage() {
                     type={showPassword ? "text" : "password"}
                     id="password"
                     value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
                     placeholder="••••••••"
                     autoComplete="current-password"
                     className={`w-full pl-9 pr-12 py-2.5 sm:py-3 border rounded-xl bg-white/50 backdrop-blur-sm hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-sm ${
-                      errors.password ? "border-red-300 focus:border-red-500" : "border-gray-200 focus:border-emerald-500"
+                      errors.password
+                        ? "border-red-300 focus:border-red-500"
+                        : "border-gray-200 focus:border-emerald-500"
                     }`}
                   />
                   <button
@@ -198,7 +249,11 @@ export default function AdminLoginPage() {
                     onClick={() => setShowPassword((prev) => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
+                    ) : (
+                      <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                    )}
                   </button>
                 </div>
                 {errors.password && (
@@ -215,7 +270,11 @@ export default function AdminLoginPage() {
                 aria-busy={isLoading}
                 className="w-full flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-base"
               >
-                {isLoading && !isBusy ? <Spinner size={20} /> : <LogIn className="w-5 h-5" />}
+                {isLoading && !isBusy ? (
+                  <Spinner size={20} />
+                ) : (
+                  <LogIn className="w-5 h-5" />
+                )}
                 {isLoading || isBusy ? "Connexion en cours..." : "Se connecter"}
               </button>
             </form>

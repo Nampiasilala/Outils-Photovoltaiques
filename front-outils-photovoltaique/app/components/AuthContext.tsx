@@ -67,10 +67,16 @@ function normalizeUser(raw: any): AppUser | null {
   const username = [r.username, u.username, p.username, r.name, r.login].find((v) => !!v);
   const roleRaw = [r.role, u.role, p.role].find((v) => v != null);
 
-  const role = normalizeRole(roleRaw); // ✅ ICI
-
   const is_staff = !!(r.is_staff ?? u.is_staff ?? p.is_staff);
   const is_superuser = !!(r.is_superuser ?? u.is_superuser ?? p.is_superuser);
+
+  // ✅ CORRECTION: Priorité aux flags Django plutôt qu'au champ role textuel
+  let role: "admin" | "entreprise" | "utilisateur";
+  if (is_staff || is_superuser) {
+    role = "admin";
+  } else {
+    role = normalizeRole(roleRaw);
+  }
 
   return { id, email, username, role, is_staff, is_superuser };
 }
