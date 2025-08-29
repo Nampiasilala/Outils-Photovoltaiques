@@ -6,7 +6,7 @@ import { dimensionnementAPI } from "@/lib/api";
 import { toast } from "react-toastify";
 import { Icons } from "../../../src/assets/icons";
 import DeleteAlert from "@/components/DeleteAlert";
-import { useAdminAuth } from "@/components/AuthContext";
+import { useAuth } from "@/components/AuthContext";
 import {
   formatCapacity,
   formatPrice,
@@ -83,7 +83,7 @@ interface ResultData {
 
 export default function AdminHistoryPage() {
   const router = useRouter();
-  const { admin, loading: authLoading } = useAdminAuth();
+  const { user, loading: authLoading } = useAuth();
   const { wrap, isBusy } = useLoading(); // ✅ overlay global
 
   const [history, setHistory] = useState<ResultData[]>([]);
@@ -95,23 +95,32 @@ export default function AdminHistoryPage() {
   const [showEquipments, setShowEquipments] = useState<Set<number>>(new Set());
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Déclenche le load SEULEMENT quand l’admin est bien authentifié
+  // Redirection: seulement admin
   useEffect(() => {
     if (authLoading) return;
-    if (!admin) return;
+    const role = (user?.role || "").toLowerCase();
+    if (!user || role !== "admin") {
+      router.replace("/admin-login");
+    }
+  }, [authLoading, user, router]);
+
+  // Chargement de l'historique: seulement quand admin est OK
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user || (user.role || "").toLowerCase() !== "admin") return;
+
+    let isMounted = true;
 
     const fetchHistory = async () => {
       try {
         setLoadingHistory(true);
         setError(null);
 
-        // ✅ overlay global + retour de la promesse
         const data = await wrap(
           () => dimensionnementAPI.getAll(),
           "Chargement de l’historique…"
         );
 
-        // tri par date décroissante
         const parsed = data
           .map((item: any) => ({
             ...item,
@@ -119,23 +128,27 @@ export default function AdminHistoryPage() {
           }))
           .sort((a: any, b: any) => b._ts - a._ts);
 
-        setHistory(parsed);
+        if (isMounted) setHistory(parsed);
       } catch (err: any) {
-        console.error("Échec du chargement de l'historique :", err);
         const msg =
           err?.message ||
           (err?.status === 401
             ? "Non autorisé. Veuillez vous reconnecter."
             : "Impossible de charger l'historique des calculs.");
-        setError(msg);
-        toast.error(msg);
+        if (isMounted) {
+          setError(msg);
+          toast.error(msg);
+        }
       } finally {
-        setLoadingHistory(false);
+        if (isMounted) setLoadingHistory(false);
       }
     };
 
     void fetchHistory();
-  }, [admin, authLoading, wrap]);
+    return () => {
+      isMounted = false;
+    };
+  }, [authLoading, user, wrap]);
 
   const toggleSet =
     (setter: React.Dispatch<React.SetStateAction<Set<number>>>) =>

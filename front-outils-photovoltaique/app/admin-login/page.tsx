@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthContext";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { useLoading, Spinner } from "@/LoadingProvider"; // loader centralisé
+import { useLoading, Spinner } from "@/LoadingProvider";
 
 // Icônes en import dynamique
 const Eye = dynamic(() => import("lucide-react").then((m) => m.Eye));
@@ -26,7 +26,7 @@ type ValidationErrors = Partial<Record<keyof LoginFormData, string>>;
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { admin, login, loading: authLoading } = useAuth();
+  const { user, login, loading: authLoading } = useAuth(); // ✅ user au lieu de admin
   const { wrap, isBusy } = useLoading();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -34,12 +34,19 @@ export default function AdminLoginPage() {
   const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
   const [errors, setErrors] = useState<ValidationErrors>({});
 
-  // 👉 Bloque l'affichage si admin déjà connecté
+  // Redirection selon le rôle si déjà connecté
   useEffect(() => {
-    if (admin && !authLoading) {
-      router.replace("/admin");
+    if (!authLoading && user) {
+      const role = (user.role || "").toLowerCase();
+      if (role === "admin") {
+        router.replace("/admin");
+      } else if (role === "entreprise") {
+        router.replace("/entreprise/equipments");
+      } else {
+        toast.error("Accès refusé: votre rôle ne permet pas d'accéder à cette interface.");
+      }
     }
-  }, [admin, authLoading, router]);
+  }, [user, authLoading, router]);
 
   const validateForm = () => {
     const newErrors: ValidationErrors = {};
@@ -76,7 +83,7 @@ export default function AdminLoginPage() {
     setIsLoading(true);
     try {
       await wrap(() => login(formData.email, formData.password), "Connexion…");
-
+      // redirection gérée dans useEffect selon le rôle
       toast.success(
         <div className="flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -84,20 +91,19 @@ export default function AdminLoginPage() {
         </div>,
         { className: "bg-green-50 border border-green-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
       );
-
-      setTimeout(() => router.replace("/admin"), 600);
     } catch (err) {
       console.error("Erreur de connexion:", err);
       const msg = err instanceof Error ? err.message : "";
-
+      const friendly =
+        msg === "ROLE_FORBIDDEN"
+          ? "Accès refusé. Votre rôle n'a pas d'interface dédiée."
+          : msg === "INVALID_CREDENTIALS"
+          ? "Identifiants incorrects. Veuillez réessayer."
+          : "Erreur de connexion.";
       toast.error(
         <div className="flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <span className="text-sm text-red-700">
-            {msg === "ADMIN_ONLY"
-              ? "Accès refusé. Seuls les administrateurs peuvent se connecter."
-              : "Identifiants incorrects. Veuillez réessayer."}
-          </span>
+          <span className="text-sm text-red-700">{friendly}</span>
         </div>,
         { className: "bg-red-50 border border-red-200 rounded-xl shadow-md p-4 backdrop-blur-sm", icon: false }
       );
@@ -106,8 +112,8 @@ export default function AdminLoginPage() {
     }
   };
 
-  // 👉 Masque tout si admin déjà connecté
-  if (authLoading || admin) {
+  // 👉 Masquer la page si on a déjà un user (admin ou entreprise) OU si on charge
+  if (authLoading || user) { // ✅ remplacé admin par user
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -139,7 +145,7 @@ export default function AdminLoginPage() {
                 <LogIn className="w-7 h-7 sm:w-8 text-white" />
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                Connexion (Admin)
+                Connexion
               </h2>
             </div>
 

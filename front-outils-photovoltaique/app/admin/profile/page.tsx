@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
-import { useAuth } from "@/components/AuthContext";
+import { useAdminAuth } from "@/components/AuthContext";
 import { Icons } from "../../../src/assets/icons"; // Ajuster si nécessaire
 
 import { toast } from "react-toastify";
@@ -23,8 +23,7 @@ const API = env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function AdminProfilePage() {
   const router = useRouter();
-  const { admin, loading: authLoading, logout } = useAuth();
-  const { wrap, isBusy } = useLoading(); // ✅ overlay + état global
+  const { admin, loading: authLoading, logout } = useAdminAuth();  const { wrap, isBusy } = useLoading(); // ✅ overlay + état global
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [form, setForm] = useState<Profile | null>(null);

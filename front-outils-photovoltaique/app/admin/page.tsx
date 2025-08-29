@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/components/AuthContext";
 import {
   Crown,
@@ -9,15 +11,23 @@ import {
   Wrench,
   History,
   ArrowRight,
-  User,
+  User as UserIcon,
   FileText,
+  LogOut,
 } from "lucide-react";
 import { Spinner } from "@/LoadingProvider";
 
 export default function AdminHomePage() {
-  const { admin, loading } = useAdminAuth();
+  const { admin, loading, logout } = useAdminAuth();
+  const router = useRouter();
 
-  if (loading) {
+  // Garde : si pas admin, on redirige vers la page de login admin
+  useEffect(() => {
+    if (loading) return;
+    if (!admin) router.replace("/admin-login");
+  }, [admin, loading, router]);
+
+  if (loading || !admin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -28,14 +38,12 @@ export default function AdminHomePage() {
     );
   }
 
-  if (!admin) return null;
-
   const cards = [
     {
       href: "/admin/profile",
       title: "Mon profil",
       desc: "Voir et modifier mes informations",
-      icon: <User className="w-5 h-5" />,
+      icon: <UserIcon className="w-5 h-5" />,
     },
     {
       href: "/admin/equipments",
@@ -62,7 +70,7 @@ export default function AdminHomePage() {
       icon: <History className="w-5 h-5" />,
     },
     {
-      href: "/admin/contents", // ← route corrigée (plural)
+      href: "/admin/contents",
       title: "Contenus",
       desc: "Éditer les pages de contenu",
       icon: <FileText className="w-5 h-5" />,
@@ -73,13 +81,14 @@ export default function AdminHomePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <header className="mb-8 flex items-center justify-between">
+        <header className="mb-8 flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
               Tableau de bord administrateur
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              Connecté en tant que <span className="font-medium text-violet-700">{admin.email}</span>
+              Connecté en tant que{" "}
+              <span className="font-medium text-violet-700">{admin.email}</span>
             </p>
           </div>
 
@@ -91,10 +100,11 @@ export default function AdminHomePage() {
               Accueil public
             </Link>
 
-          <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium bg-purple-100 text-purple-700 rounded-full">
-          <Crown className="w-4 h-4" />
-          Admin
-        </span>
+
+            <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium bg-purple-100 text-purple-700 rounded-full">
+              <Crown className="w-4 h-4" />
+              Admin
+            </span>
           </div>
         </header>
 

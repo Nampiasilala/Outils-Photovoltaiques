@@ -1,33 +1,25 @@
-// app/components/AuthContext.tsx
 "use client";
 
 import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
+  createContext, useContext, useEffect, useState, ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { env } from "@/lib/env";
 
-interface JwtPayload {
-  user_id: number;
-  exp: number;
-  iat: number;
-}
+interface JwtPayload { user_id: number; exp: number; iat: number; }
 
-export interface AdminUser {
+export interface AppUser {
   id: number;
   email: string;
   username?: string;
+  role: string;                  // ← important pour la redirection
   is_staff: boolean;
   is_superuser: boolean;
 }
 
 interface AuthContextType {
-  admin: AdminUser | null;
+  user: AppUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -36,176 +28,113 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/* -------------------- Helpers -------------------- */
-
-function toBool(v: unknown): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "number") return v !== 0;
-  if (typeof v === "string") {
-    const s = v.trim().toLowerCase();
-    return s === "true" || s === "1" || s === "yes" || s === "y";
-  }
-  return !!v;
-}
-
 function pick<T = any>(...vals: T[]): T | undefined {
   for (const v of vals) if (v !== undefined && v !== null) return v;
   return undefined;
 }
-
-function extractAdminFlagsDeep(raw: any) {
-  const out = { is_staff: false, is_superuser: false, is_adminRole: false };
-
-  const visit = (node: any) => {
-    if (!node) return;
-    if (Array.isArray(node)) {
-      for (const it of node) visit(it);
-      return;
-    }
-    if (typeof node !== "object") return;
-
-    if ("is_staff" in node) out.is_staff ||= toBool(node.is_staff);
-    if ("isStaff" in node) out.is_staff ||= toBool(node.isStaff);
-    if ("staff" in node) out.is_staff ||= toBool(node.staff);
-    if ("is_superuser" in node) out.is_superuser ||= toBool(node.is_superuser);
-    if ("isSuperuser" in node) out.is_superuser ||= toBool(node.isSuperuser);
-    if ("superuser" in node) out.is_superuser ||= toBool(node.superuser);
-
-    if ("is_admin" in node) {
-      const v = node.is_admin;
-      out.is_staff ||= toBool(v);
-      out.is_superuser ||= toBool(v);
-    }
-    if ("isAdmin" in node) {
-      const v = node.isAdmin;
-      out.is_staff ||= toBool(v);
-      out.is_superuser ||= toBool(v);
-    }
-
-    const roles = pick<any>(node.roles, node.role, node.groups);
-    if (typeof roles === "string") {
-      const s = roles.toLowerCase();
-      if (s.includes("admin") || s.includes("super")) out.is_adminRole = true;
-      if (s.includes("staff") || s.includes("moderator") || s.includes("mod"))
-        out.is_staff = true;
-    } else if (Array.isArray(roles)) {
-      for (const r of roles) {
-        const name = typeof r === "string" ? r : (r?.name ?? r?.role ?? "");
-        if (typeof name === "string") {
-          const s = name.toLowerCase();
-          if (["admin", "superuser", "super"].some((k) => s.includes(k)))
-            out.is_adminRole = true;
-          if (["staff", "moderator", "mod"].some((k) => s.includes(k)))
-            out.is_staff = true;
-        }
-      }
-    }
-
-    for (const k of Object.keys(node)) visit(node[k]);
-  };
-
-  visit(raw);
-  return out;
+function toStr(v: unknown) { return typeof v === "string" ? v : ""; }
+function toBool(v: unknown) {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v !== 0;
+  if (typeof v === "string") return ["true","1","yes","y"].includes(v.trim().toLowerCase());
+  return !!v;
 }
 
-function normalizeUser(raw: any): AdminUser | null {
-  const r = raw?.data ?? (Array.isArray(raw?.results) ? raw.results[0] : raw) ?? raw;
+// app/components/AuthContext.tsx
+// ...
+function normalizeRole(raw: unknown): "admin" | "entreprise" | "utilisateur" {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (["admin", "superuser", "super", "staff"].some(k => s.includes(k))) return "admin";
+  if (["entreprise", "company", "vendor"].some(k => s.includes(k))) return "entreprise";
+  return "utilisateur";
+}
+
+function normalizeUser(raw: any): AppUser | null {
+  const r = raw?.data ?? raw?.user ?? raw ?? {};
   if (!r || typeof r !== "object") return null;
 
   const u = r.user && typeof r.user === "object" ? r.user : {};
   const p = r.profile && typeof r.profile === "object" ? r.profile : {};
 
-  const idRaw = pick(r.id, r.user_id, r.pk, u.id, u.user_id, p.id);
-  const email = pick(r.email, u.email, p.email, r.email_address, r.mail);
-  const username = pick(r.username, u.username, p.username, r.name, r.login);
-
-  const is_staff_top = pick(
-    r.is_staff, r.isStaff, r.staff,
-    u.is_staff, u.isStaff, u.staff,
-    p.is_staff, p.isStaff, p.staff,
-    r.is_admin, u.is_admin
-  );
-  const is_superuser_top = pick(
-    r.is_superuser, r.isSuperuser, r.superuser,
-    u.is_superuser, u.isSuperuser, u.superuser,
-    r.is_admin, u.is_admin
-  );
-  const deep = extractAdminFlagsDeep(r);
-
+  const idRaw = [r.id, r.user_id, r.pk, u.id, u.user_id, p.id].find((v) => v != null);
   const id = typeof idRaw === "string" ? Number(idRaw) : idRaw;
-  if (typeof id !== "number" || !Number.isFinite(id)) return null;
+  if (!Number.isFinite(id)) return null;
 
-  const emailStr = typeof email === "string" ? email : "";
-  if (emailStr.length === 0) return null;
+  const email =
+    [r.email, u.email, p.email, r.email_address, r.mail].find((v) => typeof v === "string") || "";
+  if (!email) return null;
 
-  const is_staff = toBool(is_staff_top) || deep.is_staff;
-  const is_superuser = toBool(is_superuser_top) || deep.is_superuser || deep.is_adminRole;
+  const username = [r.username, u.username, p.username, r.name, r.login].find((v) => !!v);
+  const roleRaw = [r.role, u.role, p.role].find((v) => v != null);
 
-  return { id, email: emailStr, username, is_staff, is_superuser };
+  const role = normalizeRole(roleRaw); // ✅ ICI
+
+  const is_staff = !!(r.is_staff ?? u.is_staff ?? p.is_staff);
+  const is_superuser = !!(r.is_superuser ?? u.is_superuser ?? p.is_superuser);
+
+  return { id, email, username, role, is_staff, is_superuser };
 }
 
-/* -------------------- Provider -------------------- */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [admin, setAdmin] = useState<AdminUser | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const API = env.NEXT_PUBLIC_API_BASE_URL;
 
-  const clearAuthState = () => {
+  const clearAuth = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
     }
-    setAdmin(null);
+    setUser(null);
   };
 
+  // Au chargement: si tokens présents → récupérer /users/me/
   useEffect(() => {
-    if (!API) {
-      console.error("NEXT_PUBLIC_API_BASE_URL non défini");
-      setLoading(false);
-      return;
-    }
+    if (!API) { console.error("NEXT_PUBLIC_API_BASE_URL manquant"); setLoading(false); return; }
 
-    const initAuth = async () => {
-      const access =
-        typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      const refresh =
-        typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+    const init = async () => {
+      const access = localStorage.getItem("accessToken");
+      const refresh = localStorage.getItem("refreshToken");
+      if (!access || !refresh) { setLoading(false); return; }
 
-      if (access && refresh) {
-        try {
+      try {
+        // 1) /users/me/ prioritaire
+        let meRes = await fetch(`${API}/users/me/`, {
+          headers: { Authorization: `Bearer ${access}` },
+        });
+
+        // 2) fallback /users/<id>/ si /me/ pas dispo
+        if (!meRes.ok && meRes.status === 404) {
           const { user_id } = jwtDecode<JwtPayload>(access);
-          const res = await fetch(`${API}/users/${user_id}/`, {
+          meRes = await fetch(`${API}/users/${user_id}/`, {
             headers: { Authorization: `Bearer ${access}` },
           });
-
-          if (!res.ok) throw new Error(String(res.status));
-          const data = await res.json();
-
-          const userData = normalizeUser(data);
-          if (userData && (userData.is_superuser || userData.is_staff)) {
-            setAdmin(userData);
-          } else {
-            clearAuthState();
-          }
-        } catch (err) {
-          console.error("Token invalide ou utilisateur non autorisé:", err);
-          clearAuthState();
         }
-      }
+        if (!meRes.ok) throw new Error(String(meRes.status));
 
-      setLoading(false);
+        const me = normalizeUser(await meRes.json());
+        if (!me) throw new Error("PROFILE_PARSE_ERROR");
+
+        setUser(me);
+      } catch (e) {
+        console.error("Init auth échouée:", e);
+        clearAuth();
+      } finally {
+        setLoading(false);
+      }
     };
 
-    void initAuth();
+    void init();
   }, [API]);
 
+  // ← N’EXCLUT PLUS les non-admin: on pose `user` et on laisse la page décider.
   const login = async (email: string, password: string) => {
     if (!API) throw new Error("API non configurée");
 
-    // 1) Récupérer les tokens
-    const tokenRes = await fetch(`${API}/token/`, {
+    // 1) login
+    const tokenRes = await fetch(`${API}/users/login/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -213,46 +142,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!tokenRes.ok) throw new Error("INVALID_CREDENTIALS");
     const { access, refresh } = await tokenRes.json();
 
-    // 2) Charger le profil avec l’access reçu
-    const { user_id } = jwtDecode<JwtPayload>(access);
-    const meRes = await fetch(`${API}/users/${user_id}/`, {
+    // 2) profil (me d’abord)
+    let meRes = await fetch(`${API}/users/me/`, {
       headers: { Authorization: `Bearer ${access}` },
     });
+    if (!meRes.ok && meRes.status === 404) {
+      const { user_id } = jwtDecode<JwtPayload>(access);
+      meRes = await fetch(`${API}/users/${user_id}/`, {
+        headers: { Authorization: `Bearer ${access}` },
+      });
+    }
     if (!meRes.ok) throw new Error("PROFILE_ERROR");
+
     const me = normalizeUser(await meRes.json());
     if (!me) throw new Error("PROFILE_PARSE_ERROR");
 
-    // 3) Vérifier admin
-    if (!me.is_staff && !me.is_superuser) {
-      // Ne pas stocker les tokens si non-admin
-      throw new Error("ADMIN_ONLY");
-    }
-
-    // 4) OK → stocker tokens (clés unifiées) et setAdmin
+    // 3) OK → stocker + setUser
     localStorage.setItem("accessToken", access);
     localStorage.setItem("refreshToken", refresh);
-    setAdmin(me);
-
-    // 5) Route
-    router.push("/admin");
+    setUser(me);
+    // la redirection est gérée par tes pages (useEffect)
   };
 
-  const logout = () => {
-    clearAuthState();
-    router.push("/");
-  };
-
-  const isAuthenticated = (): boolean => admin !== null;
+  const logout = () => { clearAuth(); router.push("/"); };
 
   return (
     <AuthContext.Provider
-      value={{
-        admin,
-        loading,
-        login,
-        logout,
-        isAuthenticated,
-      }}
+      value={{ user, loading, login, logout, isAuthenticated: () => !!user }}
     >
       {children}
     </AuthContext.Provider>
@@ -265,19 +181,9 @@ export function useAuth(): AuthContextType {
   return ctx;
 }
 
-/** Hook pratique pour l’espace admin */
+// à la fin de AuthContext.tsx
 export function useAdminAuth() {
-  const { admin, loading, logout } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !admin) router.push("/admin-login");
-  }, [admin, loading, router]);
-
-  return {
-    admin,
-    loading,
-    logout,
-    isAuthenticated: !!admin,
-  };
+  const { user, loading, logout } = useAuth();
+  const isAdmin = !!user && (user.role || "").toLowerCase() === "admin";
+  return { admin: isAdmin ? user : null, loading, logout, isAuthenticated: isAdmin };
 }

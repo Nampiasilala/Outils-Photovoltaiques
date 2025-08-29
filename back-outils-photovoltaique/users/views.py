@@ -14,12 +14,11 @@ User = get_user_model()
 
 
 class RegisterView(generics.CreateAPIView):
-    """Créer un nouvel utilisateur."""
     serializer_class = RegisterSerializer
 
 
 class LoginView(generics.GenericAPIView):
-    """Connexion de l'utilisateur et retour du token JWT."""
+    """Connexion de l'utilisateur et retour du token JWT + role."""
     serializer_class = LoginSerializer
 
     def post(self, request):
@@ -29,9 +28,7 @@ class LoginView(generics.GenericAPIView):
         email = serializer.validated_data["email"]
         password = serializer.validated_data["password"]
 
-        # user = authenticate(request, email=email, password=password)
-
-        # fallback vers username=email au cas où le backend ne lit pas email
+        # compat email/username
         user = authenticate(request, email=email, username=email, password=password)
 
         if user:
@@ -39,6 +36,14 @@ class LoginView(generics.GenericAPIView):
             return Response({
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "username": user.username,
+                    "role": (user.role or "").capitalize(),  # "Admin" / "Entreprise" / "Utilisateur"
+                    "is_staff": user.is_staff,
+                    "is_superuser": user.is_superuser,
+                }
             })
 
         return Response(
@@ -48,36 +53,25 @@ class LoginView(generics.GenericAPIView):
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    """Lister ou créer des utilisateurs."""
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    # permission_classes = [permissions.IsAdminUser]
 
 
 class UserRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    """Voir, modifier ou supprimer un utilisateur."""
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    # permission_classes = [permissions.IsAdminUser]
 
 
 class ChangePasswordView(APIView):
-    """Changer le mot de passe d’un utilisateur."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         user = User.objects.filter(pk=pk).first()
         if not user:
-            return Response(
-                {"detail": "Utilisateur non trouvé."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"detail": "Utilisateur non trouvé."}, status=status.HTTP_404_NOT_FOUND)
 
         if request.user != user:
-            return Response(
-                {"detail": "Action non autorisée."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"detail": "Action non autorisée."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
@@ -85,7 +79,20 @@ class ChangePasswordView(APIView):
         user.set_password(serializer.validated_data["new_password"])
         user.save()
 
-        return Response(
-            {"detail": "Mot de passe changé avec succès."},
-            status=status.HTTP_200_OK
-        )
+        return Response({"detail": "Mot de passe changé avec succès."}, status=status.HTTP_200_OK)
+
+
+# ✅ NOUVEAU : /api/users/me
+class MeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        u = request.user
+        return Response({
+            "id": u.id,
+            "email": u.email,
+            "username": u.username,
+            "role": (u.role or "").capitalize(),
+            "is_staff": u.is_staff,
+            "is_superuser": u.is_superuser,
+        })
