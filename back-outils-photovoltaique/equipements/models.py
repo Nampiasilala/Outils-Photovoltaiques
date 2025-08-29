@@ -69,6 +69,10 @@ class Equipement(models.Model):
 
     # --- Divers ---
     disponible = models.BooleanField(default=True)
+    approuve_dimensionnement = models.BooleanField(
+        default=False,
+        help_text="Équipement approuvé pour être utilisé dans les calculs de dimensionnement public."
+    )
     datasheet_url = models.URLField(blank=True, default='')
     meta = models.JSONField(blank=True, null=True)
 

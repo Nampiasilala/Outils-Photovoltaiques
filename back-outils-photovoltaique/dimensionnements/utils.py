@@ -63,9 +63,14 @@ def _get_num(data, key, default="0"):
     except Exception:
         return Decimal(str(default))
 
-def _pick_cable_for_current(I_req: Decimal):
-    """Retourne le câble le moins cher dont l’ampacité couvre I_req."""
+def _pick_cable_for_current(I_req: Decimal, only_approved: bool = False):
+    """Retourne le câble le moins cher dont l'ampacité couvre I_req."""
     cables = Equipement.objects.filter(categorie__iexact='cable')
+    
+    # ✅ Filtre d'approbation
+    if only_approved:
+        cables = cables.filter(approuve_dimensionnement=True, disponible=True)
+    
     amp_field = f("cable", "ampacity")
     cables = (cables
               .exclude(**{f"{amp_field}__isnull": True})
@@ -75,7 +80,8 @@ def _pick_cable_for_current(I_req: Decimal):
     if not chosen:
         chosen = cables.order_by(f"-{amp_field}", "prix_unitaire").first()
     if not chosen:
-        raise ValueError("Aucun câble trouvé (aucune ampacité exploitable).")
+        msg = "approuvés" if only_approved else "exploitables"
+        raise ValueError(f"Aucun câble {msg} trouvé (aucune ampacité exploitable).")
     return chosen
 
 
@@ -83,7 +89,7 @@ def _pick_cable_for_current(I_req: Decimal):
 # =====================================================
 #  Sélection « premier modèle ≥ valeur cible »
 # =====================================================
-def choisir_equipement(type_eq: str, valeur_cible, attribut_logique: str):
+def choisir_equipement(type_eq: str, valeur_cible, attribut_logique: str, only_approved: bool = False):
     if not isinstance(valeur_cible, Decimal):
         valeur_cible = Decimal(str(valeur_cible))
 
@@ -92,10 +98,17 @@ def choisir_equipement(type_eq: str, valeur_cible, attribut_logique: str):
     qs = (Equipement.objects
           .filter(categorie=type_eq)
           .exclude(**{f"{champ}__isnull": True})
-          .exclude(**{f"{champ}": 0})
-          .order_by(champ))
+          .exclude(**{f"{champ}": 0}))
+    
+    # ✅ Filtre d'approbation
+    if only_approved:
+        qs = qs.filter(approuve_dimensionnement=True, disponible=True)
+    
+    qs = qs.order_by(champ)
+    
     if not qs.exists():
-        raise ValueError(f"Aucun équipement de type '{type_eq}' avec champ '{champ}' exploitable.")
+        msg = "approuvés" if only_approved else "exploitables"
+        raise ValueError(f"Aucun équipement {msg} de type '{type_eq}' avec champ '{champ}'.")
 
     for equip in qs:
         attr_value = Decimal(str(getattr(equip, champ)))
@@ -119,6 +132,7 @@ def choisir_modulaire(
     surdim_max: Decimal = Decimal("0.25"),
     filtre_qs: Q | None = None,
     strategie: str = "cout",   # "cout" | "quantite"
+    only_approved: bool = False,
 ):
     attr_valeur = f(categorie, attr_valeur_logique, attr_valeur_logique)
 
@@ -132,7 +146,8 @@ def choisir_modulaire(
           .order_by(attr_valeur))
 
     if not qs.exists():
-        raise ValueError(f"Aucun équipement de type '{categorie}' exploitable.")
+        msg = "approuvés" if only_approved else "exploitables"
+        raise ValueError(f"Aucun équipement {msg} de type '{categorie}'.")
 
     candidats_ok, candidats_relax = [], []
     for e in qs:
@@ -225,7 +240,7 @@ def get_equipements_recommandes(dimensionnement):
 # =========================
 #  Calcul principal
 # =========================
-def compute_dimensionnement(data, param):
+def compute_dimensionnement(data, param, only_approved: bool = False):
     """
     Dimensionne le système PV.
     - data: dict avec E_jour, P_max, N_autonomie, H_solaire, V_batterie
@@ -265,6 +280,7 @@ def compute_dimensionnement(data, param):
         attr_prix="prix_unitaire",
         surdim_max=SURDIM_MAX,
         strategie=priorite_selection,
+        only_approved=only_approved,
     )
     panneau_choisi   = choix_pv["equip"]
     nombre_panneaux  = int(choix_pv["n"])              # pourra être ajusté
@@ -280,6 +296,7 @@ def compute_dimensionnement(data, param):
         attr_prix="prix_unitaire",
         surdim_max=SURDIM_MAX,
         strategie=priorite_selection,
+        only_approved=only_approved,
     )
     batterie_choisie = choix_batt["equip"]
 
@@ -297,16 +314,16 @@ def compute_dimensionnement(data, param):
 
     # === 3) Onduleur ===
     puissance_totale = P_max * Kdim  # W requis onduleur
-    onduleur_choisi = choisir_equipement('onduleur', puissance_totale, 'value')  # puissance_W
+    onduleur_choisi = choisir_equipement('onduleur', puissance_totale, 'value', only_approved)  # puissance_W
     if onduleur_choisi is None:
         raise ValueError("Aucun onduleur trouvé.")
 
     # === 4) Régulateur (courant avec marge) ===
     I_reg_req = SAFETY_I * (P_array_installe / V_batterie)  # A
     try:
-        regulateur_choisi = choisir_equipement('regulateur', I_reg_req, 'value')  # -> courant_A
+        regulateur_choisi = choisir_equipement('regulateur', I_reg_req, 'value', only_approved)  # -> courant_A
     except Exception:
-        regulateur_choisi = choisir_equipement('regulateur', P_array_installe, 'puissance_W')
+        regulateur_choisi = choisir_equipement('regulateur', P_array_installe, 'puissance_W', only_approved)
 
     # ---- PV : S_pv (série) & P_pv (parallèle) ----
     reg_type = (getattr(regulateur_choisi, f("regulateur", "type"), "") or "").upper()
@@ -355,7 +372,7 @@ def compute_dimensionnement(data, param):
     I_req_global = max(I_load_bus, I_pv_bus, I_string)
 
     # b) Choix du câble global (le moins cher qui tient I_req_global)
-    cable_global  = _pick_cable_for_current(I_req_global)
+    cable_global  = _pick_cable_for_current(I_req_global, only_approved)
     prix_m_global = _prix_decimal(cable_global)  # prix au mètre
 
     # c) Longueur globale (fixe, sans front)

@@ -70,7 +70,8 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
                     "priorite_selection": data.get("priorite_selection", "cout"),
                     "localisation": data.get("localisation", ""),
                 },
-                param
+                param,
+                only_approved=True
             )
         except ValueError as e:
             logger.error(f"Erreur de calcul/équipement: {e}")

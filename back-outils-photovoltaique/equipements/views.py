@@ -2,7 +2,9 @@ from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.exceptions import PermissionDenied
-
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
 from .models import Equipement
 from .serializers import EquipementSerializer
 
@@ -60,3 +62,40 @@ class EquipementViewSet(viewsets.ModelViewSet):
         if not (_is_admin_user(u) or instance.created_by_id == getattr(u, "id", None)):
             raise PermissionDenied("Vous ne pouvez supprimer que vos équipements.")
         return super().perform_destroy(instance)
+
+
+
+    @action(detail=False, methods=['get'], url_path='approuves')
+    def approved_for_dimensioning(self, request):
+        """Retourne seulement les équipements approuvés pour dimensionnement"""
+        qs = Equipement.objects.filter(
+            approuve_dimensionnement=True,
+            disponible=True
+        ).order_by("categorie", "prix_unitaire")
+        
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'], url_path='approve')
+    def toggle_approval(self, request, pk=None):
+        """Toggle l'approbation d'un équipement (admin seulement)"""
+        if not _is_admin_user(request.user):
+            raise PermissionDenied("Seuls les admins peuvent gérer les approbations.")
+        
+        equipement = self.get_object()
+        new_status = request.data.get('approuve_dimensionnement')
+        
+        if new_status is not None:
+            equipement.approuve_dimensionnement = bool(new_status)
+            equipement.save(update_fields=['approuve_dimensionnement'])
+            
+            return Response({
+                'id': equipement.id,
+                'approuve_dimensionnement': equipement.approuve_dimensionnement,
+                'message': 'Statut d\'approbation mis à jour'
+            })
+        
+        return Response(
+            {'error': 'Paramètre approuve_dimensionnement requis'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )

@@ -50,6 +50,7 @@ interface Equipment {
   entree_dc_V?: string | null;
   section_mm2?: number | null;
   ampacite_A?: number | null;
+  approuve_dimensionnement?: boolean; 
 }
 
 interface Props {
