@@ -1,4 +1,6 @@
 // types/api.ts
+export type PrioriteSelection = 'cout' | 'quantite';
+export const DEFAULT_PRIORITE_SELECTION: PrioriteSelection = 'cout';
 
 export interface CalculationInput {
   E_jour: number;          // Consommation journalière en Wh
@@ -8,7 +10,7 @@ export interface CalculationInput {
   V_batterie: number;      // Tension de la batterie en V (12, 24, ou 48)
   localisation: string;    // Localisation géographique
   H_vers_toit: number;                   // nouveau (requis côté backend)
-  priorite_selection?: 'cout' | 'quantite'; 
+  priorite_selection?: PrioriteSelection; 
 }
 
 export interface Equipment {

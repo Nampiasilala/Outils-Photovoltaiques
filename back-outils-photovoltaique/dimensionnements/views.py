@@ -118,6 +118,10 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
                 nb_pv_serie=calculated.get("nb_pv_serie"),
                 nb_pv_parallele=calculated.get("nb_pv_parallele"),
                 topologie_pv=calculated.get("topologie_pv"),
+                
+                # Ajouter
+                longueur_cable_global_m=calculated.get("longueur_cable_global_m"),
+                prix_cable_global=calculated.get("prix_cable_global"),
             )
 
         # Base de réponse sûre

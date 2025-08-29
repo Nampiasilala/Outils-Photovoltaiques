@@ -71,7 +71,7 @@ class EquipementDetailSerializer(serializers.ModelSerializer):
 class DonneesEntreeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DonneesEntree
-        fields = ["id", "e_jour", "p_max", "n_autonomie", "v_batterie", "localisation", "h_solaire"]
+        fields = ["id", "e_jour", "p_max", "n_autonomie", "v_batterie", "localisation", "h_solaire", "h_vers_toit", "priorite_selection"]
         read_only_fields = fields
 
     def to_representation(self, instance):
@@ -118,6 +118,9 @@ class DimensionnementSerializer(serializers.ModelSerializer):
             "nb_pv_serie",
             "nb_pv_parallele",
             "topologie_pv",
+            
+            "longueur_cable_global_m",
+            "prix_cable_global",
         ]
         read_only_fields = fields
 

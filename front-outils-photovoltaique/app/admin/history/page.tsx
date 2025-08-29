@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { dimensionnementAPI } from "@/lib/api";
 import { toast } from "react-toastify";
-import {Icons} from "../../../src/assets/icons"
+import { Icons } from "../../../src/assets/icons";
 import DeleteAlert from "@/components/DeleteAlert";
 import { useAdminAuth } from "@/components/AuthContext";
 import {
+  formatCapacity,
   formatPrice,
   formatEnergyLocale,
   formatNumber,
@@ -15,6 +16,7 @@ import {
   formatters,
 } from "@/utils/formatters";
 import { useLoading, Spinner } from "@/LoadingProvider"; // ✅ loader centralisé
+import type { PrioriteSelection } from "@/types/api";
 
 // --------- Types alignés avec ton backend ----------
 interface EquipmentDetail {
@@ -29,6 +31,12 @@ interface EquipmentDetail {
   prix_unitaire: number;
   devise: string;
   categorie: string;
+  // (optionnels utiles)
+  section_mm2?: number | null;
+  ampacite_A?: number | null;
+  vmp_V?: number | null;
+  voc_V?: number | null;
+  courant_A: number;
 }
 
 interface ResultData {
@@ -42,6 +50,17 @@ interface ResultData {
   cout_total: number;
   entree: number;
   parametre: number;
+
+  // (optionnel) Topologies & câble renvoyés par l'API
+  nb_batt_serie?: number | null;
+  nb_batt_parallele?: number | null;
+  topologie_batterie?: string | null;
+  nb_pv_serie?: number | null;
+  nb_pv_parallele?: number | null;
+  topologie_pv?: string | null;
+  longueur_cable_global_m?: number | null; // m
+  prix_cable_global?: number | null; // Ar
+
   equipements_recommandes: {
     panneau: EquipmentDetail | null;
     batterie: EquipmentDetail | null;
@@ -55,6 +74,9 @@ interface ResultData {
     n_autonomie: number;
     v_batterie: number;
     localisation: string;
+    h_solaire?: number; // ← déjà dispo côté backend
+    h_vers_toit?: number; // ← nouveau (si ajouté au modèle)
+    priorite_selection?: PrioriteSelection; // ← nouveau (si exposé)
   };
 }
 // ---------------------------------------------------
@@ -167,6 +189,37 @@ export default function AdminHistoryPage() {
       </div>
     );
   }
+
+  // helpers lisibles pour la topologie
+  const pvDerived = (c: ResultData) => {
+    const s = c.nb_pv_serie ?? null;
+    const p = c.nb_pv_parallele ?? null;
+    const total = s && p ? s * p : null;
+
+    const panel = c.equipements_recommandes?.panneau;
+    const vmp = panel?.vmp_V ?? null;
+    const voc = panel?.voc_V ?? null;
+
+    const Vmp_string = s && vmp ? s * vmp : null;
+    const Voc_string = s && voc ? s * voc : null;
+
+    return { s, p, total, Vmp_string, Voc_string };
+  };
+
+  const battDerived = (c: ResultData) => {
+    const s = c.nb_batt_serie ?? null;
+    const p = c.nb_batt_parallele ?? null;
+    const total = s && p ? s * p : null;
+
+    const batt = c.equipements_recommandes?.batterie;
+    const vnom = batt?.tension_nominale_V ?? null;
+    const V_pack_calc = s && vnom ? s * vnom : null;
+
+    // tension cible côté entrée (si dispo)
+    const V_pack_target = c.entree_details?.v_batterie ?? null;
+
+    return { s, p, total, V_pack_calc, V_pack_target };
+  };
 
   return (
     <div className="p-10 max-w-screen-xl mx-auto overflow-x-auto text-sm">
@@ -327,7 +380,9 @@ export default function AdminHistoryPage() {
                               <Icons.ClipboardCheck className="w-5 h-5 text-blue-500" />
                               Résultats du dimensionnement
                             </h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+
+                            {/* Grille principale des KPIs */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                               <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center">
                                 <Icons.PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
@@ -337,15 +392,17 @@ export default function AdminHistoryPage() {
                                   {formatPower(calc.puissance_totale)}
                                 </p>
                               </div>
+
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
                                 <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
                                   Capacité batterie
                                 </p>
                                 <p className="text-lg font-bold text-gray-800">
-                                  {formatEnergyLocale(calc.capacite_batterie)}
+                                  {formatCapacity(calc.capacite_batterie)}
                                 </p>
                               </div>
+
                               <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
                                 <Icons.Sun className="w-6 h-6 text-orange-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
@@ -355,6 +412,7 @@ export default function AdminHistoryPage() {
                                   {formatNumber(calc.nombre_panneaux)}
                                 </p>
                               </div>
+
                               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
                                 <Icons.BatteryCharging className="w-6 h-6 text-green-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
@@ -364,6 +422,7 @@ export default function AdminHistoryPage() {
                                   {formatNumber(calc.nombre_batteries)}
                                 </p>
                               </div>
+
                               <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center">
                                 <Icons.ClipboardCheck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
@@ -375,6 +434,7 @@ export default function AdminHistoryPage() {
                                   )}
                                 </p>
                               </div>
+
                               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg text-center">
                                 <Icons.DollarSign className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
                                 <p className="text-sm font-medium text-gray-600">
@@ -384,6 +444,104 @@ export default function AdminHistoryPage() {
                                   {formatPrice(calc.cout_total)}
                                 </p>
                               </div>
+
+                              {calc.equipements_recommandes?.onduleur && (
+                                <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
+                                  <Icons.Zap className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+                                  <p className="text-sm font-medium text-gray-600">
+                                    Onduleur
+                                  </p>
+                                  <p className="text-lg font-bold text-gray-800">
+                                    {calc.equipements_recommandes.onduleur
+                                      .puissance_W
+                                      ? formatPower(
+                                          calc.equipements_recommandes.onduleur
+                                            .puissance_W
+                                        )
+                                      : calc.equipements_recommandes.onduleur
+                                          .modele}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Carte Régulateur */}
+                              {calc.equipements_recommandes?.regulateur && (
+                                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center">
+                                  <Icons.Settings className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                                  <p className="text-sm font-medium text-gray-600">
+                                    Régulateur
+                                  </p>
+                                  <p className="text-lg font-bold text-gray-800">
+                                    {calc.equipements_recommandes.regulateur
+                                      .courant_A
+                                      ? `${calc.equipements_recommandes.regulateur.courant_A} A`
+                                      : calc.equipements_recommandes.regulateur
+                                          .modele}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Carte Topologie PV */}
+                              {(calc.topologie_pv ||
+                                calc.nb_pv_serie != null) && (
+                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center">
+                                  <Icons.Sun className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                                  <p className="text-sm font-medium text-gray-600">
+                                    Topologie PV
+                                  </p>
+                                  <p className="text-lg font-bold text-gray-800">
+                                    {calc.topologie_pv ||
+                                      `${calc.nb_pv_serie ?? "?"}S${
+                                        calc.nb_pv_parallele ?? "?"
+                                      }P`}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Carte Topologie Batteries */}
+                              {(calc.topologie_batterie ||
+                                calc.nb_batt_serie != null) && (
+                                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-lg text-center">
+                                  <Icons.BatteryCharging className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                                  <p className="text-sm font-medium text-gray-600">
+                                    Topologie Batteries
+                                  </p>
+                                  <p className="text-lg font-bold text-gray-800">
+                                    {calc.topologie_batterie ||
+                                      `${calc.nb_batt_serie ?? "?"}S${
+                                        calc.nb_batt_parallele ?? "?"
+                                      }P`}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Carte Câblage si les données existent */}
+                              {(calc.longueur_cable_global_m != null ||
+                                calc.prix_cable_global != null) && (
+                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg text-center">
+                                  <Icons.Cable className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                                  <p className="text-sm font-medium text-gray-600">
+                                    Câblage
+                                  </p>
+                                  {calc.longueur_cable_global_m != null && (
+                                    <p className="text-sm text-gray-700">
+                                      <span className="font-bold">
+                                        {formatNumber(
+                                          calc.longueur_cable_global_m
+                                        )}{" "}
+                                        m
+                                      </span>
+                                    </p>
+                                  )}
+                                  {calc.prix_cable_global != null && (
+                                    <p className="text-sm text-gray-700">
+                                      <span className="font-bold text-gray-800">
+                                        {formatPrice(calc.prix_cable_global)}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -486,6 +644,77 @@ export default function AdminHistoryPage() {
                                         </p>
                                       </div>
                                     </div>
+
+                                    {/* Irradiation (si dispo) */}
+                                    {typeof calc.entree_details.h_solaire ===
+                                      "number" && (
+                                      <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                                        <div className="p-2 bg-amber-100 rounded-full">
+                                          <Icons.Sun className="w-5 h-5 text-amber-600" />
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                            Irradiation
+                                          </p>
+                                          <p className="text-lg font-semibold text-gray-800">
+                                            {calc.entree_details.h_solaire.toFixed(
+                                              2
+                                            )}{" "}
+                                            kWh/m²/j
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Hauteur vers le toit (si dispo) */}
+                                    {typeof calc.entree_details.h_vers_toit ===
+                                      "number" && (
+                                      <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                                        <div className="p-2 bg-blue-100 rounded-full">
+                                          <Icons.ArrowUpDown className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                            Hauteur vers le toit
+                                          </p>
+                                          <p className="text-lg font-semibold text-gray-800">
+                                            {calc.entree_details.h_vers_toit} m
+                                          </p>
+                                          <p className="text-xs text-gray-500">
+                                            Longueur câble estimée :{" "}
+                                            <b>
+                                              {(
+                                                calc.entree_details
+                                                  .h_vers_toit *
+                                                2 *
+                                                1.2
+                                              ).toFixed(1)}{" "}
+                                              m
+                                            </b>
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Stratégie de sélection (si dispo) */}
+                                    {calc.entree_details.priorite_selection && (
+                                      <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                                        <div className="p-2 bg-purple-100 rounded-full">
+                                          <Icons.Settings className="w-5 h-5 text-purple-600" />
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                            Stratégie de sélection
+                                          </p>
+                                          <p className="text-lg font-semibold text-gray-800">
+                                            {calc.entree_details
+                                              .priorite_selection === "quantite"
+                                              ? "Nombre minimal"
+                                              : "Coût minimal"}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -776,7 +1005,6 @@ export default function AdminHistoryPage() {
                                     </div>
                                   )}
 
-                                  {/* Câble */}
                                   {calc.equipements_recommandes.cable && (
                                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
                                       <div className="flex items-center gap-2 mb-3">
@@ -795,20 +1023,42 @@ export default function AdminHistoryPage() {
                                               .modele
                                           }
                                         </p>
+                                        {calc.equipements_recommandes.cable
+                                          .reference && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Référence:
+                                            </span>{" "}
+                                            <span className="font-mono text-xs">
+                                              {
+                                                calc.equipements_recommandes
+                                                  .cable.reference
+                                              }
+                                            </span>
+                                          </p>
+                                        )}
+                                        {(calc.equipements_recommandes.cable
+                                          .section_mm2 ||
+                                          calc.equipements_recommandes.cable
+                                            .ampacite_A) && (
+                                          <p>
+                                            <span className="font-medium">
+                                              Section / Ampacité:
+                                            </span>{" "}
+                                            {calc.equipements_recommandes.cable
+                                              .section_mm2
+                                              ? `${calc.equipements_recommandes.cable.section_mm2} mm²`
+                                              : "—"}
+                                            {" · "}
+                                            {calc.equipements_recommandes.cable
+                                              .ampacite_A
+                                              ? `${calc.equipements_recommandes.cable.ampacite_A} A`
+                                              : "—"}
+                                          </p>
+                                        )}
                                         <p>
                                           <span className="font-medium">
-                                            Référence:
-                                          </span>{" "}
-                                          <span className="font-mono text-xs">
-                                            {
-                                              calc.equipements_recommandes.cable
-                                                .reference
-                                            }
-                                          </span>
-                                        </p>
-                                        <p>
-                                          <span className="font-medium">
-                                            Prix:
+                                            Prix unitaire:
                                           </span>{" "}
                                           <span className="font-bold text-gray-700">
                                             {formatPrice(
@@ -816,14 +1066,6 @@ export default function AdminHistoryPage() {
                                                 .prix_unitaire
                                             )}{" "}
                                             / m
-                                          </span>
-                                        </p>
-                                        <p>
-                                          <span className="font-medium">
-                                            Quantité:
-                                          </span>{" "}
-                                          <span className="text-gray-600">
-                                            À calculer selon installation
                                           </span>
                                         </p>
                                       </div>

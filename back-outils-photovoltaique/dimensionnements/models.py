@@ -25,6 +25,11 @@ class Dimensionnement(models.Model):
     nb_pv_serie = models.PositiveIntegerField(null=True, blank=True)
     nb_pv_parallele = models.PositiveIntegerField(null=True, blank=True)
     topologie_pv = models.CharField(max_length=16, null=True, blank=True)
+    
+        # Ajouter ces champs
+    longueur_cable_global_m = models.FloatField(null=True, blank=True)
+    prix_cable_global = models.FloatField(null=True, blank=True)
+
 
     # Équipements recommandés (facultatifs)
     panneau_recommande = models.ForeignKey(
