@@ -464,6 +464,29 @@ export default function PublicSolarCalculator() {
 
   const R = (result || {}) as CalcResultExtended; // ✅ accès simple aux champs étendus
 
+  // === Helpers pour topologie (alignés avec l’historique)
+  const pv = (() => {
+    const s = R.nb_pv_serie ?? null;
+    const p = R.nb_pv_parallele ?? null;
+    const total = s && p ? s * p : null;
+    const vmp = R.equipements_recommandes?.panneau?.vmp_V ?? null;
+    const voc = R.equipements_recommandes?.panneau?.voc_V ?? null;
+    const Vmp_string = s && vmp ? s * vmp : null;
+    const Voc_string = s && voc ? s * voc : null;
+    return { s, p, total, Vmp_string, Voc_string };
+  })();
+
+  const batt = (() => {
+    const s = R.nb_batt_serie ?? null;
+    const p = R.nb_batt_parallele ?? null;
+    const total = s && p ? s * p : null;
+    const vnom =
+      R.equipements_recommandes?.batterie?.tension_nominale_V ?? null;
+    const V_pack_calc = s && vnom ? s * vnom : null;
+    const V_pack_target = formData.V_batterie ?? null; // cible choisie dans le formulaire
+    return { s, p, total, V_pack_calc, V_pack_target };
+  })();
+
   return (
     <div className="space-y-8">
       {/* Formulaire */}
@@ -824,7 +847,8 @@ export default function PublicSolarCalculator() {
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {" "}
               <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg text-center">
                 <Icons.PanelTop className="w-6 h-6 text-blue-600 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-600 mb-1">
@@ -880,85 +904,77 @@ export default function PublicSolarCalculator() {
                   {formatNumber(result.nombre_batteries)}
                 </p>
               </div>
+              {/* ➕ Onduleur */}
+              {R.equipements_recommandes?.onduleur && (
+                <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg text-center">
+                  <Icons.Zap className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-600">Onduleur</p>
+                  <p className="text-lg font-bold text-gray-800">
+                    {R.equipements_recommandes.onduleur.puissance_W
+                      ? formatPower(
+                          R.equipements_recommandes.onduleur.puissance_W
+                        )
+                      : R.equipements_recommandes.onduleur.modele}
+                  </p>
+                </div>
+              )}
+              {/* ➕ Régulateur */}
+              {R.equipements_recommandes?.regulateur && (
+                <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg text-center">
+                  <Icons.Settings className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-600">
+                    Régulateur
+                  </p>
+                  <p className="text-lg font-bold text-gray-800">
+                    {typeof R.equipements_recommandes.regulateur.courant_A ===
+                    "number"
+                      ? `${R.equipements_recommandes.regulateur.courant_A} A`
+                      : R.equipements_recommandes.regulateur.modele}
+                  </p>
+                </div>
+              )}
+              {/* ➕ Câblage global */}
+              {typeof R.longueur_cable_global_m === "number" && (
+  <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg text-center">
+    <Icons.Cable className="w-6 h-6 text-gray-700 mx-auto mb-2" />
+    <p className="text-sm font-medium text-gray-600">Câblage</p>
+    <p className="text-2xl font-extrabold text-gray-900">
+      {formatNumber(R.longueur_cable_global_m)}{" "}
+      <span className="text-base font-semibold">m</span>
+    </p>
+  </div>
+)}
+
+              {/* ➕ Topologie PV (carte KPI) */}
+              {(R.topologie_pv ||
+                R.nb_pv_serie != null ||
+                R.nb_pv_parallele != null) && (
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg text-center">
+                  <Icons.Sun className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-600">
+                    Topologie PV
+                  </p>
+                  <p className="text-lg font-bold text-gray-800">
+                    {R.topologie_pv ?? `${pv.s ?? "—"}S${pv.p ?? "—"}P`}
+                  </p>
+                </div>
+              )}
+              {/* ➕ Topologie Batteries (carte KPI) */}
+              {(R.topologie_batterie ||
+                R.nb_batt_serie != null ||
+                R.nb_batt_parallele != null) && (
+                <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg text-center">
+                  <Icons.BatteryCharging className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-600">
+                    Topologie Batteries
+                  </p>
+                  <p className="text-lg font-bold text-gray-800">
+                    {R.topologie_batterie ??
+                      `${batt.s ?? "—"}S${batt.p ?? "—"}P`}
+                  </p>
+                </div>
+              )}
             </div>
-
-            {/* ✅ Topologies (cartes harmonisées) */}
-            {(result?.topologie_pv ||
-              result?.topologie_batterie ||
-              result?.nb_pv_serie != null ||
-              result?.nb_pv_parallele != null ||
-              result?.nb_batt_serie != null ||
-              result?.nb_batt_parallele != null) && (
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Topologie PV */}
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Icons.Sun className="w-6 h-6 text-blue-600" />
-                      <h4 className="text-base font-semibold text-gray-800">
-                        Topologie PV
-                      </h4>
-                    </div>
-                  </div>
-
-                  <div className="text-sm text-gray-700">
-                    <div className="flex items-center justify-between">
-                      <span className="opacity-80">Configuration</span>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium">
-                        {result.topologie_pv ??
-                          `${result.nb_pv_serie ?? "—"}S${
-                            result.nb_pv_parallele ?? "—"
-                          }P`}
-                      </span>
-                    </div>
-
-                    {result.nb_pv_serie != null &&
-                      result.nb_pv_parallele != null && (
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="opacity-80">Série × Parallèle</span>
-                          <span className="font-semibold">
-                            {result.nb_pv_serie} × {result.nb_pv_parallele}
-                          </span>
-                        </div>
-                      )}
-                  </div>
-                </div>
-
-                {/* Topologie Batteries */}
-                <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Icons.BatteryCharging className="w-6 h-6 text-emerald-600" />
-                      <h4 className="text-base font-semibold text-gray-800">
-                        Topologie Batteries
-                      </h4>
-                    </div>
-                  </div>
-
-                  <div className="text-sm text-gray-700">
-                    <div className="flex items-center justify-between">
-                      <span className="opacity-80">Configuration</span>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">
-                        {result.topologie_batterie ??
-                          `${result.nb_batt_serie ?? "—"}S${
-                            result.nb_batt_parallele ?? "—"
-                          }P`}
-                      </span>
-                    </div>
-
-                    {result.nb_batt_serie != null &&
-                      result.nb_batt_parallele != null && (
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="opacity-80">Série × Parallèle</span>
-                          <span className="font-semibold">
-                            {result.nb_batt_serie} × {result.nb_batt_parallele}
-                          </span>
-                        </div>
-                      )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Équipements recommandés */}
@@ -1003,10 +1019,35 @@ export default function PublicSolarCalculator() {
                   icon={Icons.Settings}
                   c={R.equipements_recommandes.regulateur}
                   extra={
-                    <li className="flex justify-between border-t pt-2 mt-2">
-                      <span>Quantité :</span>
-                      <strong className="text-purple-600">1</strong>
-                    </li>
+                    <>
+                      <li className="flex justify-between border-t pt-2 mt-2">
+                        <span>Quantité :</span>
+                        <strong className="text-purple-600">1</strong>
+                      </li>
+                      {R.equipements_recommandes.regulateur?.courant_A && (
+                        <li className="flex justify-between">
+                          <span>Courant nominal :</span>
+                          <strong>
+                            {formatNumber(
+                              R.equipements_recommandes.regulateur.courant_A
+                            )}{" "}
+                            A
+                          </strong>
+                        </li>
+                      )}
+                      
+                      {R.equipements_recommandes.regulateur?.pv_voc_max_V !=
+                        null && (
+                        <li className="flex justify-between">
+                          <span>Voc PV max :</span>
+                          <strong>
+                            {formatVoltage(
+                              R.equipements_recommandes.regulateur.pv_voc_max_V
+                            )}
+                          </strong>
+                        </li>
+                      )}
+                    </>
                   }
                 />
 

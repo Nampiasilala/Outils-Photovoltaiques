@@ -27,6 +27,11 @@ export interface Equipment {
   ampacite_A?: number;
   vmp_V?: number;
   voc_V?: number;
+
+  courant_A?: number;      // Courant nominal du régulateur (ex: 60 A)
+  mppt_v_min_V?: number;   // Tension min de la fenêtre MPPT
+  mppt_v_max_V?: number;   // Tension max de la fenêtre MPPT
+  pv_voc_max_V?: number;   // Voc PV max supporté par le régulateur
 }
 
 export interface EquipementsRecommandes {
