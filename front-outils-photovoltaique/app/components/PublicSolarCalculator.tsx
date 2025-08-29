@@ -172,6 +172,16 @@ async function fetchHelpFromDB(keys: string[]): Promise<HelpMap> {
   }
 }
 
+/* ===================== Helper: auto-suggestion tension ===================== */
+// Choisit une tension batterie en fonction de P_max.
+// Ajuste les seuils si besoin (800W / 2000W).
+const suggestBatteryVoltage = (pmax: number): 12 | 24 | 48 => {
+  if (!Number.isFinite(pmax) || pmax <= 0) return 24; // neutre par défaut
+  if (pmax <= 800) return 12;
+  if (pmax <= 2000) return 24;
+  return 48;
+};
+
 /* ============================ Composant main ============================ */
 
 interface FormData {
@@ -181,6 +191,8 @@ interface FormData {
   H_solaire: number;
   V_batterie: number;
   localisation: string;
+  H_vers_toit: number;
+  priorite_selection: "cout" | "quantite";
 }
 
 const formatPriceWithCurrency = (n?: number | null, currency?: string) => {
@@ -261,6 +273,8 @@ export default function PublicSolarCalculator() {
     H_solaire: 4.5,
     V_batterie: 24,
     localisation: "",
+    H_vers_toit: 10,
+    priorite_selection: "cout",
   });
 
   const [errors, setErrors] = useState<string[]>([]);
@@ -277,6 +291,8 @@ export default function PublicSolarCalculator() {
       "v_batterie",
       "localisation",
       "h_solaire",
+      "h_vers_toit",
+      "priorite_selection",
     ];
     fetchHelpFromDB(keys).then(setHelp);
   }, []);
@@ -286,6 +302,18 @@ export default function PublicSolarCalculator() {
   const [loadingIrradiation, setLoadingIrradiation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any | null>(null);
   const [debouncedLocalisation] = useDebounce(formData.localisation, 500);
+  const [manualBattery, setManualBattery] = useState(false);
+
+  useEffect(() => {
+    if (!manualBattery) {
+      const suggested = suggestBatteryVoltage(formData.P_max);
+      setFormData((prev) =>
+        prev.V_batterie === suggested
+          ? prev
+          : { ...prev, V_batterie: suggested }
+      );
+    }
+  }, [formData.P_max, manualBattery]);
 
   useEffect(() => {
     if (debouncedLocalisation && !selectedLocation) {
@@ -366,6 +394,9 @@ export default function PublicSolarCalculator() {
       errs.push("La tension doit être 12 V, 24 V ou 48 V.");
     if (!formData.localisation.trim())
       errs.push("La localisation est requise.");
+    if (formData.H_vers_toit <= 0)
+      errs.push("La hauteur vers le toit doit être > 0.");
+
     setErrors(errs);
     return errs.length === 0;
   };
@@ -381,6 +412,8 @@ export default function PublicSolarCalculator() {
         H_solaire: formData.H_solaire,
         V_batterie: formData.V_batterie,
         localisation: formData.localisation,
+        H_vers_toit: formData.H_vers_toit,
+        priorite_selection: formData.priorite_selection,
       },
     };
     await generatePDF(pdfData);
@@ -398,6 +431,8 @@ export default function PublicSolarCalculator() {
         H_solaire: formData.H_solaire,
         V_batterie: formData.V_batterie,
         localisation: formData.localisation,
+        H_vers_toit: formData.H_vers_toit,
+        priorite_selection: formData.priorite_selection,
       };
 
       const data: CalculationResult = await wrap(
@@ -519,13 +554,16 @@ export default function PublicSolarCalculator() {
                   <p>12&nbsp;V, 24&nbsp;V ou 48&nbsp;V selon la puissance.</p>
                 </InfoButton>
               </div>
-              <div className="flex space-x-2">
+              <div className="grid grid-cols-3 gap-2 w-full">
                 {[12, 24, 48].map((v) => (
                   <button
                     key={v}
                     type="button"
-                    onClick={() => updateField("V_batterie", v)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    onClick={() => {
+                      setManualBattery(true); // 👉 l’utilisateur force le choix
+                      updateField("V_batterie", v);
+                    }}
+                    className={`w-full px-4 py-2 rounded-lg font-medium transition-all ${
                       formData.V_batterie === v
                         ? "bg-blue-600 text-white shadow-md"
                         : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
@@ -534,6 +572,77 @@ export default function PublicSolarCalculator() {
                     {v}V
                   </button>
                 ))}
+              </div>
+
+              {/* (optionnel) Indication de mode + lien retour auto */}
+              <div className="mt-1 text-xs text-slate-600">
+                Mode : <b>{manualBattery ? "manuel" : "auto"}</b>
+                {!manualBattery && formData.P_max > 0 && (
+                  <>
+                    {" "}
+                    — suggestion&nbsp;: {suggestBatteryVoltage(formData.P_max)}V
+                  </>
+                )}
+              </div>
+              {manualBattery && (
+                <button
+                  type="button"
+                  onClick={() => setManualBattery(false)}
+                  className="mt-1 text-xs text-blue-600 hover:text-blue-800 underline"
+                  title="Revenir à la sélection automatique basée sur la puissance maximale"
+                >
+                  Revenir au choix automatique (basé sur P_max)
+                </button>
+              )}
+
+              {/* Stratégie de sélection */}
+              <div className="flex items-center justify-between mb-2 mt-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Stratégie de sélection des équipements
+                </label>
+                <InfoButton
+                  title={
+                    help.priorite_selection?.title || "Stratégie de sélection"
+                  }
+                  html={help.priorite_selection?.body_html}
+                >
+                  <ul className="list-disc pl-5">
+                    <li>
+                      <b>Coût minimal</b> : minimise le coût total.
+                    </li>
+                    <li>
+                      <b>Nombre minimal</b> : minimise le nombre d’unités.
+                    </li>
+                    <li>
+                      Dans tous les cas, on respecte d’abord le{" "}
+                      <b>surdimensionnement max</b>.
+                    </li>
+                  </ul>
+                </InfoButton>
+              </div>
+              <div className="grid grid-cols-2 gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={() => updateField("priorite_selection", "cout")}
+                  className={`w-full px-3 py-2 rounded-lg font-medium transition-all ${
+                    formData.priorite_selection === "cout"
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                  }`}
+                >
+                  Coût minimal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateField("priorite_selection", "quantite")}
+                  className={`w-full px-3 py-2 rounded-lg font-medium transition-all ${
+                    formData.priorite_selection === "quantite"
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                  }`}
+                >
+                  Nombre minimal
+                </button>
               </div>
             </section>
 
@@ -623,6 +732,33 @@ export default function PublicSolarCalculator() {
                   ✓ Irradiation calculée automatiquement.
                 </p>
               )}
+
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Hauteur vers le toit (m)
+                </label>
+                <InfoButton
+                  title={help.h_vers_toit?.title || "Hauteur vers le toit (m)"}
+                  html={help.h_vers_toit?.body_html}
+                >
+                  <p>
+                    Sert à estimer la longueur de câble globale :{" "}
+                    <b>H × 2 × 1,2</b> (aller/retour + 20% de mou).
+                  </p>
+                </InfoButton>
+              </div>
+              <input
+                type="number"
+                step="0.1"
+                className="w-full mb-2 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                value={formData.H_vers_toit}
+                onChange={(e) => updateField("H_vers_toit", +e.target.value)}
+                placeholder="Ex: 10"
+              />
+              <p className="text-xs text-slate-500 mb-6">
+                Longueur câble estimée:{" "}
+                <b>{(formData.H_vers_toit || 0) * 2 * 1.2} m</b>
+              </p>
 
               <button
                 onClick={handleSubmit}
@@ -746,7 +882,7 @@ export default function PublicSolarCalculator() {
               </div>
             </div>
 
-            {/* ✅ Topologies */}
+            {/* ✅ Topologies (cartes harmonisées) */}
             {(result?.topologie_pv ||
               result?.topologie_batterie ||
               result?.nb_pv_serie != null ||
@@ -754,50 +890,72 @@ export default function PublicSolarCalculator() {
               result?.nb_batt_serie != null ||
               result?.nb_batt_parallele != null) && (
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg border bg-slate-50">
-                  <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                    <Icons.Sun className="w-4 h-4" /> Topologie PV
-                  </h4>
-                  {/* PV */}
-                  <p className="text-sm text-slate-700">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium mr-2">
-                      {result.topologie_pv ||
-                        `${result.nb_pv_serie}S${result.nb_pv_parallele}P`}
-                    </span>
+                {/* Topologie PV */}
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Icons.Sun className="w-6 h-6 text-blue-600" />
+                      <h4 className="text-base font-semibold text-gray-800">
+                        Topologie PV
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-700">
+                    <div className="flex items-center justify-between">
+                      <span className="opacity-80">Configuration</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium">
+                        {result.topologie_pv ??
+                          `${result.nb_pv_serie ?? "—"}S${
+                            result.nb_pv_parallele ?? "—"
+                          }P`}
+                      </span>
+                    </div>
+
                     {result.nb_pv_serie != null &&
                       result.nb_pv_parallele != null && (
-                        <>
-                          ({result.nb_pv_serie} en série ×{" "}
-                          {result.nb_pv_parallele} en parallèle ={" "}
-                          <b>{result.nb_pv_serie * result.nb_pv_parallele}</b>{" "}
-                          panneaux)
-                        </>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="opacity-80">Série × Parallèle</span>
+                          <span className="font-semibold">
+                            {result.nb_pv_serie} × {result.nb_pv_parallele}
+                          </span>
+                        </div>
                       )}
-                  </p>
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-lg border bg-slate-50">
-                  <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                    <Icons.BatteryCharging className="w-4 h-4" /> Topologie
-                    Batteries
-                  </h4>
-                  <p className="text-sm text-slate-700">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium mr-2">
-                      {result.topologie_batterie ||
-                        `${result.nb_batt_serie}S${result.nb_batt_parallele}P`}
-                    </span>
+                {/* Topologie Batteries */}
+                <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Icons.BatteryCharging className="w-6 h-6 text-emerald-600" />
+                      <h4 className="text-base font-semibold text-gray-800">
+                        Topologie Batteries
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-700">
+                    <div className="flex items-center justify-between">
+                      <span className="opacity-80">Configuration</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">
+                        {result.topologie_batterie ??
+                          `${result.nb_batt_serie ?? "—"}S${
+                            result.nb_batt_parallele ?? "—"
+                          }P`}
+                      </span>
+                    </div>
+
                     {result.nb_batt_serie != null &&
                       result.nb_batt_parallele != null && (
-                        <>
-                          ({result.nb_batt_serie} en série ×{" "}
-                          {result.nb_batt_parallele} en parallèle ={" "}
-                          <b>
-                            {result.nb_batt_serie * result.nb_batt_parallele}
-                          </b>{" "}
-                          batteries)
-                        </>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="opacity-80">Série × Parallèle</span>
+                          <span className="font-semibold">
+                            {result.nb_batt_serie} × {result.nb_batt_parallele}
+                          </span>
+                        </div>
                       )}
-                  </p>
+                  </div>
                 </div>
               </div>
             )}

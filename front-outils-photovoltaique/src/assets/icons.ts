@@ -47,6 +47,7 @@ import {
   ChevronRight,
   FileText,
   RefreshCw,
+  Copy
 } from "lucide-react";
 
 export const Icons = {
@@ -97,4 +98,5 @@ export const Icons = {
   ChevronRight,
   FileText,
   RefreshCw,
+  Copy
 };

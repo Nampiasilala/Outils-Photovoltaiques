@@ -70,6 +70,19 @@ const PREDEFINED_FIELDS = [
       "Tension nominale du parc de batteries.\n\nOptions :\n• 12V : Petites installations (camping-car, abri)\n• 24V : Installations moyennes (maison secondaire)\n• 48V : Grandes installations (maison principale)\n\nAvantage 48V : Moins de pertes, câbles plus fins, meilleur rendement.",
   },
   {
+    key: "priorite_selection",
+    title: "Stratégie de sélection",
+    description: "Règle de choix des équipements",
+    unit: "",
+    icon: Icons.Settings, // cohérent avec la config
+    color: "purple",
+    category: "Configuration",
+    placeholder: "",
+    defaultHelp:
+      "Stratégie appliquée à la sélection des équipements modulaires (panneaux, batteries).\n\n• Coût minimal (défaut) : minimise le coût total.\n• Nombre minimal : minimise le nombre d’unités.\n\nDans tous les cas, on respecte d’abord le surdimensionnement maximal. Si aucune option ne respecte ce seuil, on prend la surdimension minimale puis on applique la stratégie.",
+  },
+
+  {
     key: "localisation",
     title: "Localisation",
     description: "Position géographique",
@@ -92,6 +105,18 @@ const PREDEFINED_FIELDS = [
     placeholder: "Ex: 4.5",
     defaultHelp:
       "Énergie solaire reçue par m² et par jour.\n\nValeurs typiques : 2.5 à 5.5 kWh/m²/j selon la région.\n\nNote : Cette valeur peut être remplie automatiquement selon la localisation.",
+  },
+  {
+    key: "h_vers_toit",
+    title: "Hauteur vers le toit",
+    description: "Distance verticale pour estimer les câbles",
+    unit: "m",
+    icon: Icons.Globe, // on réutilise un pictogramme existant
+    color: "amber", // déjà supporté par colorClasses
+    category: "Environnement",
+    placeholder: "Ex: 10",
+    defaultHelp:
+      "Hauteur verticale (du local technique au toit) utilisée pour estimer la longueur totale de câble.\n\nFormule : H × 2 × 1,2 (aller + retour + 20% de mou).\n\nSaisissez une valeur positive (en mètres).",
   },
 ] as const;
 
@@ -405,7 +430,6 @@ export default function AdminHelpContentsPage() {
           Gestion des notices
         </h1>
       </div>
-      
 
       {/* Grilles par catégorie — 3 cartes/ligne dès md: */}
       {Object.entries(fieldsByCategory).map(([category, fields]) => (

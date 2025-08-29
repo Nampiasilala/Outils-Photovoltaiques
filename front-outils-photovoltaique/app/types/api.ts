@@ -7,6 +7,8 @@ export interface CalculationInput {
   H_solaire: number;       // Irradiation solaire en kWh/m²/j
   V_batterie: number;      // Tension de la batterie en V (12, 24, ou 48)
   localisation: string;    // Localisation géographique
+  H_vers_toit: number;                   // nouveau (requis côté backend)
+  priorite_selection?: 'cout' | 'quantite'; 
 }
 
 export interface Equipment {

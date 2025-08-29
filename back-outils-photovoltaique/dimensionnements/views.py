@@ -66,6 +66,9 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
                     "N_autonomie": Decimal(str(data["N_autonomie"])),
                     "H_solaire":   Decimal(str(data["H_solaire"])),
                     "V_batterie":  Decimal(str(data["V_batterie"])),
+                    "H_vers_toit": Decimal(str(data["H_vers_toit"])),
+                    "priorite_selection": data.get("priorite_selection", "cout"),
+                    "localisation": data.get("localisation", ""),
                 },
                 param
             )
@@ -86,6 +89,9 @@ class DimensionnementViewSet(viewsets.ModelViewSet):
                 localisation=data.get("localisation", ""),
                 v_batterie=data["V_batterie"],
                 h_solaire=data["H_solaire"],
+                
+                h_vers_toit=data["H_vers_toit"],
+                priorite_selection=data.get("priorite_selection", "cout"),
             )
 
             dim = Dimensionnement.objects.create(

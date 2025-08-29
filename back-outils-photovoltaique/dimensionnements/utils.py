@@ -7,7 +7,6 @@ from django.core.cache import cache
 from equipements.models import Equipement
 from dimensionnements.serializers import EquipementDetailSerializer
 
-DEFAULT_L_CABLE_GLOBAL_M = Decimal("40")  # longueur globale fixe (m)
 # =========================
 #  Mapping des champs ORM
 # =========================
@@ -106,51 +105,68 @@ def choisir_equipement(type_eq: str, valeur_cible, attribut_logique: str):
 
 
 # ===========================================================
-#  Sélection « modulaires » (PV/batteries) optimisée
-#    - surdimensionnement <= surdim_max si possible
-#    - coût total minimal (prix_unitaire × quantité)
-#    - sinon: surdimensionnement minimal puis coût
+#  Sélection « modulaires » (PV/batteries) paramétrable
+#    - on respecte d'abord surdim_max si possible
+#    - stratégie "cout" : coût total minimal, puis n minimal, puis valeur unitaire élevée
+#    - stratégie "quantite" : n minimal, puis coût total, puis valeur unitaire élevée
+#    - sinon (si aucun <= surdim_max) : surdimension minimale, puis stratégie
 # ===========================================================
-def choisir_modulaire_par_cout(
+def choisir_modulaire(
     categorie: str,
     besoin: Decimal,
     attr_valeur_logique: str,
     attr_prix: str = "prix_unitaire",
     surdim_max: Decimal = Decimal("0.25"),
     filtre_qs: Q | None = None,
+    strategie: str = "cout",   # "cout" | "quantite"
 ):
     attr_valeur = f(categorie, attr_valeur_logique, attr_valeur_logique)
 
     qs = Equipement.objects.filter(categorie=categorie)
     if filtre_qs is not None:
         qs = qs.filter(filtre_qs)
-    qs = (qs.exclude(**{f"{attr_valeur}__isnull": True})
-            .exclude(**{f"{attr_valeur}": 0})
-            .exclude(**{f"{attr_prix}__isnull": True})
-            .order_by(attr_valeur))
+    qs = (qs
+          .exclude(**{f"{attr_valeur}__isnull": True})
+          .exclude(**{f"{attr_valeur}": 0})
+          .exclude(**{f"{attr_prix}__isnull": True})
+          .order_by(attr_valeur))
 
     if not qs.exists():
         raise ValueError(f"Aucun équipement de type '{categorie}' exploitable.")
 
     candidats_ok, candidats_relax = [], []
     for e in qs:
-        val = Decimal(str(getattr(e, attr_valeur)))
+        val  = Decimal(str(getattr(e, attr_valeur)))
         prix = Decimal(str(getattr(e, attr_prix)))
         if prix <= 0:
             continue
-        n_units = ceil_decimal(besoin / val)
+        n_units  = ceil_decimal(besoin / val)
         installe = val * n_units
-        surdim = (installe - besoin) / besoin if besoin > 0 else Decimal("0")
-        total_cost = prix * n_units
+        surdim   = (installe - besoin) / besoin if besoin > 0 else Decimal("0")
+        cout     = prix * n_units
 
-        d = dict(equip=e, n=n_units, installe=installe, surdim=surdim, cout=total_cost, val=val)
+        d = dict(equip=e, n=n_units, installe=installe, surdim=surdim, cout=cout, val=val)
         (candidats_ok if surdim <= surdim_max else candidats_relax).append(d)
 
-    def key_ok(d):    return (d["cout"], d["n"], -d["val"])
-    def key_relax(d): return (d["surdim"], d["cout"], d["n"])
+    strategie = (strategie or "cout").lower()
+    if strategie not in ("cout", "quantite"):
+        strategie = "cout"
+
+    if strategie == "quantite":
+        key_ok    = lambda d: (d["n"], d["cout"], -d["val"])
+        key_relax = lambda d: (d["surdim"], d["n"], d["cout"])
+    else:  # "cout"
+        key_ok    = lambda d: (d["cout"], d["n"], -d["val"])
+        key_relax = lambda d: (d["surdim"], d["cout"], d["n"])
 
     best = sorted(candidats_ok, key=key_ok)[0] if candidats_ok else sorted(candidats_relax, key=key_relax)[0]
     return best
+
+# ✅ alias pour compatibilité avec l'ancien nom
+def choisir_modulaire_par_cout(*args, **kwargs):
+    kwargs["strategie"] = "cout"
+    return choisir_modulaire(*args, **kwargs)
+
 
 # ===========================================================
 #  Contrôles techniques simplifiés (si les champs existent)
@@ -225,6 +241,12 @@ def compute_dimensionnement(data, param):
     H_solaire   = Decimal(str(data["H_solaire"]))     # kWh/m²/j
     V_batterie  = Decimal(str(data["V_batterie"]))    # V
 
+    H_vers_toit = Decimal(str(data.get("H_vers_toit", 0) or 0))  # m
+    priorite_selection = (data.get("priorite_selection") or "cout").lower()
+    if priorite_selection not in ("cout", "quantite"):
+        priorite_selection = "cout"
+
+
     # --- Paramètres système ---
     Ksec       = Decimal(str(param.k_securite))
     n_global   = Decimal(str(param.n_global))
@@ -242,6 +264,7 @@ def compute_dimensionnement(data, param):
         attr_valeur_logique="value",            # puissance_W
         attr_prix="prix_unitaire",
         surdim_max=SURDIM_MAX,
+        strategie=priorite_selection,
     )
     panneau_choisi   = choix_pv["equip"]
     nombre_panneaux  = int(choix_pv["n"])              # pourra être ajusté
@@ -256,6 +279,7 @@ def compute_dimensionnement(data, param):
         attr_valeur_logique="value",            # capacite_Ah
         attr_prix="prix_unitaire",
         surdim_max=SURDIM_MAX,
+        strategie=priorite_selection,
     )
     batterie_choisie = choix_batt["equip"]
 
@@ -335,8 +359,10 @@ def compute_dimensionnement(data, param):
     prix_m_global = _prix_decimal(cable_global)  # prix au mètre
 
     # c) Longueur globale (fixe, sans front)
-    L_global_m = DEFAULT_L_CABLE_GLOBAL_M  # 40 m
-
+    L_global_m = H_vers_toit * Decimal("2") * Decimal("1.2")
+    if L_global_m < 0:
+        L_global_m = Decimal("0")
+        
     # d) Prix global des câbles
     prix_cable_global = (prix_m_global * L_global_m).quantize(Decimal('1.00'))
 

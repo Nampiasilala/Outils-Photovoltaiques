@@ -13,6 +13,14 @@ class CalculationInputSerializer(serializers.Serializer):
     V_batterie = serializers.ChoiceField(choices=[12, 24, 48])
     localisation = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
+    H_vers_toit = serializers.FloatField(min_value=0.1, required=True)
+    priorite_selection = serializers.ChoiceField(
+        choices=[('cout', 'Prioriser le coût minimal'), ('quantite', 'Prioriser le nombre minimal')],
+        required=False,
+        default='cout',
+    )
+
+
     def validate(self, attrs):
         if attrs["H_solaire"] > 12:
             raise serializers.ValidationError({"H_solaire": "H_solaire doit être ≤ 12."})
