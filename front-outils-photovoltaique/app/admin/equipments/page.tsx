@@ -1,4 +1,4 @@
-// app/admin/equipments/page.tsx
+// app/admin/equipment-approval/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -296,13 +296,13 @@ export default function AdminEquipmentApprovalPage() {
         <div className="flex gap-4 flex-wrap">
           <input
             type="text"
-            placeholder="Rechercher par référence, modèle, entreprise..."
-            className="px-4 py-2 border border-gray-300 rounded-lg flex-1 min-w-64"
+            placeholder="Rechercher..."
+            className="px-4 py-2 border border-gray-300 rounded-lg w-64"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <select
-            className="px-4 py-2 border border-gray-300 rounded-lg"
+            className="px-4 py-2 border border-gray-300 rounded-lg w-48"
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value as "Tous" | Categorie)}
           >
