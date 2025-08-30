@@ -110,6 +110,11 @@ export default function AdminLoginPage() {
       return;
     }
 
+      localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("adminAccessToken");
+  localStorage.removeItem("adminRefreshToken");
+
     setIsLoading(true);
     try {
       await wrap(() => login(formData.email, formData.password), "Connexion…");

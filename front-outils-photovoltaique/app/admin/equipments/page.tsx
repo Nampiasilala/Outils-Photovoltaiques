@@ -67,12 +67,14 @@ const CATEGORY_LABEL: Record<Categorie, string> = {
   autre: "Autre",
 };
 
+
+
 export default function AdminEquipmentApprovalPage() {
   const { admin, loading } = useAdminAuth();
   const { wrap, isBusy } = useLoading();
   
   const [equipments, setEquipments] = useState<Equipment[]>([]);
-  const [viewMode, setViewMode] = useState<"tous" | "approuves" | "non_approuves">("tous");
+  const [viewMode, setViewMode] = useState<"tous" | "approuves" | "non_approuves" | "entreprises">("tous");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState<"Tous" | Categorie>("Tous");
   
@@ -86,6 +88,36 @@ export default function AdminEquipmentApprovalPage() {
     if (!token) throw new Error("Token manquant");
     return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   };
+
+
+  const handleAvailabilityToggle = async (equipment: Equipment) => {
+  try {
+    const newStatus = !(equipment.disponible ?? true);
+    const res = await fetchWithAdminAuth(`${API}/equipements/${equipment.id}/`, {
+      method: "PATCH",
+      headers: authHeader(),
+      body: JSON.stringify({ disponible: newStatus }),
+    });
+    
+    if (!res.ok) throw new Error("Mise à jour échouée");
+    
+    setEquipments(prev => 
+      prev.map(e => 
+        e.id === equipment.id 
+          ? { ...e, disponible: newStatus }
+          : e
+      )
+    );
+    
+    toast.success(
+      newStatus 
+        ? "Équipement marqué comme disponible" 
+        : "Équipement marqué comme indisponible"
+    );
+  } catch (error) {
+    toast.error("Erreur lors de la mise à jour");
+  }
+};
 
   useEffect(() => {
     if (loading || !admin) return;
@@ -173,6 +205,11 @@ export default function AdminEquipmentApprovalPage() {
       // Filtre par mode de vue
       if (viewMode === "approuves" && !equipment.approuve_dimensionnement) return false;
       if (viewMode === "non_approuves" && equipment.approuve_dimensionnement) return false;
+      if (viewMode === "entreprises") {
+        // Filtre pour les équipements créés par des entreprises (non-admin)
+        const isFromEntreprise = equipment.created_by_email && !equipment.created_by_email.includes('admin');
+        if (!isFromEntreprise) return false;
+      }
       
       // Filtre par catégorie
       if (filterCategory !== "Tous" && equipment.categorie !== filterCategory) return false;
@@ -219,7 +256,7 @@ export default function AdminEquipmentApprovalPage() {
   if (!admin) return null;
 
   return (
-    <div className="p-6 max-w-screen-xl mx-auto">
+    <div className="p-8 max-w-screen-xl mx-auto">
       {/* Header avec statistiques */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900 mb-4">
@@ -280,6 +317,16 @@ export default function AdminEquipmentApprovalPage() {
               }`}
             >
               Non approuvés ({stats.total - stats.approuves})
+            </button>
+            <button
+              onClick={() => setViewMode("entreprises")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === "entreprises" 
+                  ? "bg-purple-600 text-white" 
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Entreprises ({stats.entrepriseEquips})
             </button>
           </div>
 

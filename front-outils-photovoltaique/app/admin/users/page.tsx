@@ -6,9 +6,9 @@ import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { toast } from "react-toastify";
 import DeleteAlert from "@/components/DeleteAlert";
 import { useLoading, Spinner } from "@/LoadingProvider";
-import { Icons } from "../../../src/assets/icons"; // Ajuster si nécessaire
+import { Icons } from "../../../src/assets/icons";
 
-type RoleFilter = "Tous" | "Admin" | "Modérateur" | "Utilisateur" | "Invité";
+type RoleFilter = "Tous" | "Admin" | "Entreprise";
 
 interface UserRow {
   id: number;
@@ -20,7 +20,7 @@ interface UserRow {
 
 export default function AdminUsersPage() {
   const { admin, loading: guardLoading } = useAdminAuth();
-  const { wrap, isBusy } = useLoading(); // ⬅️ on récupère isBusy
+  const { wrap, isBusy } = useLoading();
 
   const [rows, setRows] = useState<UserRow[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -43,7 +43,7 @@ export default function AdminUsersPage() {
           id: u.id,
           username: u.username,
           email: u.email,
-          role: u.role ?? (u.is_superuser ? "Admin" : u.is_staff ? "Modérateur" : "Utilisateur"),
+          role: u.role ?? (u.is_superuser || u.is_staff ? "Admin" : "Entreprise"),
           joinDate: u.date_joined ?? u.created_at ?? new Date().toISOString(),
         }));
         setRows(mapped);
@@ -73,6 +73,14 @@ export default function AdminUsersPage() {
     });
   }, [rows, searchTerm, filterRole]);
 
+  // Statistiques pour les boutons
+  const stats = useMemo(() => {
+    const total = rows.length;
+    const admins = rows.filter(u => u.role === "Admin").length;
+    const entreprises = rows.filter(u => u.role === "Entreprise").length;
+    return { total, admins, entreprises };
+  }, [rows]);
+
   // ----- Actions -----
   const handleDeleteUser = async (id: number): Promise<void> => {
     setIsDeleting(id);
@@ -84,7 +92,7 @@ export default function AdminUsersPage() {
           throw new Error(`Erreur ${res.status}: ${txt || res.statusText}`);
         }
         setRows((r) => r.filter((x) => x.id !== id));
-      }, "Suppression de l’utilisateur…");
+      }, "Suppression de l'utilisateur…");
       toast.success("Utilisateur supprimé avec succès !");
     } catch (err: any) {
       toast.error(err?.message || "Échec de la suppression de l'utilisateur.");
@@ -97,7 +105,6 @@ export default function AdminUsersPage() {
   if (guardLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        {/* On n'affiche le spinner local que si l’overlay global n’est pas visible */}
         {!isBusy && <Spinner size={40} />}
       </div>
     );
@@ -114,32 +121,51 @@ export default function AdminUsersPage() {
         </h1>
       </div>
 
-      {/* Toolbar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-        <div className="relative">
+      {/* Filtres par boutons */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        <button
+          onClick={() => setFilterRole("Tous")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            filterRole === "Tous" 
+              ? "bg-blue-600 text-white" 
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          Tous ({stats.total})
+        </button>
+        <button
+          onClick={() => setFilterRole("Admin")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            filterRole === "Admin" 
+              ? "bg-red-600 text-white" 
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          Admins ({stats.admins})
+        </button>
+        <button
+          onClick={() => setFilterRole("Entreprise")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            filterRole === "Entreprise" 
+              ? "bg-green-600 text-white" 
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          Entreprises ({stats.entreprises})
+        </button>
+      </div>
+
+      {/* Barre de recherche */}
+      <div className="mb-6">
+        <div className="relative w-full max-w-md">
           <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
           <input
             type="text"
             className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm text-slate-800"
-            placeholder="Rechercher par nom, email ou rôle…"
+            placeholder="Rechercher par nom ou email…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-
-        <div className="relative">
-          <Icons.Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <select
-            className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm text-slate-800"
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value as RoleFilter)}
-          >
-            <option value="Tous">Tous les rôles</option>
-            <option value="Admin">Administrateur</option>
-            <option value="Modérateur">Modérateur</option>
-            <option value="Utilisateur">Utilisateur</option>
-            <option value="Invité">Invité</option>
-          </select>
         </div>
       </div>
 
@@ -149,7 +175,6 @@ export default function AdminUsersPage() {
           className="flex items-center justify-center min-h-[200px] bg-white rounded-lg shadow-md"
           aria-busy="true"
         >
-          {/* Pas de double spinner : masque le local si overlay actif */}
           {!isBusy && <Spinner size={28} />}
           <span className="ml-3 text-base text-slate-600">Chargement des utilisateurs…</span>
         </div>
@@ -181,9 +206,7 @@ export default function AdminUsersPage() {
                           className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
                             u.role === "Admin"
                               ? "bg-red-100 text-red-800"
-                              : u.role === "Modérateur"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : u.role === "Utilisateur"
+                              : u.role === "Entreprise"
                               ? "bg-green-100 text-green-800"
                               : "bg-slate-100 text-slate-800"
                           }`}
@@ -202,7 +225,6 @@ export default function AdminUsersPage() {
                         <DeleteAlert
                           label={`Supprimer ${u.username} ?`}
                           onConfirm={() => handleDeleteUser(u.id)}
-                          // Évite le mini-spinner dans le bouton quand l’overlay est déjà là
                           isLoading={isDeleting === u.id && !isBusy}
                         />
                       </td>

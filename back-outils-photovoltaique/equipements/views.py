@@ -7,6 +7,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Equipement
 from .serializers import EquipementSerializer
+from rest_framework.decorators import action
+
+
+
 
 
 def _is_admin_user(u) -> bool:
@@ -31,12 +35,21 @@ class EquipementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         u = self.request.user
         qs = Equipement.objects.all()
-
+        
+        # 🔍 DEBUG - ajoutez ces lignes temporairement
+        print(f"🔍 User: {u}, authenticated: {u.is_authenticated if u else 'None'}")
+        print(f"🔍 User role: {getattr(u, 'role', 'NO_ROLE')}")
+        print(f"🔍 is_admin_user: {_is_admin_user(u)}")
+        
         if u and u.is_authenticated:
             if _is_admin_user(u):
+                print("🔍 Admin access - all equipments")
                 return qs.order_by("-id")
             if (getattr(u, "role", "") or "").lower() == "entreprise":
-                return qs.filter(created_by=u).order_by("-id")
+                filtered_qs = qs.filter(created_by=u).order_by("-id")
+                print(f"🔍 Entreprise access - filtered to {filtered_qs.count()} equipments")
+                return filtered_qs
+            print("🔍 Public access - admin equipments only")
             return qs.filter(ADMIN_Q).order_by("-id")
 
         return qs.filter(ADMIN_Q).order_by("-id")
@@ -99,3 +112,18 @@ class EquipementViewSet(viewsets.ModelViewSet):
             {'error': 'Paramètre approuve_dimensionnement requis'}, 
             status=status.HTTP_400_BAD_REQUEST
         )
+        
+    @action(detail=False, methods=['get'], url_path='debug')
+    def debug_user(self, request):
+        """Debug temporaire pour vérifier l'utilisateur"""
+        u = request.user
+        return Response({
+            'user_id': u.id if u else None,
+            'username': u.username if u else None,
+            'email': u.email if u else None,
+            'role': getattr(u, 'role', 'NO_ROLE'),
+            'is_staff': getattr(u, 'is_staff', False),
+            'is_superuser': getattr(u, 'is_superuser', False),
+            'is_admin': _is_admin_user(u),
+            'equipement_count': Equipement.objects.filter(created_by=u).count() if u else 0,
+        })

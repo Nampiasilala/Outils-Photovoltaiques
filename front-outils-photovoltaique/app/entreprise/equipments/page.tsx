@@ -100,6 +100,25 @@ export default function CompanyEquipmentsPage() {
   const [filterCategory, setFilterCategory] = useState<"Tous" | Categorie>("Tous");
   const [pageLoading, setPageLoading] = useState(true);
 
+
+
+
+
+
+const debugTokens = () => {
+  const access = localStorage.getItem("accessToken");
+  const adminAccess = localStorage.getItem("adminAccessToken");
+  console.log("🔍 Tokens:", {
+    accessToken: access?.substring(0, 20) + "...",
+    adminAccessToken: adminAccess?.substring(0, 20) + "...",
+    sameToken: access === adminAccess,
+    userEmail: user?.email,
+    userRole: user?.role
+  });
+};
+
+
+
   // ---------- Guard d'accès ----------
   useEffect(() => {
     if (loading) return;
@@ -198,6 +217,35 @@ export default function CompanyEquipmentsPage() {
     setEquipments((prev) => prev.filter((e) => e.id !== id));
   };
 
+  const handleAvailabilityToggle = async (equipment: Equipment) => {
+    try {
+      const newStatus = !(equipment.disponible ?? true);
+      const res = await fetchWithAdminAuth(`${API}/equipements/${equipment.id}/`, {
+        method: "PATCH",
+        headers: authHeader(),
+        body: JSON.stringify({ disponible: newStatus }),
+      });
+      
+      if (!res.ok) throw new Error("Mise à jour échouée");
+      
+      setEquipments(prev => 
+        prev.map(e => 
+          e.id === equipment.id 
+            ? { ...e, disponible: newStatus }
+            : e
+        )
+      );
+      
+      toast.success(
+        newStatus 
+          ? "Équipement marqué comme disponible" 
+          : "Équipement marqué comme indisponible"
+      );
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     return equipments.filter((e) => {
@@ -286,7 +334,7 @@ export default function CompanyEquipmentsPage() {
               <th className="px-3 py-2 text-left">Tension (V)</th>
               <th className="px-3 py-2 text-left">Courant (A)</th>
               <th className="px-3 py-2 text-left">Prix (MGA)</th>
-              <th className="px-3 py-2 text-left">Statut</th>
+              <th className="px-3 py-2 text-left">Disponibilité</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -312,13 +360,19 @@ export default function CompanyEquipmentsPage() {
                 <td className="px-3 py-2">{equip.courant_A ?? "—"}</td>
                 <td className="px-3 py-2 font-medium">{formatMGA(equip.prix_unitaire)}</td>
                 <td className="px-3 py-2">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    (equip.disponible ?? true)
-                      ? "bg-emerald-100 text-emerald-800" 
-                      : "bg-red-100 text-red-800"
-                  }`}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Empêche l'ouverture du modal
+                      handleAvailabilityToggle(equip);
+                    }}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                      (equip.disponible ?? true)
+                        ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" 
+                        : "bg-red-100 text-red-800 hover:bg-red-200"
+                    }`}
+                  >
                     {(equip.disponible ?? true) ? "Disponible" : "Indisponible"}
-                  </span>
+                  </button>
                 </td>
               </tr>
             ))}
