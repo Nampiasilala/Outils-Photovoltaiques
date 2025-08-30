@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useAdminAuth } from "@/components/AuthContext";
 import { fetchWithAdminAuth } from "@/lib/fetchWithAdminAuth";
 import { toast } from "react-toastify";
 import DeleteAlert from "@/components/DeleteAlert";
 import { useLoading, Spinner } from "@/LoadingProvider";
 import { Icons } from "../../../src/assets/icons";
+
+const UserDetailsModal = dynamic(
+  () => import("@/components/admin/UserDetailsModal"),
+  { ssr: false }
+);
 
 type RoleFilter = "Tous" | "Admin" | "Entreprise";
 
@@ -27,6 +33,10 @@ export default function AdminUsersPage() {
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<RoleFilter>("Tous");
+
+  // ➕ états pour le modal de détails
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   // ----- Data -----
   const loadUsers = async () => {
@@ -73,7 +83,6 @@ export default function AdminUsersPage() {
     });
   }, [rows, searchTerm, filterRole]);
 
-  // Statistiques pour les boutons
   const stats = useMemo(() => {
     const total = rows.length;
     const admins = rows.filter(u => u.role === "Admin").length;
@@ -99,6 +108,16 @@ export default function AdminUsersPage() {
     } finally {
       setIsDeleting(null);
     }
+  };
+
+  const openDetails = (id: number) => {
+    setSelectedUserId(id);
+    setDetailsOpen(true);
+  };
+
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setSelectedUserId(null);
   };
 
   // ----- Guards UI -----
@@ -193,7 +212,12 @@ export default function AdminUsersPage() {
               <tbody className="divide-y divide-slate-200">
                 {filtered.length > 0 ? (
                   filtered.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                    <tr
+                      key={u.id}
+                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      onClick={() => openDetails(u.id)}
+                      title="Voir les détails"
+                    >
                       <td className="px-4 py-3 flex items-center gap-3">
                         <Icons.Mail className="w-4 h-4 text-slate-500" />
                         <div>
@@ -222,11 +246,14 @@ export default function AdminUsersPage() {
                         })}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <DeleteAlert
-                          label={`Supprimer ${u.username} ?`}
-                          onConfirm={() => handleDeleteUser(u.id)}
-                          isLoading={isDeleting === u.id && !isBusy}
-                        />
+                        {/* empêcher le clic d’ouvrir le modal */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DeleteAlert
+                            label={`Supprimer ${u.username} ?`}
+                            onConfirm={() => handleDeleteUser(u.id)}
+                            isLoading={isDeleting === u.id && !isBusy}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -242,6 +269,13 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de détails (lecture seule) */}
+      <UserDetailsModal
+        isOpen={detailsOpen}
+        onClose={closeDetails}
+        userId={selectedUserId}
+      />
     </div>
   );
 }
