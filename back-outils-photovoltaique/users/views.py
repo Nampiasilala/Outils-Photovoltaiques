@@ -8,6 +8,7 @@ from .serializers import (
     RegisterSerializer,
     LoginSerializer,
     ChangePasswordSerializer,
+    UserSerializer,
 )
 
 User = get_user_model()
@@ -22,44 +23,41 @@ class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
 
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"]
-        password = serializer.validated_data["password"]
-
-        # compat email/username
-        user = authenticate(request, email=email, username=email, password=password)
-
-        if user:
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "username": user.username,
-                    "role": (user.role or "").capitalize(),  # "Admin" / "Entreprise" / "Utilisateur"
-                    "is_staff": user.is_staff,
-                    "is_superuser": user.is_superuser,
-                }
-            })
-
-        return Response(
-            {"detail": "Email ou mot de passe invalide"},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
+        user = serializer.validated_data["user"]
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "role": (user.role or "").capitalize(),
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
+                # champs complémentaires (facultatifs)
+                "phone": user.phone,
+                "address": user.address,
+                "website": user.website,
+                "description": user.description,
+            }
+        })
 
 
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
-    serializer_class = RegisterSerializer
+
+    # GET -> UserSerializer ; POST -> RegisterSerializer
+    def get_serializer_class(self):
+        return RegisterSerializer if self.request.method == "POST" else UserSerializer
 
 
 class UserRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
-    serializer_class = RegisterSerializer
+    serializer_class = UserSerializer  # ✅ on utilise UserSerializer pour GET/PATCH/DELETE
 
 
 class ChangePasswordView(APIView):
@@ -75,14 +73,11 @@ class ChangePasswordView(APIView):
 
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-
-        user.set_password(serializer.validated_data["new_password"])
-        user.save()
+        serializer.save()
 
         return Response({"detail": "Mot de passe changé avec succès."}, status=status.HTTP_200_OK)
 
 
-# ✅ NOUVEAU : /api/users/me
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -95,4 +90,11 @@ class MeView(APIView):
             "role": (u.role or "").capitalize(),
             "is_staff": u.is_staff,
             "is_superuser": u.is_superuser,
+            # champs complémentaires (facultatifs)
+            "phone": u.phone,
+            "address": u.address,
+            "website": u.website,
+            "description": u.description,
+            "date_joined": u.date_joined,
+            "last_login": u.last_login,
         })

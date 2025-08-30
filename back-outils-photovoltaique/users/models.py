@@ -24,6 +24,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=150, unique=True)
     role = models.CharField(max_length=50, default="Utilisateur", db_index=True)
 
+    
+    # 🆕 Champs entreprise (tous optionnels)
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    website = models.URLField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    
     # Champs obligatoires pour Django Admin / auth
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

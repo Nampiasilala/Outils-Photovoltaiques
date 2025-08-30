@@ -1,3 +1,4 @@
+# users/serializers.py
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -5,35 +6,70 @@ User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True, min_length=8, required=True)
+
+    # Champs optionnels
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    website = serializers.URLField(required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "password", "role", "date_joined")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "password",
+            "role",
+            "date_joined",
+            # nouveaux champs optionnels
+            "phone",
+            "address",
+            "website",
+            "description",
+        )
         read_only_fields = ("id", "date_joined")
         extra_kwargs = {
             "email": {"required": True},
             "username": {"required": True},
-            # "role": {"read_only": True},  # décommente si tu veux éviter l’escalade côté API
+            # "role": {"read_only": True},  # décommente si tu veux figer le rôle côté API
         }
 
     def create(self, validated_data):
-        # ✅ utilise le manager pour hasher le mot de passe
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
         return user
 
 
 class UserSerializer(serializers.ModelSerializer):
-    # `password` optionnel et write_only pour UPDATE; appliqué seulement s’il est fourni
+    # `password` optionnel (write_only) pour permettre de le changer via PATCH si fourni
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    # Champs optionnels
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    website = serializers.URLField(required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "role", "status", "date_joined", "last_login", "password")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "role",
+            "date_joined",
+            "last_login",
+            # optionnels
+            "phone",
+            "address",
+            "website",
+            "description",
+            # mot de passe (écriture seulement)
+            "password",
+        )
         read_only_fields = ("id", "date_joined", "last_login")
-        # Si tu veux empêcher le changement de rôle par l’API :
-        # extra_kwargs = {"role": {"read_only": True}}
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
@@ -59,7 +95,6 @@ class LoginSerializer(serializers.Serializer):
 
         user = authenticate(request=self.context.get("request"), email=email, password=password)
         if user is None:
-            # fallback si backend d’auth ne prend pas email
             u = User.objects.filter(email=email).first()
             if not u or not u.check_password(password):
                 raise serializers.ValidationError({"detail": "Identifiants invalides."})
