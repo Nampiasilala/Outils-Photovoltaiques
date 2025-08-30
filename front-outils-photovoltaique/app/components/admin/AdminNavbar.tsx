@@ -178,13 +178,6 @@ export default function Navbar() {
                   >
                     Connexion
                   </Link>
-                  <Link
-                    href="/register"
-                    className="block px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Inscription
-                  </Link>
                 </>
               )}
             </div>
