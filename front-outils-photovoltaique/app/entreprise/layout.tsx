@@ -8,22 +8,29 @@ import { useAuth } from "@/components/AuthContext";
 import { Spinner } from "@/LoadingProvider";
 import { toast } from "react-toastify";
 
-export default function EntrepriseLayout({ children }: { children: React.ReactNode }) {
+export default function EntrepriseLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) return;                 // on attend d’avoir le profil
-    if (!user) {                         // pas connecté
+    if (loading) return; // on attend d’avoir le profil
+    if (!user) {
+      // pas connecté
       router.replace("/admin-login");
       return;
     }
-    if (user.role === "admin") {         // admin -> dashboard admin
+    if (user.role === "admin") {
+      // admin -> dashboard admin
       router.replace("/admin");
       return;
     }
-    if (user.role !== "entreprise") {    // pas entreprise -> refus
+    if (user.role !== "entreprise") {
+      // pas entreprise -> refus
       toast.error("Accès refusé : cette section est réservée aux entreprises.");
       router.replace("/admin-login");
       return;
@@ -62,6 +69,19 @@ export default function EntrepriseLayout({ children }: { children: React.ReactNo
             >
               Mes équipements
             </Link>
+
+            {/* 👇 Nouveau bouton vers le profil entreprise */}
+            <Link
+              href="/entreprise/entreprise-profile" // ← adapte le chemin si ta page s’appelle autrement
+              className={`px-3 py-1.5 rounded-md ${
+                isActive("/entreprise/entreprise-profile")
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Profil entreprise
+            </Link>
+
             <button
               onClick={() => {
                 logout();

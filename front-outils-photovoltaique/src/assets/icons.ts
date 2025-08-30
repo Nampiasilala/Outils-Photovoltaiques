@@ -48,7 +48,11 @@ import {
   FileText,
   RefreshCw,
   Copy,
-  ArrowUpDown
+  ArrowUpDown,
+  Image,
+  Phone,
+  Building2,
+  AtSign
 } from "lucide-react";
 
 export const Icons = {
@@ -100,5 +104,9 @@ export const Icons = {
   FileText,
   RefreshCw,
   Copy,
-  ArrowUpDown
+  ArrowUpDown,
+  Image,
+  Phone,
+  Building2,
+  AtSign
 };
