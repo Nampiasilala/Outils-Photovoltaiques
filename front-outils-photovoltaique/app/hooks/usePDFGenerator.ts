@@ -447,110 +447,79 @@ export const usePDFGenerator = () => {
     );
   };
 
-  const addTopologiesSection = (doc: jsPDF, data: PDFData, startY: number) => {
-    const tableBuilder = new TableBuilder(doc, tableConfig);
+  // Remplacez la fonction addTopologiesSection par cette version corrigée :
 
-    // Rien à afficher ?
-    const hasPV =
-      data.result?.topologie_pv ||
-      (data.result?.nb_pv_serie != null &&
-        data.result?.nb_pv_parallele != null);
-    const hasBatt =
-      data.result?.topologie_batterie ||
-      (data.result?.nb_batt_serie != null &&
-        data.result?.nb_batt_parallele != null);
-    if (!hasPV && !hasBatt) return startY;
+const addTopologiesSection = (doc: jsPDF, data: PDFData, startY: number) => {
+  const tableBuilder = new TableBuilder(doc, tableConfig);
 
-    // Titre
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(41, 128, 185);
-    doc.text("4. Topologies", 20, startY);
+  // Vérifier s'il y a des données de topologie à afficher
+  const hasPV = data.result?.topologie_pv || 
+    (data.result?.nb_pv_serie != null && data.result?.nb_pv_parallele != null);
+  const hasBatt = data.result?.topologie_batterie || 
+    (data.result?.nb_batt_serie != null && data.result?.nb_batt_parallele != null);
+  
+  if (!hasPV && !hasBatt) return startY;
 
-    let currentY = startY + 8;
+  // ✅ Création d'un seul tableau unifié
+  const headers = ["Type", "Configuration", "Série", "Parallèle", "Total"];
+  const topologyData: string[][] = [];
 
-    // PV
-    if (hasPV) {
-      const headersPV = ["Champ", "Valeur"];
-      const rowsPV: string[][] = [
-        [
-          "Configuration",
-          `${
-            data.result.topologie_pv ??
-            `${data.result.nb_pv_serie ?? "—"}S${
-              data.result.nb_pv_parallele ?? "—"
-            }P`
-          }`,
-        ],
-      ];
-      if (
-        data.result.nb_pv_serie != null &&
-        data.result.nb_pv_parallele != null
-      ) {
-        rowsPV.push([
-          "Série × Parallèle",
-          `${data.result.nb_pv_serie} × ${data.result.nb_pv_parallele}`,
-        ]);
-      }
-      if (data.result.nombre_panneaux != null) {
-        rowsPV.push(["Total panneaux", `${data.result.nombre_panneaux}`]);
-      }
+  // Ajouter les données PV si disponibles
+  if (hasPV) {
+    const configPV = data.result.topologie_pv || 
+      `${data.result.nb_pv_serie ?? "—"}S${data.result.nb_pv_parallele ?? "—"}P`;
+    
+    topologyData.push([
+      "Panneaux PV",
+      configPV,
+      `${data.result.nb_pv_serie ?? "—"}`,
+      `${data.result.nb_pv_parallele ?? "—"}`,
+      `${data.result.nombre_panneaux ?? "—"}`
+    ]);
+  }
 
-      const totalHpv =
-        tableConfig.headerHeight + tableConfig.rowHeight * rowsPV.length + 10;
-      currentY = ensurePageBreak(doc, currentY, totalHpv);
-      currentY = tableBuilder.drawTable(
-        20,
-        currentY,
-        headersPV,
-        rowsPV,
-        [80, 90],
-        [41, 128, 185]
-      );
-    }
+  // Ajouter les données batteries si disponibles
+  if (hasBatt) {
+    const configBatt = data.result.topologie_batterie || 
+      `${data.result.nb_batt_serie ?? "—"}S${data.result.nb_batt_parallele ?? "—"}P`;
+    
+    topologyData.push([
+      "Batteries",
+      configBatt,
+      `${data.result.nb_batt_serie ?? "—"}`,
+      `${data.result.nb_batt_parallele ?? "—"}`,
+      `${data.result.nombre_batteries ?? "—"}`
+    ]);
+  }
 
-    // Batteries
-    if (hasBatt) {
-      const headersB = ["Champ", "Valeur"];
-      const rowsB: string[][] = [
-        [
-          "Configuration",
-          `${
-            data.result.topologie_batterie ??
-            `${data.result.nb_batt_serie ?? "—"}S${
-              data.result.nb_batt_parallele ?? "—"
-            }P`
-          }`,
-        ],
-      ];
-      if (
-        data.result.nb_batt_serie != null &&
-        data.result.nb_batt_parallele != null
-      ) {
-        rowsB.push([
-          "Série × Parallèle",
-          `${data.result.nb_batt_serie} × ${data.result.nb_batt_parallele}`,
-        ]);
-      }
-      if (data.result.nombre_batteries != null) {
-        rowsB.push(["Total batteries", `${data.result.nombre_batteries}`]);
-      }
+  // ✅ Calculer l'espace total nécessaire (titre + tableau)
+  const columnWidths = [35, 45, 25, 25, 25];
+  const totalHeight = 15 + // Espacement initial
+                     10 + // Espace pour le titre
+                     tableConfig.headerHeight + 
+                     tableConfig.rowHeight * topologyData.length + 20;
+  
+  // ✅ Vérifier le saut de page AVANT de placer le titre
+  const finalY = ensurePageBreak(doc, startY, totalHeight);
 
-      const totalHb =
-        tableConfig.headerHeight + tableConfig.rowHeight * rowsB.length + 10;
-      currentY = ensurePageBreak(doc, currentY, totalHb);
-      currentY = tableBuilder.drawTable(
-        20,
-        currentY,
-        headersB,
-        rowsB,
-        [80, 90],
-        [46, 204, 113]
-      );
-    }
+  // ✅ Placer le titre APRÈS la vérification de saut de page
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(41, 128, 185);
+  doc.text("4. Topologies", 20, finalY + 10);
 
-    return currentY;
-  };
+  // ✅ Dessiner le tableau unifié (15 unités après le titre)
+  const endY = tableBuilder.drawTable(
+    20,
+    finalY + 18, // Position du tableau après le titre
+    headers,
+    topologyData,
+    columnWidths,
+    [41, 128, 185] // Couleur bleue pour la section
+  );
+
+  return endY;
+};
 
   // Helpers compatibles toutes versions de jsPDF (et OK pour TS strict)
   const getPageCountSafe = (doc: jsPDF): number => {
