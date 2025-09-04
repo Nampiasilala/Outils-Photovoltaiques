@@ -8,6 +8,7 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError("L'adresse email est obligatoire")
         email = self.normalize_email(email)
+        extra_fields.setdefault("is_active", False)
         user = self.model(email=email, username=username, role=role, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -16,6 +17,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, username, password=None, role="Admin", **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True) 
         return self.create_user(email, username, password, role, **extra_fields)
 
 
@@ -32,7 +34,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     description = models.TextField(blank=True, null=True)
     
     # Champs obligatoires pour Django Admin / auth
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 

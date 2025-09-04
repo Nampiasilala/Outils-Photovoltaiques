@@ -22,6 +22,7 @@ interface UserRow {
   email: string;
   role: string;
   joinDate: string;
+  is_active: boolean; // ✅ nouveau
 }
 
 export default function AdminUsersPage() {
@@ -37,6 +38,9 @@ export default function AdminUsersPage() {
   // ➕ états pour le modal de détails
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  // ⏳ état de chargement par utilisateur pour le toggle
+  const [toggling, setToggling] = useState<Record<number, boolean>>({});
 
   // ----- Data -----
   const loadUsers = async () => {
@@ -55,6 +59,7 @@ export default function AdminUsersPage() {
           email: u.email,
           role: u.role ?? (u.is_superuser || u.is_staff ? "Admin" : "Entreprise"),
           joinDate: u.date_joined ?? u.created_at ?? new Date().toISOString(),
+          is_active: Boolean(u.is_active), // ✅ récupéré pour le switch
         }));
         setRows(mapped);
       }, "Chargement des utilisateurs…");
@@ -67,7 +72,8 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (!guardLoading && admin) void loadUsers();
-  }, [guardLoading, admin]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guardLoading, admin]);
 
   // ----- Derived -----
   const filtered = useMemo(() => {
@@ -85,8 +91,8 @@ export default function AdminUsersPage() {
 
   const stats = useMemo(() => {
     const total = rows.length;
-    const admins = rows.filter(u => u.role === "Admin").length;
-    const entreprises = rows.filter(u => u.role === "Entreprise").length;
+    const admins = rows.filter((u) => u.role === "Admin").length;
+    const entreprises = rows.filter((u) => u.role === "Entreprise").length;
     return { total, admins, entreprises };
   }, [rows]);
 
@@ -107,6 +113,41 @@ export default function AdminUsersPage() {
       toast.error(err?.message || "Échec de la suppression de l'utilisateur.");
     } finally {
       setIsDeleting(null);
+    }
+  };
+
+  const handleToggleActive = async (u: UserRow) => {
+    // ⏳ indique que ce user est en cours de MAJ
+    setToggling((m) => ({ ...m, [u.id]: true }));
+    const target = !u.is_active;
+
+    // Optionnel: optimiste
+    setRows((rows) => rows.map((r) => (r.id === u.id ? { ...r, is_active: target } : r)));
+
+    try {
+      const res = await fetchWithAdminAuth(`/users/${u.id}/toggle-active/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: target }), // ✅ explicite, évite les courses
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Erreur ${res.status}: ${txt || res.statusText}`);
+      }
+      const data = await res.json().catch(() => null);
+      // sécurité : réel statut renvoyé par l’API
+      if (data && typeof data.is_active === "boolean") {
+        setRows((rows) => rows.map((r) => (r.id === u.id ? { ...r, is_active: data.is_active } : r)));
+      }
+      toast.success(
+        data?.is_active ? "Compte activé : l'entreprise peut se connecter." : "Compte désactivé : l'accès est bloqué."
+      );
+    } catch (err: any) {
+      // rollback optimiste en cas d'erreur
+      setRows((rows) => rows.map((r) => (r.id === u.id ? { ...r, is_active: u.is_active } : r)));
+      toast.error(err?.message || "Impossible de mettre à jour le statut.");
+    } finally {
+      setToggling((m) => ({ ...m, [u.id]: false }));
     }
   };
 
@@ -145,8 +186,8 @@ export default function AdminUsersPage() {
         <button
           onClick={() => setFilterRole("Tous")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filterRole === "Tous" 
-              ? "bg-blue-600 text-white" 
+            filterRole === "Tous"
+              ? "bg-blue-600 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
@@ -155,8 +196,8 @@ export default function AdminUsersPage() {
         <button
           onClick={() => setFilterRole("Admin")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filterRole === "Admin" 
-              ? "bg-red-600 text-white" 
+            filterRole === "Admin"
+              ? "bg-red-600 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
@@ -165,8 +206,8 @@ export default function AdminUsersPage() {
         <button
           onClick={() => setFilterRole("Entreprise")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filterRole === "Entreprise" 
-              ? "bg-green-600 text-white" 
+            filterRole === "Entreprise"
+              ? "bg-green-600 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
@@ -206,6 +247,7 @@ export default function AdminUsersPage() {
                   <th className="px-4 py-3 font-semibold">Utilisateur</th>
                   <th className="px-4 py-3 font-semibold">Rôle</th>
                   <th className="px-4 py-3 font-semibold">Inscription</th>
+                  <th className="px-4 py-3 font-semibold">Statut</th> {/* ✅ nouvelle colonne */}
                   <th className="px-4 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
@@ -225,6 +267,7 @@ export default function AdminUsersPage() {
                           <div className="text-slate-500 text-xs">{u.email}</div>
                         </div>
                       </td>
+
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
@@ -238,6 +281,7 @@ export default function AdminUsersPage() {
                           {u.role}
                         </span>
                       </td>
+
                       <td className="px-4 py-3 text-slate-700">
                         {new Date(u.joinDate).toLocaleDateString("fr-FR", {
                           year: "numeric",
@@ -245,6 +289,36 @@ export default function AdminUsersPage() {
                           day: "numeric",
                         })}
                       </td>
+
+                      {/* ✅ Statut + switch */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            aria-label={u.is_active ? "Désactiver le compte" : "Activer le compte"}
+                            aria-pressed={u.is_active}
+                            disabled={!!toggling[u.id]}
+                            onClick={() => handleToggleActive(u)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                              u.is_active ? "bg-green-500" : "bg-slate-300"
+                            } ${toggling[u.id] ? "opacity-70 cursor-wait" : "cursor-pointer"}`}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white ring-1 ring-black/5 transition-transform ${
+                                u.is_active ? "translate-x-5" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                          <span
+                            className={`text-xs font-medium ${
+                              u.is_active ? "text-green-700" : "text-slate-600"
+                            }`}
+                          >
+                            {u.is_active ? "Actif" : "Inactif"}
+                          </span>
+                        </div>
+                      </td>
+
                       <td className="px-4 py-3 text-right">
                         {/* empêcher le clic d’ouvrir le modal */}
                         <div onClick={(e) => e.stopPropagation()}>
@@ -259,7 +333,7 @@ export default function AdminUsersPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="text-center py-10 text-slate-500">
+                    <td colSpan={5} className="text-center py-10 text-slate-500">
                       Aucun utilisateur ne correspond à votre recherche ou à vos filtres.
                     </td>
                   </tr>
