@@ -80,9 +80,9 @@ export default function Navbar() {
                 <div className="h-8 w-40 rounded bg-gray-200 animate-pulse" />
               ) : user ? (
                 <div className="flex items-center gap-2">
-                  <span className="hidden lg:inline text-sm text-gray-600">
+                  {/* <span className="hidden lg:inline text-sm text-gray-600">
                     {user.username || user.email}
-                  </span>
+                  </span> */}
                   <button
                     onClick={logout}
                     className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-red-600 font-medium hover:bg-red-100"
@@ -98,13 +98,6 @@ export default function Navbar() {
                   >
                     <LogIn className="w-4 h-4" />
                     <span>Connexion</span>
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md text-sm font-medium"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>Inscription</span>
                   </Link>
                 </div>
               )}

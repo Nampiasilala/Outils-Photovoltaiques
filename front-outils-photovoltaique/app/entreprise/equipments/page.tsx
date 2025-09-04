@@ -274,7 +274,7 @@ const debugTokens = () => {
   if (!user) return null;
 
   return (
-    <div className="p-10 max-w-screen-xl mx-auto overflow-x-auto text-sm">
+    <div className="p-10 max-w-screen-2xl mx-auto overflow-x-auto text-sm">
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900">
           <Icons.Wrench className="w-7 h-7 text-blue-600" />

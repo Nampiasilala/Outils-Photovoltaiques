@@ -54,7 +54,7 @@ export default function EntrepriseLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-20 border-b bg-white/90 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto  py-3 flex items-center justify-between">
           <Link href="/entreprise/equipments" className="font-semibold">
             Espace Entreprise
           </Link>
@@ -95,7 +95,7 @@ export default function EntrepriseLayout({
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-4">{children}</main>
+      <main className="max-w-7xl mx-auto p-4">{children}</main>
     </div>
   );
 }
